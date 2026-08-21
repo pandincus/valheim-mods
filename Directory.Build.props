@@ -1,0 +1,17 @@
+<Project>
+
+  <!-- Machine-specific paths. Override any of these on the command line, e.g.
+       dotnet build -p:ValheimDir="D:\Games\Valheim"  -->
+  <PropertyGroup>
+    <ValheimDir Condition="'$(ValheimDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Valheim</ValheimDir>
+    <ValheimManaged>$(ValheimDir)\valheim_Data\Managed</ValheimManaged>
+
+    <!-- Thunderstore Mod Manager keeps BepInEx inside a per-game profile rather
+         than in the game folder, so both the reference DLLs and the deploy
+         target live here. -->
+    <BepInExProfile Condition="'$(BepInExProfile)' == ''">$(AppData)\Thunderstore Mod Manager\DataFolder\Valheim\profiles\Default</BepInExProfile>
+    <BepInExCore>$(BepInExProfile)\BepInEx\core</BepInExCore>
+    <BepInExPlugins>$(BepInExProfile)\BepInEx\plugins</BepInExPlugins>
+  </PropertyGroup>
+
+</Project>

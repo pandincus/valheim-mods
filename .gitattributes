@@ -1,0 +1,11 @@
+# Store text files with LF in the repository and check them out with LF, so the
+# working tree and history agree regardless of platform. Without this, Git on
+# Windows converts to CRLF on checkout and every file looks modified to tools
+# that care about line endings.
+* text=auto eol=lf
+
+# Binary assets, so Git never tries to diff or convert them.
+*.png binary
+*.dll binary
+*.pdb binary
+*.zip binary

@@ -1,0 +1,78 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build + deploy",
+      "detail": "Run the tests, then copy the mod into the BepInEx profile only if they pass. Ctrl+Shift+B.",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/tools/verify-and-deploy.ps1"
+      ],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "build + deploy (skip tests)",
+      "detail": "Deploy without running the tests first. For a fast inner loop when you already know they pass.",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/tools/verify-and-deploy.ps1",
+        "-SkipTests"
+      ],
+      "group": "build",
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "run tests",
+      "detail": "Run the unit tests over the pure logic in BonusRules. Ctrl+Shift+P -> Tasks: Run Test Task.",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "${workspaceFolder}/ValheimMods.sln"],
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "build only (no deploy)",
+      "detail": "Compile without touching the BepInEx profile. Useful while the game is running and holding the DLL open.",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/ValheimMods.sln", "-c", "Release", "-p:Deploy=false"],
+      "group": "build",
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "rebuild from scratch",
+      "detail": "Full recompile, ignoring incremental build state. Reach for this when a change seems not to have taken effect.",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/ValheimMods.sln", "-c", "Release", "--no-incremental"],
+      "group": "build",
+      "problemMatcher": "$msCompile",
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
+      "label": "watch BepInEx log",
+      "detail": "Live-tail the game log. Start this before launching Valheim to watch the mod load and print.",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/tools/watch-log.ps1"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    }
+  ]
+}

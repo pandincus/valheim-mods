@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Matches the mod project, which targets net472 and is not annotated. -->
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!--
+    The mod targets net472 and references Unity and BepInEx, so this project
+    cannot reference it directly. Instead it compiles the one source file that
+    has no such dependencies. That constraint is the point: if BonusRules.cs
+    ever acquires a Unity or BepInEx using, this project stops building, which
+    is exactly the guard rail we want.
+  -->
+  <ItemGroup>
+    <Compile Include="../../src/FishQualityBonus/BonusRules.cs" Link="BonusRules.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

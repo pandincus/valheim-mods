@@ -1,0 +1,14 @@
+{
+  // Point C# Dev Kit at the solution explicitly so it never has to guess
+  // (and never prompts you to pick one).
+  "dotnet.defaultSolution": "ValheimMods.sln",
+
+  // F12 on a Valheim symbol opens the decompiled game source. On by default in
+  // recent C# extensions, but pinned here so it keeps working.
+  "dotnet.navigation.navigateToDecompiledSources": true,
+
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true
+  }
+}

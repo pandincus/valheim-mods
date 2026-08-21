@@ -1,0 +1,26 @@
+# Build output
+bin/
+obj/
+
+# Test output
+TestResults/
+[Cc]overage*/
+
+# Decompiled Valheim source. This is Iron Gate's code, kept locally as a
+# reference only - tools/decompile.ps1 regenerates it on demand.
+decompiled/
+
+# Working notes kept out of the public repo on purpose.
+NOTES.md
+CLAUDE.md
+
+# Packaged mod archives, produced for Thunderstore uploads
+dist/
+*.zip
+
+# Editor / IDE local state. Note that .vscode/ is deliberately NOT ignored:
+# tasks.json and settings.json are real project setup, not personal preference.
+.vs/
+.idea/
+*.user
+*.suo
