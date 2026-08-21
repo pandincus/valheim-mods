@@ -17,7 +17,7 @@ in that recipe.
 This mod adjusts it by applying the same raw fish computation formula to other whole-fish
 recipes, as well!
 
-## Behaviour
+## Behavior
 
     output = amount + (fishQuality - 1) * amount * BonusPerQualityLevel + speciesBonus
 
@@ -93,6 +93,4 @@ With Valheim 1.0 coming out soon, I'm not sure what will change that might impac
 the devs have already fixed this issue! Or perhaps they'll add more fishing recipes and we'll want to test
 that this continues to work. But since I wrote this mod to use it, I will revisit and update in the near future.
 
-## Changelog
-
-2026-08-21 - Initial 0.1.0 release of the mod.
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
