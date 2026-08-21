@@ -1,0 +1,92 @@
+# Publishes a mod to Thunderstore when a GitHub Release is published.
+#
+# The build deliberately does NOT happen here. Mods reference Valheim's own
+# assemblies (assembly_valheim.dll, the Unity modules) by path into a local Steam
+# install. Those are Iron Gate's files - they cannot go in the repo and there is
+# no public feed for them - so a runner cannot compile this project.
+#
+# The flow is therefore:
+#   1. tools/package.ps1          (local: tests, builds, zips)
+#   2. gh release create vX.Y.Z dist/<Mod>-X.Y.Z.zip
+#   3. this workflow uploads that exact zip to Thunderstore
+#
+# Building locally is no bad thing here: you want to have played the change
+# before releasing it, and CI could never do that either.
+#
+# Setup, once: create a Thunderstore service account for the pandincus team
+# (Settings -> Service Accounts), then add its token to this repo as the secret
+# THUNDERSTORE_TOKEN.
+
+name: Publish to Thunderstore
+
+on:
+  release:
+    types: [published]
+  # Manual re-run, in case the release published before the secret existed.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish (e.g. v0.1.1)
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out which release we are publishing
+        id: rel
+        run: echo "tag=${{ github.event.release.tag_name || inputs.tag }}" >> "$GITHUB_OUTPUT"
+
+      # manifest.json stays the single source of truth for the package metadata,
+      # so nothing has to be repeated in this file.
+      - name: Read package metadata
+        id: meta
+        run: |
+          manifest=src/FishQualityBonus/manifest.json
+          echo "version=$(jq -r .version_number "$manifest")" >> "$GITHUB_OUTPUT"
+          echo "website=$(jq -r .website_url "$manifest")" >> "$GITHUB_OUTPUT"
+          {
+            echo "description<<MANIFEST_EOF"
+            jq -r .description "$manifest"
+            echo "MANIFEST_EOF"
+            echo "deps<<MANIFEST_EOF"
+            jq -r '.dependencies[]' "$manifest"
+            echo "MANIFEST_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Download the zip attached to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ steps.rel.outputs.tag }}" --pattern '*.zip' --dir dist
+
+      # Thunderstore versions are immutable, so publishing a zip whose version
+      # disagrees with the manifest would be permanent. Check before uploading.
+      - name: Check the zip matches the manifest version
+        run: |
+          expected="dist/FishQualityBonus-${{ steps.meta.outputs.version }}.zip"
+          if [ ! -f "$expected" ]; then
+            echo "::error::Expected $expected but the release has:"
+            ls -la dist
+            exit 1
+          fi
+          echo "Publishing $expected"
+
+      - uses: GreenTF/upload-thunderstore-package@v4.3
+        with:
+          namespace: pandincus
+          name: FishQualityBonus
+          community: valheim
+          version: ${{ steps.meta.outputs.version }}
+          description: ${{ steps.meta.outputs.description }}
+          website: ${{ steps.meta.outputs.website }}
+          deps: ${{ steps.meta.outputs.deps }}
+          file: dist/FishQualityBonus-${{ steps.meta.outputs.version }}.zip
+          token: ${{ secrets.THUNDERSTORE_TOKEN }}
+          # Categories can be set on the package page afterwards, and the valid
+          # slugs are easier to confirm there than to guess here.
+          #
+          # Add `dev: true` to publish to thunderstore.dev instead of the real
+          # site - worth doing once to prove this workflow before spending a
+          # real version number on it.

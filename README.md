@@ -92,6 +92,31 @@ The test gating lives in `tools/verify-and-deploy.ps1` rather than a VS Code
 | `tools/watch-log.ps1` | Live-tail the BepInEx log; survives the game restarting. |
 | `tools/decompile.ps1 <Type>` | Decompile a game class into `decompiled/` for reference. Requires `ilspycmd`. |
 
+## Releasing
+
+Builds happen locally, not in CI. Mods reference Valheim's own assemblies by
+path into a Steam install, and those are Iron Gate's files — they can't go in
+the repo and there's no public feed for them, so a GitHub runner can't compile
+this project. No great loss: you want to have played a change before releasing
+it, and CI couldn't do that either.
+
+1. Bump the version in three places — the mod's `.csproj`, `PluginVersion` in
+   `Plugin.cs`, and `manifest.json`. `tools/package.ps1` refuses to run if the
+   first and last disagree.
+2. Add a `CHANGELOG.md` entry.
+3. `powershell -File tools/package.ps1` — runs the tests, builds, and writes
+   `dist/<Mod>-<version>.zip` in the flat layout Thunderstore expects.
+4. `gh release create v0.1.1 dist/FishQualityBonus-0.1.1.zip --notes "..."`
+
+Publishing the release fires `.github/workflows/publish-thunderstore.yml`,
+which uploads that exact zip to Thunderstore. Package metadata comes from
+`manifest.json`, so it never has to be repeated in the workflow.
+
+Needs a `THUNDERSTORE_TOKEN` repo secret — a Thunderstore service account token
+for the team. **Thunderstore versions are immutable**, so a bad upload can't be
+replaced, only superseded; add `dev: true` to the action to publish to
+thunderstore.dev while testing the workflow itself.
+
 ## Adding a mod
 
 1. `src/NewMod/` with a `.csproj` modelled on FishQualityBonus, plus its own `README.md`
