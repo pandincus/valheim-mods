@@ -97,4 +97,4 @@ $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
 $archive.Entries | ForEach-Object { Write-Host ("    {0,-22} {1,8:N0} bytes" -f $_.FullName, $_.Length) }
 $archive.Dispose()
 Write-Host ''
-Write-Host "Upload at https://thunderstore.io/c/valheim/create/ under the pandincus_mods team." -ForegroundColor Cyan
+Write-Host "Upload at https://thunderstore.io/c/valheim/create/ under the pandincus team." -ForegroundColor Cyan
