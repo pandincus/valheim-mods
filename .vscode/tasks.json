@@ -31,6 +31,19 @@
       "presentation": { "reveal": "always", "panel": "shared", "clear": true }
     },
     {
+      "label": "remove local build from profile",
+      "detail": "Delete the locally-built DLL from the BepInEx profile, so a Thunderstore-installed copy is the only one. Lists whatever remains.",
+      "type": "process",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", "${workspaceFolder}/tools/undeploy.ps1"
+      ],
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "shared", "clear": true }
+    },
+    {
       "label": "run tests",
       "detail": "Run the unit tests over the pure logic in BonusRules. Ctrl+Shift+P -> Tasks: Run Test Task.",
       "type": "process",

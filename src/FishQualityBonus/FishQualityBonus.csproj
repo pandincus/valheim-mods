@@ -80,6 +80,17 @@
     <Copy SourceFiles="$(TargetPath);$(TargetDir)$(AssemblyName).pdb"
           DestinationFolder="$(DeployDir)" ContinueOnError="true" />
     <Message Importance="high" Text="Deployed $(AssemblyName).dll -&gt; $(DeployDir)" />
+
+    <!-- Thunderstore installs land in a "<team>-<Package>" folder, so they sit
+         alongside ours rather than replacing it. BepInEx would then find two
+         DLLs claiming the same plugin GUID, load one, and skip the other - and
+         which one wins is load order, so you cannot tell what you are testing.
+         It fails quietly, so say something here. -->
+    <ItemGroup>
+      <ThunderstoreCopy Include="$(BepInExPlugins)\*-$(AssemblyName)\$(AssemblyName).dll" />
+    </ItemGroup>
+    <Warning Condition="'@(ThunderstoreCopy)' != ''"
+             Text="A Thunderstore-installed copy is also present (@(ThunderstoreCopy)). BepInEx will skip one of the two - run tools/undeploy.ps1, or uninstall the mod in Thunderstore Mod Manager." />
   </Target>
 
 </Project>

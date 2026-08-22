@@ -91,6 +91,8 @@ The test gating lives in `tools/verify-and-deploy.ps1` rather than a VS Code
 | `tools/verify-and-deploy.ps1` | Run the tests, then deploy only if they pass. What Ctrl+Shift+B calls. |
 | `tools/watch-log.ps1` | Live-tail the BepInEx log; survives the game restarting. |
 | `tools/decompile.ps1 <Type>` | Decompile a game class into `decompiled/` for reference. Requires `ilspycmd`. |
+| `tools/undeploy.ps1` | Remove the locally-built DLL from the BepInEx profile, so a Thunderstore-installed copy is the only one. |
+| `tools/package.ps1` | Build and zip a mod for Thunderstore. See Releasing below. |
 
 ## Releasing
 
