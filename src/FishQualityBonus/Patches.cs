@@ -127,9 +127,10 @@ namespace FishQualityBonus
 
                 // One call per quality the plan draws on. Usually that is a single
                 // call, exactly as before; a mixed craft makes one per size.
-                for (int quality = 0; quality < choice.Plan.Length; quality++)
+                for (int quality = 0; quality <= choice.Plan.MaxQuality; quality++)
                 {
-                    if (choice.Plan[quality] > 0) inventory.RemoveItem(name, choice.Plan[quality], quality);
+                    int take = choice.Plan.CountAt(quality);
+                    if (take > 0) inventory.RemoveItem(name, take, quality);
                 }
             }
 

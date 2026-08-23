@@ -6,8 +6,24 @@ public class ComputeBonusTests
 {
     /// <summary>One fish of the given quality, which is what most crafts spend.</summary>
     private static int OneFish(int quality, int recipeAmount, int perQualityLevel, int speciesExtra)
-        => BonusRules.ComputeBonus(qualityPoints: quality - 1, fishCount: 1,
-                                   recipeAmount, perQualityLevel, speciesExtra);
+        => BonusRules.ComputeBonus(PlanOf((quality, 1)), recipeAmount, perQualityLevel, speciesExtra);
+
+    /// <summary>Build a plan from (quality, count) pairs, e.g. PlanOf((1, 1), (2, 1)).</summary>
+    private static FishPlan PlanOf(params (int Quality, int Count)[] fish)
+    {
+        int maxQuality = 0;
+        foreach ((int quality, _) in fish)
+        {
+            if (quality > maxQuality) maxQuality = quality;
+        }
+
+        var counts = new int[maxQuality + 1];
+        foreach ((int quality, int count) in fish)
+        {
+            counts[quality] += count;
+        }
+        return new FishPlan(counts);
+    }
 
     // The three tables on the wiki's Raw Fish page, in full. Vanilla's Fish
     // (raw) recipe makes 1 at a multiplier of 3, so total = 1 + ComputeBonus.
@@ -69,28 +85,22 @@ public class ComputeBonusTests
     }
 
     [Fact]
-    public void NegativeQualityPointsAreClampedAndDoNotCancelTheSpeciesBonus()
-    {
-        // QualityPoints never returns a negative, but without this clamp one
-        // would swallow the species bonus and silently return nothing.
-        Assert.Equal(2, BonusRules.ComputeBonus(qualityPoints: -1, fishCount: 1,
-                                                recipeAmount: 1, perQualityLevel: 3, speciesExtra: 2));
-    }
-
-    [Fact]
     public void NeverReturnsANegativeBonus()
     {
-        Assert.Equal(0, BonusRules.ComputeBonus(qualityPoints: -3, fishCount: 1,
+        // recipeAmount and speciesExtra come from game data rather than from us,
+        // so they are still worth clamping. A negative quality total is no longer
+        // representable - FishPlan cannot produce one.
+        Assert.Equal(0, BonusRules.ComputeBonus(PlanOf((1, 1)),
                                                 recipeAmount: -5, perQualityLevel: 3, speciesExtra: -9));
     }
 
     [Fact]
-    public void NoFishMeansNoSizeBonus()
+    public void TheEmptyPlanEarnsNoSizeBonus()
     {
         // Defensive: a plan is never empty by the time it reaches here, and
-        // dividing by fishCount would throw if it were.
-        Assert.Equal(0, BonusRules.ComputeBonus(qualityPoints: 4, fishCount: 0,
-                                                recipeAmount: 1, perQualityLevel: 3, speciesExtra: 0));
+        // dividing by its fish count would throw if it were.
+        Assert.Equal(0, BonusRules.ComputeBonus(default, recipeAmount: 1,
+                                                perQualityLevel: 3, speciesExtra: 0));
     }
 
     public class MixedQualities
@@ -101,7 +111,7 @@ public class ComputeBonusTests
             // The case that prompted the feature: one quality-1 and one quality-2
             // trollfish for a mead base that makes 1. Average is 1.5, so the bonus
             // is 1 and you brew 2. Trollfish is a +0 species, nothing on top.
-            Assert.Equal(1, BonusRules.ComputeBonus(qualityPoints: 1, fishCount: 2,
+            Assert.Equal(1, BonusRules.ComputeBonus(PlanOf((1, 1), (2, 1)),
                                                     recipeAmount: 1, perQualityLevel: 3, speciesExtra: 0));
         }
 
@@ -110,9 +120,9 @@ public class ComputeBonusTests
         {
             // Two quality-1 give 0 and two quality-2 give 3, so the mixed pair
             // has to land somewhere in between.
-            int twoSmall = BonusRules.ComputeBonus(0, 2, recipeAmount: 1, perQualityLevel: 3, speciesExtra: 0);
-            int mixed = BonusRules.ComputeBonus(1, 2, recipeAmount: 1, perQualityLevel: 3, speciesExtra: 0);
-            int twoBig = BonusRules.ComputeBonus(2, 2, recipeAmount: 1, perQualityLevel: 3, speciesExtra: 0);
+            int twoSmall = BonusRules.ComputeBonus(PlanOf((1, 2)), 1, perQualityLevel: 3, speciesExtra: 0);
+            int mixed = BonusRules.ComputeBonus(PlanOf((1, 1), (2, 1)), 1, perQualityLevel: 3, speciesExtra: 0);
+            int twoBig = BonusRules.ComputeBonus(PlanOf((2, 2)), 1, perQualityLevel: 3, speciesExtra: 0);
 
             Assert.Equal(0, twoSmall);
             Assert.Equal(3, twoBig);
@@ -125,9 +135,9 @@ public class ComputeBonusTests
             // Three quality-4 fish: 3 points each. This has to agree with the
             // one-fish answer exactly, or the mod's payout changed at 0.2.0 for
             // crafts that were never mixed.
-            int threeFish = BonusRules.ComputeBonus(qualityPoints: 9, fishCount: 3,
+            int threeFish = BonusRules.ComputeBonus(PlanOf((4, 3)),
                                                     recipeAmount: 2, perQualityLevel: 3, speciesExtra: 1);
-            int oneFish = BonusRules.ComputeBonus(qualityPoints: 3, fishCount: 1,
+            int oneFish = BonusRules.ComputeBonus(PlanOf((4, 1)),
                                                   recipeAmount: 2, perQualityLevel: 3, speciesExtra: 1);
 
             Assert.Equal(oneFish, threeFish);
@@ -139,7 +149,7 @@ public class ComputeBonusTests
             // Two quality-1 and one quality-2 across a three-fish craft: one
             // point spread over three fish, so a third of a level. The mod pays
             // nothing rather than rounding a partial level up into a whole item.
-            Assert.Equal(0, BonusRules.ComputeBonus(qualityPoints: 1, fishCount: 3,
+            Assert.Equal(0, BonusRules.ComputeBonus(PlanOf((1, 2), (2, 1)),
                                                     recipeAmount: 1, perQualityLevel: 1, speciesExtra: 0));
         }
 
@@ -148,9 +158,9 @@ public class ComputeBonusTests
         {
             // Floor, not round: a mixed craft must not out-earn the uniform
             // craft at the better quality.
-            int mixed = BonusRules.ComputeBonus(qualityPoints: 5, fishCount: 2,
+            int mixed = BonusRules.ComputeBonus(PlanOf((3, 1), (5, 1)),
                                                 recipeAmount: 1, perQualityLevel: 3, speciesExtra: 0);
-            int uniformHigher = BonusRules.ComputeBonus(qualityPoints: 6, fishCount: 2,
+            int uniformHigher = BonusRules.ComputeBonus(PlanOf((4, 2)),
                                                         recipeAmount: 1, perQualityLevel: 3, speciesExtra: 0);
 
             Assert.True(mixed <= uniformHigher);

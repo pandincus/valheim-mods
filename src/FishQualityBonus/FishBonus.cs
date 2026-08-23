@@ -8,10 +8,10 @@ namespace FishQualityBonus
         public Piece.Requirement Requirement;
 
         /// <summary>
-        /// How many fish to take from each quality, indexed by quality.
-        /// Usually a single non-zero slot; more than one when the craft is mixing sizes.
+        /// Which fish to spend, and at which qualities. Usually one quality; more than
+        /// one when the craft is mixing sizes.
         /// </summary>
-        public int[] Plan;
+        public FishPlan Plan;
 
         public int TotalNeeded;
     }
@@ -72,7 +72,7 @@ namespace FishQualityBonus
 
             bool largestFirst = ModConfig.FishToSpend.Value == FishPreference.LargestFirst;
             if (!BonusRules.TryPickFish(counts, needed, largestFirst,
-                                        ModConfig.AllowMixedQualities.Value, out int[] plan))
+                                        ModConfig.AllowMixedQualities.Value, out FishPlan plan))
             {
                 return null;
             }
@@ -145,9 +145,7 @@ namespace FishQualityBonus
                 ? SpeciesBonusTable.ExtraFor(choice.Requirement.m_resItem.m_itemData.m_shared)
                 : 0;
 
-            return BonusRules.ComputeBonus(BonusRules.QualityPoints(choice.Plan),
-                                           BonusRules.TotalFish(choice.Plan),
-                                           recipe.m_amount,
+            return BonusRules.ComputeBonus(choice.Plan, recipe.m_amount,
                                            ModConfig.BonusPerQualityLevel.Value, speciesExtra);
         }
 
@@ -214,8 +212,11 @@ namespace FishQualityBonus
                 int needed = req.GetAmount(qualityLevel) * multiplier;
                 if (needed <= 0) continue;
 
+                // CountItems with no quality argument counts every quality, which is the
+                // whole point here - and is exactly the number the ingredient list has
+                // been showing the player all along.
                 int have = ReferenceEquals(req, fishReq)
-                    ? BonusRules.TotalFish(CountByQuality(inventory, req))
+                    ? inventory.CountItems(req.m_resItem.m_itemData.m_shared.m_name)
                     : LargestStackByQuality(inventory, req);
 
                 if (have < needed) return false;

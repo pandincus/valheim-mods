@@ -10,15 +10,30 @@ public class PickFishTests
 
     private static int[] Pick(int[] counts, int needed, bool largestFirst = false, bool allowMixed = true)
     {
-        Assert.True(BonusRules.TryPickFish(counts, needed, largestFirst, allowMixed, out int[] plan));
-        return plan;
+        Assert.True(BonusRules.TryPickFish(counts, needed, largestFirst, allowMixed, out FishPlan plan));
+        return Spread(plan);
     }
 
     private static void AssertCannotPick(int[] counts, int needed, bool largestFirst = false,
                                          bool allowMixed = true)
     {
-        Assert.False(BonusRules.TryPickFish(counts, needed, largestFirst, allowMixed, out int[] plan));
-        Assert.Null(plan);
+        Assert.False(BonusRules.TryPickFish(counts, needed, largestFirst, allowMixed, out FishPlan plan));
+        Assert.Equal(0, plan.TotalFish);
+    }
+
+    /// <summary>
+    /// Read a plan back out as a per-quality array, so a test can assert the whole shape
+    /// in one go. Deliberately goes through CountAt rather than reaching inside, so these
+    /// tests exercise the same surface the mod uses.
+    /// </summary>
+    private static int[] Spread(FishPlan plan)
+    {
+        var counts = new int[plan.MaxQuality + 1];
+        for (int quality = 0; quality <= plan.MaxQuality; quality++)
+        {
+            counts[quality] = plan.CountAt(quality);
+        }
+        return counts;
     }
 
     [Fact]
@@ -107,8 +122,8 @@ public class PickFishTests
             int[] counts = { 0, 1, 1, 0 };
 
             Assert.False(BonusRules.TryPickFish(counts, needed: 2, largestFirst: false,
-                                                allowMixed: false, out int[] plan));
-            Assert.Null(plan);
+                                                allowMixed: false, out FishPlan plan));
+            Assert.Equal(0, plan.TotalFish);
         }
 
         [Fact]
@@ -119,8 +134,8 @@ public class PickFishTests
             int[] counts = { 0, 1, 0, 0, 3, 0 };
 
             Assert.True(BonusRules.TryPickFish(counts, needed: 2, largestFirst: false,
-                                               allowMixed: false, out int[] plan));
-            Assert.Equal(new[] { 0, 0, 0, 0, 2, 0 }, plan);
+                                               allowMixed: false, out FishPlan plan));
+            Assert.Equal(new[] { 0, 0, 0, 0, 2, 0 }, Spread(plan));
         }
 
         [Fact]
@@ -129,8 +144,8 @@ public class PickFishTests
             int[] counts = { 0, 0, 2, 0 };
 
             Assert.True(BonusRules.TryPickFish(counts, needed: 2, largestFirst: false,
-                                               allowMixed: false, out int[] plan));
-            Assert.Equal(new[] { 0, 0, 2, 0 }, plan);
+                                               allowMixed: false, out FishPlan plan));
+            Assert.Equal(new[] { 0, 0, 2, 0 }, Spread(plan));
         }
     }
 
@@ -139,20 +154,20 @@ public class PickFishTests
         [Fact]
         public void CountsEveryFishInThePlan()
         {
-            Assert.Equal(4, BonusRules.TotalFish(new[] { 0, 1, 2, 0, 1 }));
+            Assert.Equal(4, new FishPlan(new[] { 0, 1, 2, 0, 1 }).TotalFish);
         }
 
         [Fact]
         public void AddsUpHowFarAboveQualityOneTheFishAre()
         {
             // One quality-2 (worth 1) and two quality-5 (worth 4 each).
-            Assert.Equal(9, BonusRules.QualityPoints(new[] { 0, 0, 1, 0, 0, 2 }));
+            Assert.Equal(9, new FishPlan(new[] { 0, 0, 1, 0, 0, 2 }).QualityPoints);
         }
 
         [Fact]
         public void QualityOneFishAreWorthNothing()
         {
-            Assert.Equal(0, BonusRules.QualityPoints(new[] { 0, 6, 0 }));
+            Assert.Equal(0, new FishPlan(new[] { 0, 6, 0 }).QualityPoints);
         }
 
         [Fact]
@@ -160,14 +175,46 @@ public class PickFishTests
         {
             // No real fish has quality 0, but vanilla scans from 0 so one could
             // theoretically reach us. It must contribute 0, not -1.
-            Assert.Equal(1, BonusRules.QualityPoints(new[] { 1, 0, 1 }));
+            Assert.Equal(1, new FishPlan(new[] { 1, 0, 1 }).QualityPoints);
         }
 
         [Fact]
-        public void HandleANullPlanWithoutThrowing()
+        public void ReportsTheHighestQualityItCanSpeakFor()
         {
-            Assert.Equal(0, BonusRules.TotalFish(null));
-            Assert.Equal(0, BonusRules.QualityPoints(null));
+            Assert.Equal(5, new FishPlan(new int[6]).MaxQuality);
+        }
+
+        [Fact]
+        public void AnsweringAboutAQualityOutsideThePlanIsSafe()
+        {
+            var plan = new FishPlan(new[] { 0, 2, 0 });
+
+            Assert.Equal(2, plan.CountAt(1));
+            Assert.Equal(0, plan.CountAt(99));
+            Assert.Equal(0, plan.CountAt(-1));
+        }
+
+        [Fact]
+        public void TheEmptyPlanSpendsNothingAndDoesNotThrow()
+        {
+            // default(FishPlan) is what TryPickFish hands back when it fails, and
+            // reading it has to be harmless.
+            FishPlan empty = default;
+
+            Assert.Equal(0, empty.TotalFish);
+            Assert.Equal(0, empty.QualityPoints);
+            Assert.Equal(0, empty.CountAt(3));
+            // -1 so that a `for (q = 0; q <= MaxQuality; q++)` loop simply doesn't run.
+            Assert.Equal(-1, empty.MaxQuality);
+        }
+
+        [Fact]
+        public void HandlesANullTallyWithoutThrowing()
+        {
+            var plan = new FishPlan(null);
+
+            Assert.Equal(0, plan.TotalFish);
+            Assert.Equal(0, plan.QualityPoints);
         }
     }
 }
