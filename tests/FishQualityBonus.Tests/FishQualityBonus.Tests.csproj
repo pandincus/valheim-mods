@@ -10,13 +10,18 @@
 
   <!--
     The mod targets net472 and references Unity and BepInEx, so this project
-    cannot reference it directly. Instead it compiles the one source file that
-    has no such dependencies. That constraint is the point: if BonusRules.cs
+    cannot reference it directly. Instead it compiles the source files that
+    have no such dependencies. That constraint is the point: if either of these
     ever acquires a Unity or BepInEx using, this project stops building, which
     is exactly the guard rail we want.
+
+    Listed one by one on purpose - a new pure-logic file has to be added here
+    deliberately, rather than being swept in by a wildcard. If that list ever
+    grows past a handful, move them under a Logic/ folder and glob that instead.
   -->
   <ItemGroup>
     <Compile Include="../../src/FishQualityBonus/BonusRules.cs" Link="BonusRules.cs" />
+    <Compile Include="../../src/FishQualityBonus/FishPlan.cs" Link="FishPlan.cs" />
   </ItemGroup>
 
   <ItemGroup>
