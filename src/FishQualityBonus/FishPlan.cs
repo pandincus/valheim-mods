@@ -17,13 +17,12 @@ namespace FishQualityBonus
     /// passing null-references around and throwing NPEs.
     /// I reserve the right to change my mind in the future ;-)
     ///
-    /// Being a readonly struct also means wrapping costs no extra allocation - the array
-    /// was being allocated anyway and the wrapper lives inline, which is worth having on a
-    /// path the crafting panel touches every frame.
+    /// Being a readonly struct also means wrapping costs no extra allocation, and since this
+    /// is invoked from the crafting panel itself (every frame), that does matter a little.
     ///
-    /// What it wraps is an array indexed by quality. That mirrors how the game itself walks
-    /// qualities, so it is the right shape to hold - but it is nobody else's business,
-    /// hence asking this type questions rather than passing the array around.
+    /// This struct wraps an array indexed by quality (<see cref="FishPlan._byQuality"/>).
+    /// This mirrors how the game itself manages qualities, but I wanted to hide some of the weirdness
+    /// of the array inside the struct to make it a bit more ergonomic for callers to deal with.
     /// </remarks>
     internal readonly struct FishPlan
     {
@@ -59,11 +58,15 @@ namespace FishQualityBonus
 
                 total += count;
 
-                // Quality 0 contributes 0 rather than -1. Vanilla counts qualities from
-                // 0, so a 0 can theoretically reach us, and one must not eat another
-                // fish's contribution.
-                int above = quality - 1;
-                if (above > 0) points += count * above;
+                // How many quality levels one fish of this quality sits above quality 1,
+                // which is that fish's own contribution to the total. A quality-1 fish is
+                // worth 0, a quality-5 fish is worth 4.
+                //
+                // Vanilla counts qualities from 0, so a quality-0 fish can theoretically
+                // reach us and would come out at -1. Guarded, because one fish must never
+                // eat another fish's contribution.
+                int levelsAboveOne = quality - 1;
+                if (levelsAboveOne > 0) points += count * levelsAboveOne;
             }
             _totalFish = total;
             _qualityPoints = points;
