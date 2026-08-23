@@ -102,8 +102,9 @@ public class ComputeBonusTests
     public void NeverReturnsANegativeBonus()
     {
         // recipeAmount and speciesExtra come from game data rather than from us,
-        // so they are still worth clamping. A negative quality total is no longer
-        // representable - FishPlan cannot produce one.
+        // so they are still worth clamping. The quality term needs no clamp: every
+        // fish counts as at least quality 1, so TotalQuality - TotalFish cannot go
+        // negative.
         Assert.Equal(0, BonusRules.ComputeBonus(PlanOf((1, 1)),
                                                 recipeAmount: -5, perQualityLevel: 3, speciesExtra: -9));
     }

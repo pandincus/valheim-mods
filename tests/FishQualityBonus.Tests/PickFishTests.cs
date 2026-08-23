@@ -173,24 +173,43 @@ public class PickFishTests
         }
 
         [Fact]
-        public void AddsUpHowFarAboveQualityOneTheFishAre()
+        public void AddsUpTheQualitiesOfTheFishItSpends()
         {
-            // One quality-2 (worth 1) and two quality-5 (worth 4 each).
-            Assert.Equal(9, PlanOf(0, 0, 1, 0, 0, 2).QualityPoints);
+            // One quality-2 and two quality-5: 2 + 5 + 5.
+            Assert.Equal(12, PlanOf(0, 0, 1, 0, 0, 2).TotalQuality);
         }
 
         [Fact]
-        public void QualityOneFishAreWorthNothing()
+        public void QualityOneFishEachCountAsOne()
         {
-            Assert.Equal(0, PlanOf(0, 6, 0).QualityPoints);
+            Assert.Equal(6, PlanOf(0, 6, 0).TotalQuality);
         }
 
         [Fact]
-        public void QualityZeroDoesNotEatAnotherFishsContribution()
+        public void QualityZeroCountsAsQualityOne()
         {
             // No real fish has quality 0, but vanilla scans from 0 so one could
-            // theoretically reach us. It must contribute 0, not -1.
-            Assert.Equal(1, PlanOf(1, 0, 1).QualityPoints);
+            // theoretically reach us. It is still a fish, so it counts as 1 - which
+            // is what stops it dragging TotalQuality below TotalFish.
+            FishPlan plan = PlanOf(1, 0, 1);
+
+            Assert.Equal(3, plan.TotalQuality);   // 1 (the quality-0 fish) + 2
+            Assert.Equal(2, plan.TotalFish);
+        }
+
+        [Theory]
+        // A bag of the smallest fish there can be, including the impossible quality-0.
+        [InlineData(new[] { 3, 0, 0 })]
+        [InlineData(new[] { 0, 4, 0 })]
+        [InlineData(new[] { 2, 2, 0, 1 })]
+        public void TotalQualityIsNeverLessThanTotalFish(int[] countsByQuality)
+        {
+            // The guarantee ComputeBonus leans on when it subtracts one from the other
+            // without checking. Every fish adds at least 1 to TotalQuality and exactly
+            // 1 to TotalFish, so the difference cannot go negative.
+            FishPlan plan = PlanOf(countsByQuality);
+
+            Assert.True(plan.TotalQuality >= plan.TotalFish);
         }
 
         [Fact]
@@ -218,7 +237,7 @@ public class PickFishTests
             FishPlan empty = default;
 
             Assert.Equal(0, empty.TotalFish);
-            Assert.Equal(0, empty.QualityPoints);
+            Assert.Equal(0, empty.TotalQuality);
             Assert.Equal(0, empty.CountAt(3));
             // -1 so that a `for (q = 0; q <= MaxQuality; q++)` loop simply doesn't run.
             Assert.Equal(-1, empty.MaxQuality);

@@ -64,11 +64,18 @@ namespace FishQualityBonus
         /// The formula is the average of (quality - 1) across the fish spent, times the
         /// recipe amount, times the per-level setting:
         ///
-        ///     size bonus = plan.QualityPoints * recipeAmount * perQualityLevel / plan.TotalFish
+        ///     levelsAboveBaseline = plan.TotalQuality - plan.TotalFish
+        ///     size bonus          = levelsAboveBaseline * recipeAmount * perQualityLevel / plan.TotalFish
+        ///
+        /// Taking TotalFish off TotalQuality is where quality 1 becomes the baseline that
+        /// earns nothing: every fish gives back one level, so a bag of quality-1 fish comes
+        /// to zero. That subtraction belongs here rather than inside the plan - a plan
+        /// reports what fish are being spent, and what counts as "free" is this formula's
+        /// rule, not a fact about fish.
         ///
         /// Practically speaking, when every fish is the same quality this is exactly what
         /// the mod did before 0.2.0 and exactly what vanilla does for Fish (raw), because
-        /// qualityPoints is then fishCount * (quality - 1) and the division cancels.
+        /// levelsAboveBaseline is then fishCount * (quality - 1) and the division cancels.
         /// Mixed qualities are the new case.
         ///
         /// Multiply-then-divide is deliberate: it keeps the precision that dividing first
@@ -76,12 +83,13 @@ namespace FishQualityBonus
         /// pay more for a mixed craft than for the same craft with every fish rounded up
         /// to the better quality. Worked example - two trollfish, one quality-1 and one
         /// quality-2, in a mead base that makes 1 at the default multiplier of 3:
-        /// QualityPoints is 1, so 1 * 1 * 3 / 2 = 1, and you brew 2 instead of 1.
-        /// Two quality-2 would give 3, and two quality-1 would give 0.
+        /// TotalQuality is 3 and TotalFish is 2, so 1 * 1 * 3 / 2 = 1, and you brew 2
+        /// instead of 1. Two quality-2 would give 3, and two quality-1 would give 0.
         ///
-        /// There is no guard here against a negative quality total, because
-        /// <see cref="FishPlan"/> cannot produce one. recipeAmount and speciesExtra still
-        /// get clamped - those come from game data rather than from us.
+        /// levelsAboveBaseline needs no guard: <see cref="FishPlan"/> counts every fish as
+        /// at least quality 1, so TotalQuality can never fall below TotalFish and the
+        /// subtraction cannot go negative. recipeAmount and speciesExtra still get clamped -
+        /// those come from game data rather than from us.
         /// </remarks>
         internal static int ComputeBonus(FishPlan plan, int recipeAmount,
                                          int perQualityLevel, int speciesExtra)
@@ -89,8 +97,9 @@ namespace FishQualityBonus
             if (recipeAmount < 0) recipeAmount = 0;
 
             int fishCount = plan.TotalFish;
+            int levelsAboveBaseline = plan.TotalQuality - fishCount;
             int scaled = fishCount > 0
-                ? plan.QualityPoints * recipeAmount * perQualityLevel / fishCount
+                ? levelsAboveBaseline * recipeAmount * perQualityLevel / fishCount
                 : 0;
 
             return Math.Max(0, scaled + Math.Max(0, speciesExtra));

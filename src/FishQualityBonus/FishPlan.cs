@@ -31,7 +31,7 @@ namespace FishQualityBonus
         // match, and because vanilla scans from 0 as well.
         private readonly int[] _byQuality;
         private readonly int _totalFish;
-        private readonly int _qualityPoints;
+        private readonly int _totalQuality;
 
         /// <summary>
         /// Wrap a per-quality tally and total it up.
@@ -43,53 +43,49 @@ namespace FishQualityBonus
         /// </param>
         /// <remarks>
         /// Both totals are worked out here rather than on demand, so asking a plan for
-        /// <see cref="TotalFish"/> or <see cref="QualityPoints"/> repeatedly costs nothing.
+        /// <see cref="TotalFish"/> or <see cref="TotalQuality"/> repeatedly costs nothing.
         /// </remarks>
         private FishPlan(int[] byQuality)
         {
             _byQuality = byQuality;
 
-            int total = 0;
-            int points = 0;
+            int fish = 0;
+            int qualitySum = 0;
             for (int quality = 0; quality < byQuality.Length; quality++)
             {
                 int count = byQuality[quality];
                 if (count <= 0) continue;
 
-                total += count;
+                fish += count;
 
-                // How many quality levels one fish of this quality sits above quality 1,
-                // which is that fish's own contribution to the total. A quality-1 fish is
-                // worth 0, a quality-5 fish is worth 4.
-                //
-                // Vanilla counts qualities from 0, so a quality-0 fish can theoretically
-                // reach us and would come out at -1. Guarded, because one fish must never
-                // eat another fish's contribution.
-                int levelsAboveOne = quality - 1;
-                if (levelsAboveOne > 0) points += count * levelsAboveOne;
+                // Every fish counts as at least quality 1. Vanilla scans qualities from 0,
+                // so a quality-0 fish can theoretically reach us, and it is still a fish.
+                // This is what keeps TotalQuality from ever dropping below TotalFish.
+                int effectiveQuality = quality < 1 ? 1 : quality;
+                qualitySum += count * effectiveQuality;
             }
-            _totalFish = total;
-            _qualityPoints = points;
+            _totalFish = fish;
+            _totalQuality = qualitySum;
         }
 
         /// <summary>How many fish this plan spends in total.</summary>
         internal int TotalFish => _totalFish;
 
         /// <summary>
-        /// How far above quality 1 the fish in this plan are, added up.
+        /// The qualities of the fish this plan spends, added up.
         /// </summary>
         /// <remarks>
-        /// The sum of (quality - 1) across every fish spent. Two quality-1 fish give 0, a
-        /// quality-1 plus a quality-2 gives 1, and two quality-5 give 8.
+        /// Two quality-1 fish give 2, a quality-1 plus a quality-2 gives 3, and two
+        /// quality-5 give 10. Deliberately just the fish, with no notion of a baseline
+        /// or a bonus in it - subtracting the baseline is the formula's business, and
+        /// <see cref="BonusRules.ComputeBonus"/> does it by taking TotalFish off this.
         ///
-        /// This is the numerator of the average, kept as a whole number so the bonus
-        /// arithmetic never needs a float. See <see cref="BonusRules.ComputeBonus"/>.
-        ///
-        /// Never negative: a quality-0 fish contributes 0 rather than -1, so it cannot eat
-        /// another fish's contribution. That is why ComputeBonus does not guard against a
-        /// negative here - a plan cannot express one.
+        /// Every fish counts as at least quality 1, so this can never drop below
+        /// <see cref="TotalFish"/>. That is a structural guarantee rather than a checked
+        /// one - each fish adds at least 1 here and exactly 1 there - and it is what lets
+        /// ComputeBonus subtract the two without guarding against a negative.
         /// </remarks>
-        internal int QualityPoints => _qualityPoints;
+        internal int TotalQuality => _totalQuality;
 
         /// <summary>
         /// The highest quality this plan can speak for, which is the fish's own max quality.
