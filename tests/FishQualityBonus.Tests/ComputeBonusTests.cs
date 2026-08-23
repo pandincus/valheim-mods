@@ -8,7 +8,16 @@ public class ComputeBonusTests
     private static int OneFish(int quality, int recipeAmount, int perQualityLevel, int speciesExtra)
         => BonusRules.ComputeBonus(PlanOf((quality, 1)), recipeAmount, perQualityLevel, speciesExtra);
 
-    /// <summary>Build a plan from (quality, count) pairs, e.g. PlanOf((1, 1), (2, 1)).</summary>
+    /// <summary>
+    /// A plan spending exactly the given fish, e.g. PlanOf((1, 1), (2, 1)) for one
+    /// quality-1 and one quality-2.
+    /// </summary>
+    /// <remarks>
+    /// FishPlan's constructor is private, so this goes through TryPick with a bag holding
+    /// precisely what the plan should spend - the greedy fill then takes all of it. That
+    /// couples these arithmetic tests to the picker, which is the point: we only ever
+    /// price plans the picker can actually produce.
+    /// </remarks>
     private static FishPlan PlanOf(params (int Quality, int Count)[] fish)
     {
         int maxQuality = 0;
@@ -18,11 +27,16 @@ public class ComputeBonusTests
         }
 
         var counts = new int[maxQuality + 1];
+        int needed = 0;
         foreach ((int quality, int count) in fish)
         {
             counts[quality] += count;
+            needed += count;
         }
-        return new FishPlan(counts);
+
+        Assert.True(FishPlan.TryPick(counts, needed, largestFirst: false,
+                                     allowMixed: true, out FishPlan plan));
+        return plan;
     }
 
     // The three tables on the wiki's Raw Fish page, in full. Vanilla's Fish

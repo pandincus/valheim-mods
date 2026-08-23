@@ -71,8 +71,8 @@ namespace FishQualityBonus
             int[] counts = CountByQuality(inventory, fishReq);
 
             bool largestFirst = ModConfig.FishToSpend.Value == FishPreference.LargestFirst;
-            if (!BonusRules.TryPickFish(counts, needed, largestFirst,
-                                        ModConfig.AllowMixedQualities.Value, out FishPlan plan))
+            if (!FishPlan.TryPick(counts, needed, largestFirst,
+                                  ModConfig.AllowMixedQualities.Value, out FishPlan plan))
             {
                 return null;
             }

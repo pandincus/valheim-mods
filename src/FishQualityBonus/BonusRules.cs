@@ -27,9 +27,21 @@ namespace FishQualityBonus
     /// Which fish a craft will spend, and at which qualities.
     /// </summary>
     /// <remarks>
-    /// Build one with <see cref="BonusRules.TryPickFish"/> rather than by hand - that is
-    /// where the FishToSpend order and the mixing rules live. Everything here is a
-    /// question you can ask about the result.
+    /// <see cref="TryPick"/> is the only way to build one, because the constructor is
+    /// private. So a plan you are holding is always a plan the picker actually produced -
+    /// it cannot claim fish the player does not have, or ignore the FishToSpend order.
+    /// Everything else here is a question you can ask about the result.
+    ///
+    /// A struct cannot seal that completely: default(FishPlan) and new FishPlan() are
+    /// always reachable in C# and no access modifier stops them. That is deliberate rather
+    /// than a leak, because the zero value *is* a meaningful plan - the empty one - and
+    /// TryPick already hands it back on failure. What the private constructor seals off is
+    /// the case that would actually lie to us: a plan with arbitrary made-up contents.
+    ///
+    /// A class would seal construction completely, at the price of being nullable, and
+    /// nullable reference types are off in this project. Reading a null plan from inside a
+    /// Harmony patch that runs every frame would throw at 60Hz; reading the empty plan
+    /// quietly pays no bonus. In a game mod that is the better way to be wrong.
     ///
     /// Inside it is an array indexed by quality, so [2] is the number of quality-2 fish to
     /// spend. Index 0 is kept even though no real fish has quality 0, so that index and
@@ -46,7 +58,7 @@ namespace FishQualityBonus
     /// guards against a negative - a plan simply cannot express one.
     ///
     /// default(FishPlan) is the "spends nothing" plan: no fish, no points, and CountAt
-    /// returns 0 for every quality. TryPickFish hands that back when it fails, so a caller
+    /// returns 0 for every quality. TryPick hands that back when it fails, so a caller
     /// that ignores the bool still can't read garbage.
     /// </remarks>
     internal readonly struct FishPlan
@@ -59,30 +71,28 @@ namespace FishQualityBonus
         /// Wrap a per-quality tally and total it up.
         /// </summary>
         /// <param name="byQuality">
-        /// How many fish to take from each quality, indexed by quality. Null is allowed and
-        /// gives the same empty plan as default(FishPlan).
+        /// How many fish to take from each quality, indexed by quality. Never null - the
+        /// only caller is <see cref="TryPick"/>, which passes an array it just allocated.
+        /// Callers wanting an empty plan use default(FishPlan).
         /// </param>
-        internal FishPlan(int[] byQuality)
+        private FishPlan(int[] byQuality)
         {
             _byQuality = byQuality;
 
             int total = 0;
             int points = 0;
-            if (byQuality != null)
+            for (int quality = 0; quality < byQuality.Length; quality++)
             {
-                for (int quality = 0; quality < byQuality.Length; quality++)
-                {
-                    int count = byQuality[quality];
-                    if (count <= 0) continue;
+                int count = byQuality[quality];
+                if (count <= 0) continue;
 
-                    total += count;
+                total += count;
 
-                    // Quality 0 contributes 0 rather than -1. Vanilla counts qualities from
-                    // 0, so a 0 can theoretically reach us, and one must not eat another
-                    // fish's contribution.
-                    int above = quality - 1;
-                    if (above > 0) points += count * above;
-                }
+                // Quality 0 contributes 0 rather than -1. Vanilla counts qualities from
+                // 0, so a 0 can theoretically reach us, and one must not eat another
+                // fish's contribution.
+                int above = quality - 1;
+                if (above > 0) points += count * above;
             }
             _totalFish = total;
             _qualityPoints = points;
@@ -122,14 +132,7 @@ namespace FishQualityBonus
             if (_byQuality == null || quality < 0 || quality >= _byQuality.Length) return 0;
             return _byQuality[quality];
         }
-    }
 
-    /// <summary>
-    /// Plain class with no Unity/BepInEx/Valheim dependencies, so that we can extract
-    /// out the decision-making logic and test it.
-    /// </summary>
-    internal static class BonusRules
-    {
         /// <summary>
         /// Work out which fish to spend, and how many of each quality.
         /// </summary>
@@ -173,8 +176,8 @@ namespace FishQualityBonus
         /// and burn two quality-4, because both looked for a single quality that could
         /// fulfill the whole set of craft requirements by itself.
         /// </remarks>
-        internal static bool TryPickFish(IList<int> countsByQuality, int needed, bool largestFirst,
-                                         bool allowMixed, out FishPlan plan)
+        internal static bool TryPick(IList<int> countsByQuality, int needed, bool largestFirst,
+                                     bool allowMixed, out FishPlan plan)
         {
             plan = default;
             if (countsByQuality == null || countsByQuality.Count == 0 || needed <= 0) return false;
@@ -215,6 +218,14 @@ namespace FishQualityBonus
             // We were not able to satisfy the craft, so we return false and leave plan unset
             return false;
         }
+    }
+
+    /// <summary>
+    /// Plain class with no Unity/BepInEx/Valheim dependencies, so that we can extract
+    /// out the decision-making logic and test it.
+    /// </summary>
+    internal static class BonusRules
+    {
 
         /// <summary>
         /// Compute how many extra items one craft earns, on top of what the

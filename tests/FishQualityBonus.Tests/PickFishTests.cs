@@ -10,14 +10,14 @@ public class PickFishTests
 
     private static int[] Pick(int[] counts, int needed, bool largestFirst = false, bool allowMixed = true)
     {
-        Assert.True(BonusRules.TryPickFish(counts, needed, largestFirst, allowMixed, out FishPlan plan));
+        Assert.True(FishPlan.TryPick(counts, needed, largestFirst, allowMixed, out FishPlan plan));
         return Spread(plan);
     }
 
     private static void AssertCannotPick(int[] counts, int needed, bool largestFirst = false,
                                          bool allowMixed = true)
     {
-        Assert.False(BonusRules.TryPickFish(counts, needed, largestFirst, allowMixed, out FishPlan plan));
+        Assert.False(FishPlan.TryPick(counts, needed, largestFirst, allowMixed, out FishPlan plan));
         Assert.Equal(0, plan.TotalFish);
     }
 
@@ -121,8 +121,8 @@ public class PickFishTests
         {
             int[] counts = { 0, 1, 1, 0 };
 
-            Assert.False(BonusRules.TryPickFish(counts, needed: 2, largestFirst: false,
-                                                allowMixed: false, out FishPlan plan));
+            Assert.False(FishPlan.TryPick(counts, needed: 2, largestFirst: false,
+                                          allowMixed: false, out FishPlan plan));
             Assert.Equal(0, plan.TotalFish);
         }
 
@@ -133,8 +133,8 @@ public class PickFishTests
             // the lone quality-1 fish is passed over and two quality-4 are spent.
             int[] counts = { 0, 1, 0, 0, 3, 0 };
 
-            Assert.True(BonusRules.TryPickFish(counts, needed: 2, largestFirst: false,
-                                               allowMixed: false, out FishPlan plan));
+            Assert.True(FishPlan.TryPick(counts, needed: 2, largestFirst: false,
+                                         allowMixed: false, out FishPlan plan));
             Assert.Equal(new[] { 0, 0, 0, 0, 2, 0 }, Spread(plan));
         }
 
@@ -143,31 +143,46 @@ public class PickFishTests
         {
             int[] counts = { 0, 0, 2, 0 };
 
-            Assert.True(BonusRules.TryPickFish(counts, needed: 2, largestFirst: false,
-                                               allowMixed: false, out FishPlan plan));
+            Assert.True(FishPlan.TryPick(counts, needed: 2, largestFirst: false,
+                                         allowMixed: false, out FishPlan plan));
             Assert.Equal(new[] { 0, 0, 2, 0 }, Spread(plan));
         }
     }
 
     public class Totals
     {
+        /// <summary>
+        /// A plan that spends exactly the fish described. The constructor is private, so
+        /// tests build plans the same way the mod does - by asking TryPick for everything
+        /// in a bag, which the greedy fill then takes in full.
+        /// </summary>
+        private static FishPlan PlanOf(params int[] countsByQuality)
+        {
+            int needed = 0;
+            foreach (int count in countsByQuality) needed += count;
+
+            Assert.True(FishPlan.TryPick(countsByQuality, needed, largestFirst: false,
+                                         allowMixed: true, out FishPlan plan));
+            return plan;
+        }
+
         [Fact]
         public void CountsEveryFishInThePlan()
         {
-            Assert.Equal(4, new FishPlan(new[] { 0, 1, 2, 0, 1 }).TotalFish);
+            Assert.Equal(4, PlanOf(0, 1, 2, 0, 1).TotalFish);
         }
 
         [Fact]
         public void AddsUpHowFarAboveQualityOneTheFishAre()
         {
             // One quality-2 (worth 1) and two quality-5 (worth 4 each).
-            Assert.Equal(9, new FishPlan(new[] { 0, 0, 1, 0, 0, 2 }).QualityPoints);
+            Assert.Equal(9, PlanOf(0, 0, 1, 0, 0, 2).QualityPoints);
         }
 
         [Fact]
         public void QualityOneFishAreWorthNothing()
         {
-            Assert.Equal(0, new FishPlan(new[] { 0, 6, 0 }).QualityPoints);
+            Assert.Equal(0, PlanOf(0, 6, 0).QualityPoints);
         }
 
         [Fact]
@@ -175,19 +190,19 @@ public class PickFishTests
         {
             // No real fish has quality 0, but vanilla scans from 0 so one could
             // theoretically reach us. It must contribute 0, not -1.
-            Assert.Equal(1, new FishPlan(new[] { 1, 0, 1 }).QualityPoints);
+            Assert.Equal(1, PlanOf(1, 0, 1).QualityPoints);
         }
 
         [Fact]
         public void ReportsTheHighestQualityItCanSpeakFor()
         {
-            Assert.Equal(5, new FishPlan(new int[6]).MaxQuality);
+            Assert.Equal(5, PlanOf(0, 1, 0, 0, 0, 1).MaxQuality);
         }
 
         [Fact]
         public void AnsweringAboutAQualityOutsideThePlanIsSafe()
         {
-            var plan = new FishPlan(new[] { 0, 2, 0 });
+            FishPlan plan = PlanOf(0, 2, 0);
 
             Assert.Equal(2, plan.CountAt(1));
             Assert.Equal(0, plan.CountAt(99));
@@ -197,8 +212,9 @@ public class PickFishTests
         [Fact]
         public void TheEmptyPlanSpendsNothingAndDoesNotThrow()
         {
-            // default(FishPlan) is what TryPickFish hands back when it fails, and
-            // reading it has to be harmless.
+            // default(FishPlan) is what TryPick hands back when it fails, and it is the
+            // one plan you can build without going through TryPick - a struct always has
+            // its zero value. Reading it has to be harmless.
             FishPlan empty = default;
 
             Assert.Equal(0, empty.TotalFish);
@@ -206,15 +222,6 @@ public class PickFishTests
             Assert.Equal(0, empty.CountAt(3));
             // -1 so that a `for (q = 0; q <= MaxQuality; q++)` loop simply doesn't run.
             Assert.Equal(-1, empty.MaxQuality);
-        }
-
-        [Fact]
-        public void HandlesANullTallyWithoutThrowing()
-        {
-            var plan = new FishPlan(null);
-
-            Assert.Equal(0, plan.TotalFish);
-            Assert.Equal(0, plan.QualityPoints);
         }
     }
 }
