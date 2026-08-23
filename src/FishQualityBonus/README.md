@@ -21,6 +21,9 @@ recipes, as well!
 
     output = amount + (fishQuality - 1) * amount * BonusPerQualityLevel + speciesBonus
 
+where `fishQuality` is the average size of the fish the craft spends, rounded down —
+which is just the fish's own quality whenever they are all the same size.
+
 `BonusPerQualityLevel` is configurable, but defaulted to `3` to match the existing
 values used in computation of Fish (raw) (in the base game).
 
@@ -38,6 +41,23 @@ This mod also makes ingredient selection deliberate: vanilla spends whichever fi
 picked up first, no matter where it sits in your inventory, which is effectively
 random. This mod picks a quality on purpose (e.g. largest first or smallest first, configurable)
 and spends that.
+
+### Fish of different sizes
+
+Vanilla will not let you craft with mismatched fish. Its requirement check looks at your
+biggest single-quality stack rather than your total, so two trollfish of different sizes
+cannot brew a Troll Endurance mead that needs two — and the ingredient list still shows
+2 of 2 in white while the Craft button sits greyed out. Every other crafting material has
+only one quality level, so the rule is invisible everywhere except on fish.
+
+This mod lifts that for the recipes it already handles, and prices the craft on the
+**average** size of the fish you spent, rounded down. One quality-1 and one quality-2
+trollfish give you 2 mead bases; two quality-1 give 1, and two quality-2 give 4. Set
+`AllowMixedQualities` to `false` to keep vanilla's rule and change only the payout.
+
+This is also what makes `SmallestFirst` mean what it says. A two-fish craft with one small
+fish and three big ones now spends the small one and a single big one, rather than passing
+over the small fish because it could not cover the craft alone.
 
 This **should** be safe to pick up new recipes added via updates and mods, because we're
 loading recipes at runtime and matching via `ItemType.Fish`. A recipe qualifies only if all of these hold:
@@ -59,6 +79,7 @@ editable in-game with ConfigurationManager (F1). Changes apply immediately.
 | `General.Enabled` | `true` | Master switch; `false` restores vanilla behaviour entirely. |
 | `Bonus.BonusPerQualityLevel` | `3` | Whole-number multiplier, 1-10. At `3` a 1-item recipe yields 1/4/7/10/13 for quality 1/2/3/4/5 — matching the game's own Fish (raw) tuning. At `1`, 1/2/3/4/5. |
 | `Bonus.FishToSpend` | `SmallestFirst` | `SmallestFirst` spends the lowest-quality fish first,  `LargestFirst` always spends your best fish first. |
+| `Bonus.AllowMixedQualities` | `true` | Let a craft draw on several sizes of the same fish at once, which vanilla refuses, and pay out on their average. `false` keeps vanilla's matching-sizes rule and changes only the payout. Applies to the same recipes the bonus does. |
 | `Bonus.UseSpeciesBonus` | `true` | Grant each species' flat +0/+1/+2 tier as well, read from the Fish (raw) recipe at load. Anglerfish is +2, so Fish 'n' Bread gains a flat 2. Not scaled by quality. |
 | `Bonus.IncludeMeadRecipes` | `true` | Whether mead bases brewed at the mead cauldron get the bonus too, if they use a whole fish as an ingredient. `false` effectively restricts the mod to food. |
 | `Bonus.ExcludedRecipes` | *(empty)* | Comma-separated output prefab names to skip individually, e.g. `MeadBaseStrength,MeadBaseSwimmer`. |

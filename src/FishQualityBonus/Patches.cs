@@ -109,7 +109,7 @@ namespace FishQualityBonus
             FishChoice choice = FishBonus.Choose(inventory, requirements, qualityLevel, multiplier);
             if (choice == null) return true;   // no fish here, so let vanilla run
 
-            // The same loop vanilla runs, except the fish is taken at the quality
+            // The same loop vanilla runs, except the fish is taken at the qualities
             // we based the payout on.
             foreach (Piece.Requirement req in requirements)
             {
@@ -118,11 +118,78 @@ namespace FishQualityBonus
                 int amount = req.GetAmount(qualityLevel) * multiplier;
                 if (amount <= 0) continue;
 
-                int quality = ReferenceEquals(req, choice.Requirement) ? choice.Quality : itemQuality;
-                inventory.RemoveItem(req.m_resItem.m_itemData.m_shared.m_name, amount, quality);
+                string name = req.m_resItem.m_itemData.m_shared.m_name;
+                if (!ReferenceEquals(req, choice.Requirement))
+                {
+                    inventory.RemoveItem(name, amount, itemQuality);
+                    continue;
+                }
+
+                // One call per quality the plan draws on. Usually that is a single
+                // call, exactly as before; a mixed craft makes one per size.
+                for (int quality = 0; quality < choice.Plan.Length; quality++)
+                {
+                    if (choice.Plan[quality] > 0) inventory.RemoveItem(name, choice.Plan[quality], quality);
+                }
             }
 
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Let a craft through when the only thing stopping it is that your fish are
+    /// different sizes.
+    ///
+    /// This is the fix for the case that started the feature: two trollfish, one quality-1
+    /// and one quality-2, and a Troll Endurance mead that wants two of them. Vanilla refuses,
+    /// because its requirement check looks at your biggest single-quality stack rather than
+    /// your total. The ingredient list disagrees with it and shows 2 of 2 in white, so the
+    /// Craft button just sits there greyed out with nothing explaining why.
+    ///
+    /// See <see cref="FishBonus.CanCraftMixed"/> for the vanilla code and why it is written
+    /// that way.
+    /// </summary>
+    [HarmonyPatch(typeof(Player), "HaveRequirementItems")]
+    internal static class Patch_Player_HaveRequirementItems
+    {
+        /// <summary>
+        /// Runs after vanilla's check and can only ever turn a no into a yes.
+        /// </summary>
+        /// <param name="__instance">Harmony's name for the Player doing the crafting.</param>
+        /// <param name="piece">
+        /// The recipe being checked. Vanilla's own parameter name, and it really is a
+        /// Recipe rather than a Piece.
+        /// </param>
+        /// <param name="discover">
+        /// True when the game is asking "should this recipe be visible at all", which is
+        /// about materials the player has ever seen and never about how many they hold.
+        /// That branch reads no quantities, so there is nothing here for us to fix.
+        /// </param>
+        /// <param name="qualityLevel">The quality of the item being crafted, not of the fish.</param>
+        /// <param name="amount">1 normally, or the multi-craft amount when shift is held.</param>
+        /// <param name="__result">
+        /// Harmony's name for the return value. Declared ref so we can flip it.
+        /// </param>
+        /// <remarks>
+        /// Patching the innermost check rather than HaveRequirements means the Craft button
+        /// and the craft itself cannot disagree - every caller goes through here.
+        ///
+        /// A postfix that only fires on false is about as small as this patch can be. We
+        /// never take craftability away, we never run when the mod is switched off, and a
+        /// recipe we don't handle is left exactly as vanilla left it.
+        /// </remarks>
+        private static void Postfix(Player __instance, Recipe piece, bool discover,
+                                    int qualityLevel, int amount, ref bool __result)
+        {
+            if (__result) return;                  // vanilla is happy, nothing to do
+            if (!ModConfig.Enabled.Value) return;
+            if (discover) return;
+
+            if (FishBonus.CanCraftMixed(__instance.GetInventory(), piece, qualityLevel, amount))
+            {
+                __result = true;
+            }
         }
     }
 

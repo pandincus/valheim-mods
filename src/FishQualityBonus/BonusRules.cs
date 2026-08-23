@@ -29,16 +29,15 @@ namespace FishQualityBonus
     /// </summary>
     internal static class BonusRules
     {
-        /// <summary>What PickQuality returns when no tier can cover the craft.</summary>
-        internal const int NoQuality = -1;
-
         /// <summary>
-        /// Picks which quality of fish to spend, given how many of each you have.
+        /// Work out which fish to spend, and how many of each quality.
         /// </summary>
         /// <returns>
-        /// The quality, or <see cref="BonusRules.NoQuality"/> if none is found that satisfies
-        /// the requirements.
-        /// </returns> 
+        /// True when the craft can be covered, with plan holding the fish to spend.
+        /// False for both of the ways it can fail - you don't have enough fish in total,
+        /// or mixing is switched off and no single quality can cover the craft on its own.
+        /// The caller falls back to vanilla either way, so it never needs to tell them apart.
+        /// </returns>
         /// <param name="countsByQuality">
         /// How many fish of each quality are in the player's inventory. The index is the quality, so
         /// countsByQuality[2] is the number of quality-2 fish. Index 0 is quality 0,
@@ -47,26 +46,110 @@ namespace FishQualityBonus
         /// </param>
         /// <param name="needed">
         /// How many fish this whole craft will eat: the recipe's requirement times the
-        /// craft multiplier. Example: MeadBaseBugRepellent wants 3 fish, so multi-crafting five
-        /// of them needs 15. We don't split across two qualities, so if you have 2 quality-2 and
-        /// 2 quality-3, we return NoQuality. If you have 3 quality-2 and 2 quality-3, we'll use the
-        /// lower quality, since that's all you actually have that satisfies.
+        /// craft multiplier. Example: MeadBaseBugRepellent wants 3 fish, so multi-crafting
+        /// five of them needs 15.
         /// </param>
         /// <param name="largestFirst">
-        /// Whether to choose the largest quality fish first for this recipe, or the smallest.
+        /// Whether to take the largest fish first, or the smallest.
         /// True = largest. See <see cref="ModConfig.FishToSpend"/>.
         /// </param>
-        internal static int PickQuality(IList<int> countsByQuality, int needed, bool largestFirst)
+        /// <param name="allowMixed">
+        /// Whether a craft may draw on more than one quality at once.
+        /// See <see cref="ModConfig.AllowMixedQualities"/>.
+        /// </param>
+        /// <param name="plan">
+        /// Out parameter holding how many fish to take from each quality, indexed the same
+        /// way as countsByQuality. Null when we return false.
+        /// </param>
+        /// <remarks>
+        /// The fill is greedy in preference order, which is what makes SmallestFirst mean
+        /// what it says. Given one quality-1 fish and three quality-4 for a two-fish craft,
+        /// we take the quality-1 and one quality-4. Vanilla - and this mod before 0.2.0 -
+        /// would skip the small fish entirely and burn two quality-4, because both looked
+        /// for a single quality that could cover the whole craft by itself.
+        /// </remarks>
+        internal static bool TryPickFish(IList<int> countsByQuality, int needed, bool largestFirst,
+                                         bool allowMixed, out int[] plan)
         {
-            if (countsByQuality == null || countsByQuality.Count == 0 || needed <= 0) return NoQuality;
+            plan = null;
+            if (countsByQuality == null || countsByQuality.Count == 0 || needed <= 0) return false;
 
             int last = countsByQuality.Count - 1;
+            var taken = new int[countsByQuality.Count];
+            int remaining = needed;
+
             for (int i = 0; i <= last; i++)
             {
                 int quality = largestFirst ? last - i : i;
-                if (countsByQuality[quality] >= needed) return quality;
+                int available = countsByQuality[quality];
+                if (available <= 0) continue;
+
+                if (!allowMixed)
+                {
+                    // Pre-0.2.0 behaviour, and still what vanilla's own gate demands:
+                    // one quality has to cover the whole craft or we keep out of it.
+                    if (available < needed) continue;
+                    taken[quality] = needed;
+                    plan = taken;
+                    return true;
+                }
+
+                int take = available < remaining ? available : remaining;
+                taken[quality] = take;
+                remaining -= take;
+                if (remaining == 0)
+                {
+                    plan = taken;
+                    return true;
+                }
             }
-            return NoQuality;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Count the fish a plan spends.
+        /// </summary>
+        /// <returns>The total number of fish, or 0 for a null plan.</returns>
+        /// <param name="plan">A plan from <see cref="TryPickFish"/>.</param>
+        internal static int TotalFish(IList<int> plan)
+        {
+            if (plan == null) return 0;
+
+            int total = 0;
+            for (int quality = 0; quality < plan.Count; quality++)
+            {
+                if (plan[quality] > 0) total += plan[quality];
+            }
+            return total;
+        }
+
+        /// <summary>
+        /// Add up how far above quality 1 the fish in a plan are.
+        /// </summary>
+        /// <returns>
+        /// The sum of (quality - 1) across every fish spent. Two quality-1 fish give 0,
+        /// a quality-1 plus a quality-2 gives 1, and two quality-5 give 8.
+        /// </returns>
+        /// <param name="plan">A plan from <see cref="TryPickFish"/>.</param>
+        /// <remarks>
+        /// This is the numerator of the average, kept as a whole number so the bonus
+        /// arithmetic never needs a float. Quality 0 contributes 0 rather than -1, for
+        /// the same reason ComputeBonus clamps: vanilla counts qualities from 0, so a 0
+        /// can theoretically reach us, and one must not eat another fish's contribution.
+        /// </remarks>
+        internal static int QualityPoints(IList<int> plan)
+        {
+            if (plan == null) return 0;
+
+            int points = 0;
+            for (int quality = 0; quality < plan.Count; quality++)
+            {
+                if (plan[quality] <= 0) continue;
+                int above = quality - 1;
+                if (above > 0) points += plan[quality] * above;
+            }
+            return points;
         }
 
         /// <summary>
@@ -78,11 +161,13 @@ namespace FishQualityBonus
         /// Example: a quality-2 anglerfish in Fish 'n' Bread at the default
         /// settings returns 5, so you get 6 meals instead of 1.
         /// </returns>
-        /// <param name="quality">
-        /// The quality of the fish being spent, from <see cref="PickQuality"/>.
-        /// A quality-1 fish earns nothing from this part. Anything below 1 is
-        /// treated as 1, because vanilla counts qualities from 0 and we don't
-        /// want a negative eating the species bonus.
+        /// <param name="qualityPoints">
+        /// How far above quality 1 the fish being spent are, from <see cref="QualityPoints"/>.
+        /// </param>
+        /// <param name="fishCount">
+        /// How many fish are being spent, from <see cref="TotalFish"/>. We divide by this to
+        /// get the average, so a craft eating three fish is priced on their average size
+        /// rather than on the total. Zero or less returns no size bonus at all.
         /// </param>
         /// <param name="recipeAmount">
         /// What the recipe normally makes in one craft (Recipe.m_amount). Fish
@@ -100,14 +185,35 @@ namespace FishQualityBonus
         /// See <see cref="SpeciesBonusTable"/>.
         /// Also see https://valheim.fandom.com/wiki/Raw_Fish.
         /// </param>
-        internal static int ComputeBonus(int quality, int recipeAmount, int perQualityLevel, int speciesExtra)
+        /// <remarks>
+        /// The formula is the average of (quality - 1) across the fish spent, times the
+        /// recipe amount, times the per-level setting:
+        ///
+        ///     size bonus = qualityPoints * recipeAmount * perQualityLevel / fishCount
+        ///
+        /// Practically speaking, when every fish is the same quality this is exactly what
+        /// the mod did before 0.2.0 and exactly what vanilla does for Fish (raw), because
+        /// qualityPoints is then fishCount * (quality - 1) and the division cancels.
+        /// Mixed qualities are the new case.
+        ///
+        /// Multiply-then-divide is deliberate: it keeps the precision that dividing first
+        /// would throw away. The division is integer, so it floors, and the mod can never
+        /// pay more for a mixed craft than for the same craft with every fish rounded up
+        /// to the better quality. Worked example - two trollfish, one quality-1 and one
+        /// quality-2, in a mead base that makes 1 at the default multiplier of 3:
+        /// qualityPoints is 1, so 1 * 1 * 3 / 2 = 1, and you brew 2 instead of 1.
+        /// Two quality-2 would give 3, and two quality-1 would give 0.
+        /// </remarks>
+        internal static int ComputeBonus(int qualityPoints, int fishCount, int recipeAmount,
+                                         int perQualityLevel, int speciesExtra)
         {
-            // Though no fish with quality 0 exists, the vanilla code counts fish from quality 0,
-            // so a 0 can theoretically reach us. We safeguard this here to clamp down to 1.
-            if (quality < 1) quality = 1;
             if (recipeAmount < 0) recipeAmount = 0;
+            if (qualityPoints < 0) qualityPoints = 0;
 
-            int scaled = (quality - 1) * recipeAmount * perQualityLevel;
+            int scaled = fishCount > 0
+                ? qualityPoints * recipeAmount * perQualityLevel / fishCount
+                : 0;
+
             return Math.Max(0, scaled + Math.Max(0, speciesExtra));
         }
 
@@ -130,6 +236,19 @@ namespace FishQualityBonus
         /// the recipe - MeadsIncluded and ExplicitlyExcluded - so the answer can
         /// change when the player edits the config.
         /// </param>
+        /// <remarks>
+        /// Since 0.2.0 this decides more than the payout. It also decides which recipes may
+        /// be crafted from mixed qualities, because <see cref="FishBonus.CanCraftMixed"/>
+        /// asks the same question. One notion of "a recipe this mod handles" is easier to
+        /// explain than two, and it guarantees we never unblock a craft we would then
+        /// decline to price - which would hand the player a mispriced payout.
+        ///
+        /// Note this does not cover consumption. <see cref="FishBonus.Choose"/> works from a
+        /// requirement list rather than a Recipe, because that is all
+        /// Player.ConsumeResources is given, so FishToSpend still steers which fish gets
+        /// eaten by an ineligible recipe that happens to use exactly one. That costs
+        /// nothing - the payout is vanilla's either way - and it is the older behaviour.
+        /// </remarks>
         internal static string IneligibleReason(RecipeFacts facts)
         {
             if (!facts.HasOutput) return "no output item";
@@ -168,17 +287,17 @@ namespace FishQualityBonus
         /// <param name="entries">
         /// One entry per fish requirement found on a single-ingredient recipe:
         /// the fish's name, and the bonus that recipe gives it.
-        /// 
+        ///
         /// Pratically speaking (in vanilla Valheim), all entries only come from one
         /// recipe (FishRaw), one per fish. Theoretically there could be more, so
         /// this function can handle additional recipes that pop up in the future.
-        /// 
+        ///
         /// We dedupe and resolve using the following rules (again, practically not needed today):
         /// 1. Drop zeroes
         /// 2. Dedupe by taking the bigger number when a fish shows up twice
-        /// 
+        ///
         /// This should also handle if other mods add other fish-related recipes. Hopefully!
-        /// 
+        ///
         /// See <see cref="SpeciesBonusTable.Build"/> for where these bonuses come from.
         /// </param>
         internal static Dictionary<string, int> BuildSpeciesTable(IEnumerable<KeyValuePair<string, int>> entries)

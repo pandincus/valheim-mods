@@ -1,8 +1,8 @@
 {
   "name": "FishQualityBonus",
-  "version_number": "0.1.0",
+  "version_number": "0.2.0",
   "website_url": "https://github.com/pandincus/valheim-mods/tree/main/src/FishQualityBonus",
-  "description": "Recipes that consume a whole fish, like Fish 'n' Bread, pay out more when you use a higher-quality fish - reusing the game's own Fish (raw) scaling. Configurable, and it picks which fish to spend rather than leaving it to chance.",
+  "description": "Recipes that consume a whole fish pay out more for a bigger fish, and for rarer species - reusing Valheim's own Fish (raw) scaling. It also lets you craft with fish of mismatched sizes, which vanilla refuses. Fully configurable.",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2333"
   ]

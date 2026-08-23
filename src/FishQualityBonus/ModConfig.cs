@@ -26,6 +26,7 @@ namespace FishQualityBonus
         internal static ConfigEntry<bool> Enabled;
         internal static ConfigEntry<int> BonusPerQualityLevel;
         internal static ConfigEntry<FishPreference> FishToSpend;
+        internal static ConfigEntry<bool> AllowMixedQualities;
         internal static ConfigEntry<bool> UseSpeciesBonus;
         internal static ConfigEntry<bool> IncludeMeadRecipes;
         internal static ConfigEntry<string> ExcludedRecipes;
@@ -61,14 +62,31 @@ namespace FishQualityBonus
                     " you 1/4/7/10/13. That is the same scaling the game uses for its own Fish (raw) recipe.\n" +
                     "Note that UseSpeciesBonus is added on top and is not affected by this setting, " +
                     "so with both left at their defaults a quality-1 anglerfish still gives 3, " +
-                    "and a quality-5 gives 15.",
+                    "and a quality-5 gives 15.\n" +
+                    "When a craft spends fish of different sizes, 'fishQuality' is their average, " +
+                    "rounded down.",
                     new AcceptableValueRange<int>(1, 10)));
 
             FishToSpend = cfg.Bind(
                 "Bonus", "FishToSpend", FishPreference.SmallestFirst,
                 "Which fish a recipe spends when you are carrying several qualities of the same " +
                 "species. Vanilla takes whichever one you picked up first, no matter where it " +
-                "sits in your inventory, so it is effectively random.");
+                "sits in your inventory, so it is effectively random.\n" +
+                "We work through your fish in this order and take them as we go, so " +
+                "SmallestFirst really does save your best catches: a two-fish craft with one " +
+                "small fish and three big ones spends the small one and only one big one.");
+
+            AllowMixedQualities = cfg.Bind(
+                "Bonus", "AllowMixedQualities", true,
+                "Let a recipe draw on several qualities of the same fish at once.\n" +
+                "Vanilla will not: it checks your biggest single-quality stack rather than your " +
+                "total, so two trollfish of different sizes cannot brew a Troll Endurance mead " +
+                "that needs two - even though the ingredient list shows 2 of 2 and looks happy. " +
+                "With this on, the craft goes through and the payout is based on the average " +
+                "size of the fish you spent.\n" +
+                "This applies to the same recipes the bonus does, so ExcludedRecipes and " +
+                "IncludeMeadRecipes still leave a recipe entirely to vanilla. Set false to keep " +
+                "vanilla's rule and only change the payout.");
 
             UseSpeciesBonus = cfg.Bind(
                 "Bonus", "UseSpeciesBonus", true,
