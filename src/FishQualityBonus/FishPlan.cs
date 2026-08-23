@@ -6,42 +6,30 @@ namespace FishQualityBonus
     /// Which fish a craft will spend, and at which qualities.
     /// </summary>
     /// <remarks>
-    /// <see cref="TryPick"/> is the only way to build one, because the constructor is
-    /// private. So a plan you are holding is always a plan the picker actually produced -
-    /// it cannot claim fish the player does not have, or ignore the FishToSpend order.
-    /// Everything else here is a question you can ask about the result.
+    /// <see cref="TryPick"/> is the only supported way to build an instance of this
+    /// structure, because the constructor is private. So a plan in memory is always
+    /// a plan the picker actually produced - it cannot claim fish the player does not have,
+    /// or ignore the FishToSpend order.
     ///
-    /// A struct cannot seal that completely: default(FishPlan) and new FishPlan() are
-    /// always reachable in C# and no access modifier stops them. That is deliberate rather
-    /// than a leak, because the zero value *is* a meaningful plan - the empty one - and
-    /// TryPick already hands it back on failure. What the private constructor seals off is
-    /// the case that would actually lie to us: a plan with arbitrary made-up contents.
+    /// A struct cannot completely guarantee this: `default(FishPlan)` and `new FishPlan()` are
+    /// always reachable in C# and no access modifier stops them. I weighed converting this
+    /// to a class, but found the 'zero value' of a plan more meaningful than potentially
+    /// passing null-references around and throwing NPEs.
+    /// I reserve the right to change my mind in the future ;-)
     ///
-    /// A class would seal construction completely, at the price of being nullable, and
-    /// nullable reference types are off in this project. Reading a null plan from inside a
-    /// Harmony patch that runs every frame would throw at 60Hz; reading the empty plan
-    /// quietly pays no bonus. In a game mod that is the better way to be wrong.
-    ///
-    /// Inside it is an array indexed by quality, so [2] is the number of quality-2 fish to
-    /// spend. Index 0 is kept even though no real fish has quality 0, so that index and
-    /// quality always match, and because vanilla scans from 0 as well. That indexing is
-    /// deliberate rather than incidental - it mirrors how the game itself walks qualities -
-    /// but it is nobody else's business, hence the wrapper.
-    ///
-    /// This is a readonly struct, so wrapping the array costs no extra allocation: the
-    /// array was being allocated anyway and the wrapper lives inline. Worth knowing on a
+    /// Being a readonly struct also means wrapping costs no extra allocation - the array
+    /// was being allocated anyway and the wrapper lives inline, which is worth having on a
     /// path the crafting panel touches every frame.
     ///
-    /// The totals are worked out once, in the constructor, so asking for them repeatedly
-    /// is free. Both are guaranteed non-negative, which is why ComputeBonus no longer
-    /// guards against a negative - a plan simply cannot express one.
-    ///
-    /// default(FishPlan) is the "spends nothing" plan: no fish, no points, and CountAt
-    /// returns 0 for every quality. TryPick hands that back when it fails, so a caller
-    /// that ignores the bool still can't read garbage.
+    /// What it wraps is an array indexed by quality. That mirrors how the game itself walks
+    /// qualities, so it is the right shape to hold - but it is nobody else's business,
+    /// hence asking this type questions rather than passing the array around.
     /// </remarks>
     internal readonly struct FishPlan
     {
+        // Indexed by quality, so [2] is the number of quality-2 fish to spend. Index 0 is
+        // kept even though no real fish has quality 0, so that index and quality always
+        // match, and because vanilla scans from 0 as well.
         private readonly int[] _byQuality;
         private readonly int _totalFish;
         private readonly int _qualityPoints;
@@ -54,6 +42,10 @@ namespace FishQualityBonus
         /// only caller is <see cref="TryPick"/>, which passes an array it just allocated.
         /// Callers wanting an empty plan use default(FishPlan).
         /// </param>
+        /// <remarks>
+        /// Both totals are worked out here rather than on demand, so asking a plan for
+        /// <see cref="TotalFish"/> or <see cref="QualityPoints"/> repeatedly costs nothing.
+        /// </remarks>
         private FishPlan(int[] byQuality)
         {
             _byQuality = byQuality;
@@ -89,6 +81,10 @@ namespace FishQualityBonus
         ///
         /// This is the numerator of the average, kept as a whole number so the bonus
         /// arithmetic never needs a float. See <see cref="BonusRules.ComputeBonus"/>.
+        ///
+        /// Never negative: a quality-0 fish contributes 0 rather than -1, so it cannot eat
+        /// another fish's contribution. That is why ComputeBonus does not guard against a
+        /// negative here - a plan cannot express one.
         /// </remarks>
         internal int QualityPoints => _qualityPoints;
 
