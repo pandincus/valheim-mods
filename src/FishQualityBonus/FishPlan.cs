@@ -58,9 +58,15 @@ namespace FishQualityBonus
 
                 fish += count;
 
-                // Every fish counts as at least quality 1. Vanilla scans qualities from 0,
-                // so a quality-0 fish can theoretically reach us, and it is still a fish.
-                // This is what keeps TotalQuality from ever dropping below TotalFish.
+                // Every fish counts as at least quality 1.
+                //
+                // Practically speaking, no quality-0 fish exists: ItemData.m_quality is
+                // declared as `= 1` and nothing in the game sets it lower. Theoretically one
+                // could reach us, because GetFirstRequiredItem scans qualities from 0 and our
+                // own counting mirrors it, so index 0 is a real slot rather than padding.
+                //
+                // A fish sitting there is still a fish, so it counts as 1. That is also what
+                // keeps TotalQuality from ever dropping below TotalFish.
                 int effectiveQuality = quality < 1 ? 1 : quality;
                 qualitySum += count * effectiveQuality;
             }
