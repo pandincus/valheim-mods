@@ -58,6 +58,16 @@ namespace FishQualityBonus
         /// <param name="multiplier">
         /// How many crafts at once: 1 normally, or 5 when multi-crafting (hold Left Shift).
         /// </param>
+        /// <remarks>
+        /// Note the list above has no "the recipe isn't eligible" case, which is deliberate.
+        /// We are handed a requirement list rather than a Recipe - that is all
+        /// Player.ConsumeResources gives us - and eligibility is a question about the recipe.
+        ///
+        /// So an excluded single-fish recipe still gets its fish picked by FishToSpend
+        /// instead of by vanilla's pickup order. That costs nothing, because
+        /// <see cref="BonusFor"/> checks eligibility itself and the payout stays vanilla's
+        /// either way. It is also how 0.1.0 behaved.
+        /// </remarks>
         internal static FishChoice Choose(Inventory inventory, Piece.Requirement[] requirements,
                                           int qualityLevel, int multiplier)
         {

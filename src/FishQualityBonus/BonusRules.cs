@@ -124,23 +124,6 @@ namespace FishQualityBonus
         /// the recipe - MeadsIncluded and ExplicitlyExcluded - so the answer can
         /// change when the player edits the config.
         /// </param>
-        /// <remarks>
-        /// Nothing about mixed qualities happens in here - but three callers ask this
-        /// question, so a rule added below reaches further than the payout:
-        /// <see cref="FishBonus.BonusFor"/> for what a craft pays,
-        /// <see cref="FishBonus.CanCraftMixed"/> for whether mismatched fish may be
-        /// crafted at all, and <see cref="FishRecipeReport"/> for the diagnostic log.
-        ///
-        /// Marking a recipe ineligible therefore also re-imposes vanilla's matching-sizes
-        /// rule on it. That pairing is deliberate: it means the mod can never unblock a
-        /// craft it would then decline to price.
-        ///
-        /// Consumption is the exception. <see cref="FishBonus.Choose"/> works from a
-        /// requirement list rather than a Recipe, because that is all
-        /// Player.ConsumeResources is given, so FishToSpend still steers which fish gets
-        /// eaten by an ineligible recipe that happens to use exactly one. That costs
-        /// nothing - the payout is vanilla's either way - and it is the older behaviour.
-        /// </remarks>
         internal static string IneligibleReason(RecipeFacts facts)
         {
             if (!facts.HasOutput) return "no output item";
