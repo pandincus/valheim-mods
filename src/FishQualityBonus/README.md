@@ -20,11 +20,9 @@ This mod adjusts the behavior in the following ways:
 
 Most of the above parameters are configurable, including a master switch that restores vanilla exactly.
 
-<!-- Screenshot slot. Drop the file in docs/ and delete the comment markers around the
-     line below. Absolute URL required - see docs/README.md.
+![A quality-2 anglerfish and two bread dough producing Uncooked Fish 'n' Bread x6](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/fish-quality-bonus-anglerfish.jpg)
 
-![A quality-5 anglerfish crafting 15 Fish 'n' Bread](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/quality-bonus.png)
--->
+*One quality-2 anglerfish makes six. Vanilla would have given you one.*
 
 
 ## Why I made this
@@ -92,12 +90,10 @@ mead base that normally makes 1:
 
 Set `AllowMixedQualities` to `false` to keep vanilla's rules and disallow the craft in these mixed cases.
 
-<!-- Screenshot slot. Drop the file in docs/ and delete the comment markers around the
-     line below. It must be an absolute URL - a relative path renders on GitHub and breaks
-     on Thunderstore. See docs/README.md for why.
+![One quality-2 and one quality-1 trollfish brewing Mead Base: Troll Endurance x2](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/mixed-fish-qualities.jpg)
 
-![Two differently-sized trollfish brewing a mead that vanilla refuses](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/mixed-qualities.png)
--->
+*A quality-2 and a quality-1 trollfish, brewing two Troll Endurance bases. In vanilla this
+Craft button is greyed out and you brew nothing at all.*
 
 
 ### Which recipes qualify
@@ -116,6 +112,9 @@ In vanilla and with default config, that means this mod applies to **Fish 'n' Br
 
 Written to `BepInEx/config/pandincus.fishqualitybonus.cfg` on first run, and
 editable in-game with ConfigurationManager (F1). Changes apply immediately.
+
+![The mod's settings listed in ConfigurationManager in-game](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/config-options.jpg)
+
 
 | Setting | Default | Meaning |
 |---|---|---|
