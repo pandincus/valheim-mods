@@ -84,9 +84,19 @@ jobs:
           deps: ${{ steps.meta.outputs.deps }}
           file: dist/FishQualityBonus-${{ steps.meta.outputs.version }}.zip
           token: ${{ secrets.THUNDERSTORE_TOKEN }}
+          # Required, and the value is ignored. The action's entrypoint has its
+          # branches the wrong way round:
+          #
+          #     elif [ -n "$TS_REPO" ]; then   # set   -> hardcodes thunderstore.io
+          #     else repo="$TS_REPO"           # empty -> publishes to ""
+          #
+          # Leaving it out makes tcli resolve an empty host and die with
+          # "Name or service not known (file:443)" - which is exactly how the
+          # v0.2.0 release failed on its first attempt. Any non-empty string
+          # works; thunderstore.io is what it actually uses either way.
+          repo: thunderstore.io
           # Categories can be set on the package page afterwards, and the valid
           # slugs are easier to confirm there than to guess here.
           #
           # Add `dev: true` to publish to thunderstore.dev instead of the real
-          # site - worth doing once to prove this workflow before spending a
-          # real version number on it.
+          # site. Note that `dev` takes precedence over `repo` above.
