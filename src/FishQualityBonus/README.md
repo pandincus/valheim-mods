@@ -22,8 +22,6 @@ Most of the above parameters are configurable, including a master switch that re
 
 ![A quality-2 anglerfish and two bread dough producing Uncooked Fish 'n' Bread x6](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/fish-quality-bonus-anglerfish.jpg)
 
-*One quality-2 anglerfish makes six. Vanilla would have given you one.*
-
 
 ## Why I made this
 
@@ -92,9 +90,6 @@ Set `AllowMixedQualities` to `false` to keep vanilla's rules and disallow the cr
 
 ![One quality-2 and one quality-1 trollfish brewing Mead Base: Troll Endurance x2](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/mixed-fish-qualities.jpg)
 
-*A quality-2 and a quality-1 trollfish, brewing two Troll Endurance bases. In vanilla this
-Craft button is greyed out and you brew nothing at all.*
-
 
 ### Which recipes qualify
 
@@ -113,9 +108,6 @@ In vanilla and with default config, that means this mod applies to **Fish 'n' Br
 Written to `BepInEx/config/pandincus.fishqualitybonus.cfg` on first run, and
 editable in-game with ConfigurationManager (F1). Changes apply immediately.
 
-![The mod's settings listed in ConfigurationManager in-game](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/config-options.jpg)
-
-
 | Setting | Default | Meaning |
 |---|---|---|
 | `General.Enabled` | `true` | Master switch; `false` restores vanilla behaviour entirely. |
@@ -126,6 +118,8 @@ editable in-game with ConfigurationManager (F1). Changes apply immediately.
 | `Bonus.IncludeMeadRecipes` | `true` | Whether mead bases brewed at the mead cauldron get the bonus too, if they use a whole fish as an ingredient. `false` effectively restricts the mod to food. |
 | `Bonus.ExcludedRecipes` | *(empty)* | Comma-separated output prefab names to skip individually, e.g. `MeadBaseStrength,MeadBaseSwimmer`. |
 | `Diagnostics.LogRecipeReport` | `false` | Dumps every fish and fish-consuming recipe to the log, annotated with whether the bonus applies and why. Development aid; off by default, and also requires `Enabled`. |
+
+![The mod's settings listed in ConfigurationManager in-game](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/config-options.jpg)
 
 ## Multiplayer
 

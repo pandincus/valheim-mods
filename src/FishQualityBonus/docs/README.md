@@ -1,63 +1,38 @@
-# Screenshots for the mod README
+# Screenshots
 
-Drop screenshots (`.png`) or recordings (`.gif`) in this folder and link them from
-[`../README.md`](../README.md).
+Images used by [the mod README](../README.md). Put new ones here.
 
-## Link them with absolute URLs, not relative paths
+## To add an image
 
-This is the one rule that matters, and it is easy to get wrong because the broken version
-looks fine on GitHub.
+1. Save the file in this folder. JPG or PNG for screenshots, GIF for a recording.
+2. Reference it from `../README.md` using the full URL, not a relative path:
 
-It applies to **every** link in `../README.md`, not just images. A relative link to the repo
-README or to `CHANGELOG.md` is a dead link on the Thunderstore package page for the same
-reason. Two different absolute forms, depending on what you are linking:
+   ```markdown
+   ![Short description of the image](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/YOUR-FILE.jpg)
+   ```
 
-- **Documents** — `https://github.com/pandincus/valheim-mods/blob/main/<path>`, which shows
-  the rendered page.
-- **Images** — `https://raw.githubusercontent.com/pandincus/valheim-mods/main/<path>`, which
-  serves the file itself. A `blob` URL will not render as an image.
+3. Commit the image and the README change together.
 
-This file is the exception: `docs/README.md` is never packaged, so it is only ever read on
-GitHub and relative links here are fine.
+## Rules
 
-```markdown
-![Two differently-sized trollfish brewing a mead](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/mixed-qualities.png)
-```
+- Images use `raw.githubusercontent.com/...`. Links to documents use
+  `github.com/.../blob/main/...` instead. They are not interchangeable: a `blob` URL shows a
+  broken image, and a `raw` URL for a document shows plain text.
+- A relative path such as `docs/shot.jpg` works on GitHub and is broken on Thunderstore.
+  Always use the full URL.
+- The URL points at `main`, so a newly added image shows as broken until the branch merges.
+  That is expected, not a mistake to debug.
+- Keep files small and cropped. Git keeps every version forever.
+- Use plain `![alt](url)` markdown. Raw HTML such as `<img width="600">` may not work on
+  Thunderstore, so size the file itself.
 
-A relative path like `docs/mixed-qualities.png` renders correctly in the GitHub repo view
-and is a broken image on Thunderstore, for two separate reasons:
+## Why the full URL is needed
 
-1. The file is not in the package. `tools/package.ps1` builds a **flat** zip from a fixed
-   list — `manifest.json`, `icon.png`, `README.md`, `CHANGELOG.md`, `<Mod>.dll` — and this
-   folder is not on it.
-2. Even if it were, Thunderstore renders the README on its own site, so a relative path
-   resolves against `thunderstore.io` rather than against the package.
+`tools/package.ps1` builds a flat zip containing only `manifest.json`, `icon.png`,
+`README.md`, `CHANGELOG.md` and the DLL. This folder is not in it, and Thunderstore renders
+the README on its own site, so a relative path has nothing to resolve against.
 
-An absolute `raw.githubusercontent.com` URL works in both places.
+A side effect worth keeping: because these files are not in the zip, they never ship to
+players and the mod download stays small.
 
-## Why that is a good thing
-
-Because these files are not in the zip, they never ship to players. The mod download stays
-a few KB rather than carrying screenshots that every installer has to fetch.
-
-## Worth knowing
-
-- **A `main` URL is dead until the branch merges.** Images added on a feature branch will
-  show as broken in the pull request and start working once it lands. That is fine for
-  release — Thunderstore only publishes on a GitHub Release — but do not spend time
-  debugging it.
-- **Git keeps blobs forever.** A file committed here is in every future clone even after
-  it is deleted, so crop and compress before committing. Screenshots should be tens of KB;
-  a GIF should be a few seconds, not a whole crafting session.
-- **Use plain `![alt](url)` markdown.** Whether Thunderstore's renderer allows raw HTML
-  such as `<img width="600">` is unconfirmed, so size the image file itself rather than
-  relying on an attribute to constrain it.
-- `.gitattributes` marks `*.png`, `*.jpg`, `*.jpeg` and `*.gif` as binary, so git will not
-  try to normalise line endings inside them.
-
-## Shots worth having
-
-- The crafting panel showing the boosted output count on a high-quality fish.
-- The mixed-quality case: the ingredient list reading 2 of 2 with the Craft button dead in
-  vanilla, next to the same inventory crafting successfully with the mod on. That one is
-  hard to convey in prose and is the clearest demonstration of what 0.2.0 added.
+This file is never packaged, so relative links in it are fine.
