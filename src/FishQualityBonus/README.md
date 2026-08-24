@@ -1,21 +1,31 @@
 # FishQualityBonus
 
-Recipes that consume a **whole fish** — Fish 'n' Bread, the fish mead bases — pay you the
-same whether you spent a tiny perch or a monster anglerfish. This mod makes the fish matter.
+In base game, recipes that consume a **whole fish** (Fish 'n' Bread, the fish mead bases)
+output the same amount whether you spent a quality-1 perch or a quality-4 anglerfish. This is
+totally inconsistent with how Raw Fish behaves.
+
+This mod adjusts the behavior in the following ways: 
 
 - **Bigger fish make more.** Output scales with the fish's quality, using the same formula
-  the game already applies to Raw Fish. At the default tuning a recipe that normally makes
-  1 makes 13 from a quality-5 fish.
+  the game already applies to Raw Fish. For example, using a quality-5 fish makes 13 instead of 1.
 - **Rarer fish make more.** Each species' flat +0/+1/+2 tier applies on top, read out of
   the game at load rather than hard-coded. Fish 'n' Bread takes a +2 species, so that
   quality-5 craft actually lands at 15 meals.
-- **Fish of different sizes can be combined.** Vanilla flatly refuses to craft when your
-  fish don't match — two trollfish of different sizes can't brew a mead that needs two,
-  even though the ingredient list says you have enough. This lifts that, and prices the
-  craft on the average size of what you spent.
+- **Fish of different sizes can be combined.** The base game refuses to craft when your
+  fish qualities don't match (e.g. two trollfish of different sizes can't brew a mead that needs two,
+  even though the ingredient list says you have enough). This fixes that, and the output is based on
+  the average size of what you spent.
+- **Choose which fish size to prioritize.** Configuration options include *which* fish gets consumed first
+  (e.g. prioritize higher or lower quality in your inventory when crafting).
 
-You also get to decide *which* fish gets eaten, instead of leaving it to chance. Everything
-is configurable, including a master switch that restores vanilla exactly.
+Most of the above parameters are configurable, including a master switch that restores vanilla exactly.
+
+<!-- Screenshot slot. Drop the file in docs/ and delete the comment markers around the
+     line below. Absolute URL required - see docs/README.md.
+
+![A quality-5 anglerfish crafting 15 Fish 'n' Bread](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/quality-bonus.png)
+-->
+
 
 ## Why I made this
 
@@ -31,22 +41,24 @@ completely wastes the higher quality fish in those recipes.
 
 Since recipes like Fish 'n' Bread, currently one of the best stamina foods in the game, take
 a whole fish, the player is effectively penalized for using the better quality anglerfish
-in that recipe.
+in that recipe. (Making the joy of actually hooking a high-quality fish not worth the stamina
+spent to reel it in)
 
 This mod adjusts it by applying the same raw fish computation formula to other whole-fish
-recipes, as well!
-
-Once I was in there, a second annoyance turned out to be sitting right next to the first.
-Vanilla won't even let you *craft* with fish of different sizes — it checks your biggest
-single-size stack instead of your total, so a spare quality-1 and a spare quality-2
-trollfish are two fish that refuse to become one mead. That is fixed here too.
+recipes, as well! And while I was in the code, I decided to fix the mixed-quality-crafting issue as well.
 
 ## Behavior
 
-    output = amount + (fishQuality - 1) * amount * BonusPerQualityLevel + speciesBonus
+    sizeBonus = floor( (averageQuality - 1) * amount * BonusPerQualityLevel )
+    output    = amount + sizeBonus + speciesBonus
 
-where `fishQuality` is the average size of the fish the craft spends, rounded down —
-which is just the fish's own quality whenever they are all the same size.
+where `averageQuality` is the mean quality of the fish this craft spends — just the fish's
+own quality whenever they are all the same size, and a fraction when they aren't.
+
+Note the rounding happens **last**, not to the average. That matters when sizes are mixed:
+one quality-1 and one quality-2 trollfish average 1.5, and `floor(0.5 * 1 * 3)` is 1, so you
+brew 2. Rounding the average down to 1 first would have given you nothing for the bigger
+fish. `speciesBonus` is added after the rounding, so it is never eaten by it.
 
 `BonusPerQualityLevel` is configurable, but defaulted to `3` to match the existing
 values used in computation of Fish (raw) (in the base game).
@@ -82,6 +94,14 @@ trollfish give you 2 mead bases; two quality-1 give 1, and two quality-2 give 4.
 This is also what makes `SmallestFirst` mean what it says. A two-fish craft with one small
 fish and three big ones now spends the small one and a single big one, rather than passing
 over the small fish because it could not cover the craft alone.
+
+<!-- Screenshot slot. Drop the file in docs/ and delete the comment markers around the
+     line below. It must be an absolute URL - a relative path renders on GitHub and breaks
+     on Thunderstore. See docs/README.md for why.
+
+![Two differently-sized trollfish brewing a mead that vanilla refuses](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/mixed-qualities.png)
+-->
+
 
 ### Which recipes qualify
 
