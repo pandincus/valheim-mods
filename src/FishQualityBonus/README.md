@@ -22,7 +22,6 @@ Most of the above parameters are configurable, including a master switch that re
 
 ![A quality-2 anglerfish and two bread dough producing Uncooked Fish 'n' Bread x6](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/fish-quality-bonus-anglerfish.jpg)
 
-
 ## Why I made this
 
 Hello! I created this mod to fix a nitpick that felt, in my opinion, like an oversight, which
@@ -90,7 +89,6 @@ Set `AllowMixedQualities` to `false` to keep vanilla's rules and disallow the cr
 
 ![One quality-2 and one quality-1 trollfish brewing Mead Base: Troll Endurance x2](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/mixed-fish-qualities.jpg)
 
-
 ### Which recipes qualify
 
 This **should** be safe to pick up new recipes added via updates and mods, because the mod
@@ -113,7 +111,7 @@ editable in-game with ConfigurationManager (F1). Changes apply immediately.
 | `General.Enabled` | `true` | Master switch; `false` restores vanilla behaviour entirely. |
 | `Bonus.BonusPerQualityLevel` | `3` | Whole-number multiplier, 1-10. At `3` a 1-item recipe yields 1/4/7/10/13 for quality 1/2/3/4/5 — matching the game's own Fish (raw) tuning. At `1`, 1/2/3/4/5. |
 | `Bonus.FishToSpend` | `SmallestFirst` | `SmallestFirst` spends the lowest-quality fish first,  `LargestFirst` always spends your best fish first. |
-| `Bonus.AllowMixedQualities` | `true` | Let a craft draw on several sizes of the same fish at once, which vanilla refuses, and pay out on their average. `false` keeps vanilla's matching-sizes rule and changes only the payout. Applies to the same recipes the bonus does. |
+| `Bonus.AllowMixedQualities` | `true` | Let a craft use several sizes of the same fish at once, which vanilla refuses, and the output is based on their average qualities. `false` keeps vanilla's matching-sizes rule. Applies to the same recipes the bonus does. |
 | `Bonus.UseSpeciesBonus` | `true` | Grant each species' flat +0/+1/+2 tier as well, read from the Fish (raw) recipe at load. Anglerfish is +2, so Fish 'n' Bread gains a flat 2. Not scaled by quality. |
 | `Bonus.IncludeMeadRecipes` | `true` | Whether mead bases brewed at the mead cauldron get the bonus too, if they use a whole fish as an ingredient. `false` effectively restricts the mod to food. |
 | `Bonus.ExcludedRecipes` | *(empty)* | Comma-separated output prefab names to skip individually, e.g. `MeadBaseStrength,MeadBaseSwimmer`. |

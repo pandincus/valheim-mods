@@ -2,7 +2,7 @@
   "name": "FishQualityBonus",
   "version_number": "0.2.0",
   "website_url": "https://github.com/pandincus/valheim-mods/tree/main/src/FishQualityBonus",
-  "description": "Recipes that consume a whole fish pay out more for a bigger fish, and for rarer species - reusing Valheim's own Fish (raw) scaling. It also lets you craft with fish of mismatched sizes, which vanilla refuses. Fully configurable.",
+  "description": "Whole-fish recipes now behave like raw fish so you get more for better qualities and rarer species. Plus, lets you craft with fish of mismatched sizes, which vanilla refuses. Fully configurable.",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2333"
   ]

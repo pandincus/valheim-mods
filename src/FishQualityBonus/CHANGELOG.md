@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 — 2026-08-22
+## 0.2.0 — 2026-08-23
 
 **You can now craft with fish of different qualities!**
 
