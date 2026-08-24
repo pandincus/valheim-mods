@@ -274,7 +274,7 @@ namespace FishQualityBonus
         }
 
         /// <summary>
-        /// Spot a mead base, which is anything brewed at the mead cauldron.
+        /// Check if this recipe is a mead base, which is anything brewed at the mead cauldron.
         /// </summary>
         /// <returns>
         /// True if the recipe is crafted at the mead cauldron, fish in it or not. Sorting

@@ -78,15 +78,15 @@ namespace FishQualityBonus
 
             AllowMixedQualities = cfg.Bind(
                 "Bonus", "AllowMixedQualities", true,
-                "Let a recipe draw on several qualities of the same fish at once.\n" +
-                "Vanilla will not: it checks your biggest single-quality stack rather than your " +
+                "Allow a recipe to draw on several qualities of the same fish at once.\n" +
+                "Base game will not: it checks your biggest single-quality stack rather than your " +
                 "total, so two trollfish of different sizes cannot brew a Troll Endurance mead " +
-                "that needs two - even though the ingredient list shows 2 of 2 and looks happy. " +
+                "that needs two, even though the ingredient list shows 2 of 2 and looks happy. " +
                 "With this on, the craft goes through and the payout is based on the average " +
                 "size of the fish you spent.\n" +
                 "This applies to the same recipes the bonus does, so ExcludedRecipes and " +
                 "IncludeMeadRecipes still leave a recipe entirely to vanilla. Set false to keep " +
-                "vanilla's rule and only change the payout.");
+                "vanilla's rules and only change the payout.");
 
             UseSpeciesBonus = cfg.Bind(
                 "Bonus", "UseSpeciesBonus", true,

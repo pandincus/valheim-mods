@@ -1,5 +1,24 @@
 # FishQualityBonus
 
+Recipes that consume a **whole fish** — Fish 'n' Bread, the fish mead bases — pay you the
+same whether you spent a tiny perch or a monster anglerfish. This mod makes the fish matter.
+
+- **Bigger fish make more.** Output scales with the fish's quality, using the same formula
+  the game already applies to Raw Fish. At the default tuning a recipe that normally makes
+  1 makes 13 from a quality-5 fish.
+- **Rarer fish make more.** Each species' flat +0/+1/+2 tier applies on top, read out of
+  the game at load rather than hard-coded. Fish 'n' Bread takes a +2 species, so that
+  quality-5 craft actually lands at 15 meals.
+- **Fish of different sizes can be combined.** Vanilla flatly refuses to craft when your
+  fish don't match — two trollfish of different sizes can't brew a mead that needs two,
+  even though the ingredient list says you have enough. This lifts that, and prices the
+  craft on the average size of what you spent.
+
+You also get to decide *which* fish gets eaten, instead of leaving it to chance. Everything
+is configurable, including a master switch that restores vanilla exactly.
+
+## Why I made this
+
 Hello! I created this mod to fix a nitpick that felt, in my opinion, like an oversight, which
 is simply this: fishing recipes should reward you for the quality of the fish.
 
@@ -16,6 +35,11 @@ in that recipe.
 
 This mod adjusts it by applying the same raw fish computation formula to other whole-fish
 recipes, as well!
+
+Once I was in there, a second annoyance turned out to be sitting right next to the first.
+Vanilla won't even let you *craft* with fish of different sizes — it checks your biggest
+single-size stack instead of your total, so a spare quality-1 and a spare quality-2
+trollfish are two fish that refuse to become one mead. That is fixed here too.
 
 ## Behavior
 
@@ -58,6 +82,8 @@ trollfish give you 2 mead bases; two quality-1 give 1, and two quality-2 give 4.
 This is also what makes `SmallestFirst` mean what it says. A two-fish craft with one small
 fish and three big ones now spends the small one and a single big one, rather than passing
 over the small fish because it could not cover the craft alone.
+
+### Which recipes qualify
 
 This **should** be safe to pick up new recipes added via updates and mods, because we're
 loading recipes at runtime and matching via `ItemType.Fish`. A recipe qualifies only if all of these hold:
