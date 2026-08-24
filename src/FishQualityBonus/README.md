@@ -64,26 +64,22 @@ The formula behind that:
 `amount` is what the recipe normally makes. `averageQuality` is the mean quality of the fish
 spent, which is just the fish's own quality when they're all the same size.
 
-`BonusPerQualityLevel` defaults to `3`, matching the game's own Fish (raw) tuning.
+`BonusPerQualityLevel` is configurable and defaults to `3`, matching the game's own Raw Fish behavior.
 
-`speciesBonus` is the game's +0/+1/+2 tier for the species, which we read off the Fish (raw)
-recipe at load rather than hard-coding — see [Raw Fish](https://valheim.fandom.com/wiki/Raw_Fish).
-Like vanilla, it's flat: even a small quality-1 anglerfish still earns its +2. Set
-`UseSpeciesBonus` to `false` if you'd rather the bonus came purely from size.
+`speciesBonus` is the game's +0/+1/+2 tier for the species — see [Raw Fish](https://valheim.fandom.com/wiki/Raw_Fish).
+Like vanilla, it's flat: even a small quality-1 anglerfish still earns its +2. Also configurable.
 
 ### Which fish gets eaten
 
-Vanilla spends whichever fish you picked up first, wherever it happens to sit in your
-inventory — effectively random. This mod picks on purpose, smallest or largest first,
-via `FishToSpend`.
+Vanilla spends whichever fish you picked up first, and it doesn't even matter where it sits in your inventory ( effectively random). This mod picks on purpose, smallest or largest first, via `FishToSpend`.
 
 ### Fish of different sizes
 
 Vanilla won't let you craft when your fish don't match. It checks your biggest single-size
 stack instead of your total, so two trollfish of different sizes can't brew a Troll Endurance
-mead that needs two — the ingredient list reads 2 of 2 in white, and the Craft button stays
-dead with nothing explaining why. Every other crafting material has only one quality level,
-so you'd never have hit this outside of fish.
+mead that needs two. Confusingly, the ingredient list shows 2 of 2 in white, and the Craft button
+stays grayed out with nothing explaining why. This is really only a problem that affects fish recipes,
+as every other crafting material has only one quality level.
 
 This mod allows the craft and pays out on the average of what you spent. Two trollfish in a
 mead base that normally makes 1:
@@ -94,11 +90,7 @@ mead base that normally makes 1:
 | one quality-1, one quality-2 | 2 |
 | two quality-2 | 4 |
 
-Set `AllowMixedQualities` to `false` to keep vanilla's rule and change only the payout.
-
-This is also what makes `SmallestFirst` mean what it says. A two-fish craft with one small
-fish and three big ones now spends the small one and a single big one, rather than passing
-over the small fish because it could not cover the craft alone.
+Set `AllowMixedQualities` to `false` to keep vanilla's rules and disallow the craft in these mixed cases.
 
 <!-- Screenshot slot. Drop the file in docs/ and delete the comment markers around the
      line below. It must be an absolute URL - a relative path renders on GitHub and breaks
@@ -110,8 +102,8 @@ over the small fish because it could not cover the craft alone.
 
 ### Which recipes qualify
 
-This **should** be safe to pick up new recipes added via updates and mods, because we're
-loading recipes at runtime and matching via `ItemType.Fish`. A recipe qualifies only if all of these hold:
+This **should** be safe to pick up new recipes added via updates and mods, because the mod
+loads recipes at runtime and matches via `ItemType.Fish`. A recipe qualifies only if all of these are met:
 
 1. it is not flagged `m_requireOnlyOneIngredient` (currently only `FishRaw` uses this),
 2. its output is not equipment, by the game's own `IsEquipable()` check,
@@ -145,7 +137,8 @@ different players.
 
 ## Developing
 
-Build instructions, tooling and tests are in the [repo README](../../README.md).
+Build instructions, tooling and tests are in the
+[repo README](https://github.com/pandincus/valheim-mods/blob/main/README.md).
 
 This is my first mod! This was built through a combination of code-diving, wiki reading, and usage
 of Claude Code. Note that even though I used Claude Code to develop the code changes, I've reviewed
@@ -165,4 +158,6 @@ With Valheim 1.0 coming out soon, I'm not sure what will change that might impac
 the devs have already fixed this issue! Or perhaps they'll add more fishing recipes and we'll want to test
 that this continues to work. But since I wrote this mod to use it, I will revisit and update in the near future.
 
-See [CHANGELOG.md](CHANGELOG.md) for release notes.
+See the
+[CHANGELOG](https://github.com/pandincus/valheim-mods/blob/main/src/FishQualityBonus/CHANGELOG.md)
+for release notes. On Thunderstore it is also the Changelog tab on this package's page.

@@ -8,6 +8,18 @@ Drop screenshots (`.png`) or recordings (`.gif`) in this folder and link them fr
 This is the one rule that matters, and it is easy to get wrong because the broken version
 looks fine on GitHub.
 
+It applies to **every** link in `../README.md`, not just images. A relative link to the repo
+README or to `CHANGELOG.md` is a dead link on the Thunderstore package page for the same
+reason. Two different absolute forms, depending on what you are linking:
+
+- **Documents** — `https://github.com/pandincus/valheim-mods/blob/main/<path>`, which shows
+  the rendered page.
+- **Images** — `https://raw.githubusercontent.com/pandincus/valheim-mods/main/<path>`, which
+  serves the file itself. A `blob` URL will not render as an image.
+
+This file is the exception: `docs/README.md` is never packaged, so it is only ever read on
+GitHub and relative links here are fine.
+
 ```markdown
 ![Two differently-sized trollfish brewing a mead](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/mixed-qualities.png)
 ```
