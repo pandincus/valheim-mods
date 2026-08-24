@@ -2,11 +2,17 @@ using System.Collections.Generic;
 
 namespace FishQualityBonus
 {
-    /// <summary>The fish a craft is about to spend, and at which quality.</summary>
+    /// <summary>The fish a craft is about to spend, and at which qualities.</summary>
     internal sealed class FishChoice
     {
         public Piece.Requirement Requirement;
-        public int Quality;
+
+        /// <summary>
+        /// Which fish to spend, and at which qualities. Usually one quality; more than
+        /// one when the craft is mixing sizes.
+        /// </summary>
+        public FishPlan Plan;
+
         public int TotalNeeded;
     }
 
@@ -29,11 +35,12 @@ namespace FishQualityBonus
         /// Compute which fish a craft should spend, and at which quality.
         /// </summary>
         /// <returns>
-        /// The fish and quality to spend, or null when we should keep out of it entirely.
+        /// The fish and qualities to spend, or null when we should keep out of it entirely.
         /// We exit in three cases, and vanilla then handles the craft as usual:
         /// 1. The recipe uses no fish at all (not relevant to our mod!)
         /// 2. The recipe uses more than one kind of fish (see <see cref="TryGetSingleFishRequirement"/>)
-        /// 3. No single quality has enough fish to cover the whole craft
+        /// 3. There aren't enough fish to cover the craft - which, with AllowMixedQualities
+        ///    off, means no single quality has enough on its own
         /// </returns>
         /// <param name="inventory">
         /// The player's inventory (read-only here). Consuming happens in <see cref="Patch_Player_ConsumeResources"/>.
@@ -51,6 +58,16 @@ namespace FishQualityBonus
         /// <param name="multiplier">
         /// How many crafts at once: 1 normally, or 5 when multi-crafting (hold Left Shift).
         /// </param>
+        /// <remarks>
+        /// Note the list above has no "the recipe isn't eligible" case, which is deliberate.
+        /// We are handed a requirement list rather than a Recipe - that is all
+        /// Player.ConsumeResources gives us - and eligibility is a question about the recipe.
+        ///
+        /// So an excluded single-fish recipe still gets its fish picked by FishToSpend
+        /// instead of by vanilla's pickup order. That costs nothing, because
+        /// <see cref="BonusFor"/> checks eligibility itself and the payout stays vanilla's
+        /// either way. It is also how 0.1.0 behaved.
+        /// </remarks>
         internal static FishChoice Choose(Inventory inventory, Piece.Requirement[] requirements,
                                           int qualityLevel, int multiplier)
         {
@@ -58,29 +75,47 @@ namespace FishQualityBonus
 
             if (!TryGetSingleFishRequirement(requirements, out Piece.Requirement fishReq)) return null;
 
-            ItemDrop.ItemData.SharedData fish = fishReq.m_resItem.m_itemData.m_shared;
             int needed = fishReq.GetAmount(qualityLevel) * multiplier;
             if (needed <= 0) return null;
 
-            // Count what we have of each quality. Vanilla counts from 0, so we
-            // do too rather than assuming quality starts at 1.
+            int[] counts = CountByQuality(inventory, fishReq);
+
+            bool largestFirst = ModConfig.FishToSpend.Value == FishPreference.LargestFirst;
+            if (!FishPlan.TryPick(counts, needed, largestFirst,
+                                  ModConfig.AllowMixedQualities.Value, out FishPlan plan))
+            {
+                return null;
+            }
+
+            return new FishChoice
+            {
+                Requirement = fishReq,
+                Plan = plan,
+                TotalNeeded = needed,
+            };
+        }
+
+        /// <summary>
+        /// Count how many fish of each quality the player is carrying.
+        /// </summary>
+        /// <returns>
+        /// An array indexed by quality, so [2] is the number of quality-2 fish. Index 0 is
+        /// kept even though no real fish has quality 0, so that index and quality always
+        /// match - and because vanilla scans from 0 as well.
+        /// </returns>
+        /// <param name="inventory">The player's inventory, read only.</param>
+        /// <param name="fishReq">The recipe's fish requirement, which tells us what to count.</param>
+        private static int[] CountByQuality(Inventory inventory, Piece.Requirement fishReq)
+        {
+            ItemDrop.ItemData.SharedData fish = fishReq.m_resItem.m_itemData.m_shared;
+
             int maxQuality = fish.m_maxQuality < 1 ? 1 : fish.m_maxQuality;
             var counts = new int[maxQuality + 1];
             for (int quality = 0; quality <= maxQuality; quality++)
             {
                 counts[quality] = inventory.CountItems(fish.m_name, quality);
             }
-
-            bool largestFirst = ModConfig.FishToSpend.Value == FishPreference.LargestFirst;
-            int chosen = BonusRules.PickQuality(counts, needed, largestFirst);
-            if (chosen == BonusRules.NoQuality) return null;
-
-            return new FishChoice
-            {
-                Requirement = fishReq,
-                Quality = chosen,
-                TotalNeeded = needed,
-            };
+            return counts;
         }
 
         /// <summary>
@@ -120,12 +155,126 @@ namespace FishQualityBonus
                 ? SpeciesBonusTable.ExtraFor(choice.Requirement.m_resItem.m_itemData.m_shared)
                 : 0;
 
-            return BonusRules.ComputeBonus(choice.Quality, recipe.m_amount,
+            return BonusRules.ComputeBonus(choice.Plan, recipe.m_amount,
                                            ModConfig.BonusPerQualityLevel.Value, speciesExtra);
         }
 
         /// <summary>
-        /// Spot a mead base, which is anything brewed at the mead cauldron.
+        /// Decide whether a craft vanilla has just refused should be allowed after all,
+        /// because the player does, in fact, have enough fish once we stop insisting they are all the
+        /// same quality.
+        /// </summary>
+        /// <returns>
+        /// True only when every requirement is covered, counting the fish across all
+        /// qualities and everything else exactly the way vanilla does. False whenever
+        /// we are not sure, so vanilla's refusal stands.
+        /// </returns>
+        /// <param name="inventory">The player's inventory, we treat it here as read only.</param>
+        /// <param name="recipe">The recipe whose Craft button vanilla has just greyed out.</param>
+        /// <param name="qualityLevel">The quality of the item being crafted, not of the fish.</param>
+        /// <param name="multiplier">1 normally, or the multi-craft amount when shift is held.</param>
+        /// <remarks>
+        /// Vanilla's own gate is <see cref="Player.HaveRequirementItems"/>, and for each
+        /// requirement it takes the *largest single-quality stack* you own rather than the total:
+        ///
+        ///     for (int j = 1; j &lt; maxQuality + 1; j++)
+        ///         num3 = CountItems(name, j);
+        ///         if (num3 &gt; num2) num2 = num3;      // max, never a sum
+        ///
+        /// Every ordinary crafting material has m_maxQuality 1, so that loop runs once and
+        /// the maximum is the total - which is why the rule is invisible everywhere except
+        /// on fish. It comes from GetFirstRequiredItem, where a single covering quality
+        /// genuinely is required, because that path reads the output's scaling off one
+        /// representative item. Recipes that don't use m_requireOnlyOneIngredient inherited
+        /// the restriction without ever needing it.
+        ///
+        /// Consumption was always able to cope: ConsumeResources removes at quality -1, and
+        /// Inventory.RemoveItem then walks straight across stacks of different qualities. So
+        /// this really is only a gate, and it disagrees with the ingredient list the player
+        /// is looking at - InventoryGui.SetupRequirement counts every quality, so the tile
+        /// reads 2 of 2 in white while the Craft button stays dead. (It SHOULD show up as red
+        /// to make it clear to the player what's going on, but it does not)
+        ///
+        /// We copy vanilla's rule for the non-fish requirements rather than summing those
+        /// too. Keeping the change to fish is the whole point, and any modded ingredient
+        /// with real quality tiers keeps whatever behaviour its own author expects.
+        /// </remarks>
+        internal static bool CanCraftMixed(Inventory inventory, Recipe recipe,
+                                           int qualityLevel, int multiplier)
+        {
+            if (inventory == null || recipe?.m_resources == null) return false;
+
+            // Allow mixing is turned off, so skip
+            if (!ModConfig.AllowMixedQualities.Value) return false;
+
+            // Cheapest check that rules out almost everything goes first. This runs for
+            // every recipe the player knows each time the crafting panel rebuilds its list,
+            // and 361 of vanilla's 365 recipes leave here. IneligibleReason is the pricier
+            // question - it reaches for the crafting station's name, which is a Unity
+            // property call - so only the handful of fish recipes ever ask it.
+            if (!TryGetSingleFishRequirement(recipe.m_resources, out Piece.Requirement fishReq)) return false;
+
+            // Same notion of "a recipe we handle" as the payout, so the mod never unblocks
+            // a craft it would then decline to price.
+            if (IneligibleReason(recipe) != null) return false;
+
+            foreach (Piece.Requirement req in recipe.m_resources)
+            {
+                if (!req.m_resItem) continue;
+
+                int needed = req.GetAmount(qualityLevel) * multiplier;
+                if (needed <= 0) continue;
+
+                int have = ReferenceEquals(req, fishReq)
+                    // Unlike what vanilla does, we call Inventory.CountItems with no quality argument
+                    // which counts every quality, so that we actually take stock of the entirety of the
+                    // matching items (e.g. trollfish) and don't just focus on the max quality present.
+                    ? inventory.CountItems(req.m_resItem.m_itemData.m_shared.m_name)
+                    // If this isn't a fish requirement, we just fall back to vanilla's logic of counting
+                    : LargestStackByQuality(inventory, req);
+
+                if (have < needed) return false;
+            }
+
+            // Passed all of our checks, so the player should meet the requirements! Enable the crafting button.
+            return true;
+        }
+
+        /// <summary>
+        /// Count an ingredient the way vanilla's requirement check does.
+        /// </summary>
+        /// <returns>
+        /// The size of the biggest single-quality holding, which for anything with one
+        /// quality level is simply how many you have.
+        /// </returns>
+        /// <param name="inventory">The player's inventory, read only.</param>
+        /// <param name="req">The ingredient to count.</param>
+        /// <remarks>
+        /// Deliberately reproduces <see cref="Player.HaveRequirementItems"/>, including its
+        /// quirk, so that a requirement we are not trying to change is judged by exactly the
+        /// rule that just judged it. That cref navigates - the build publicizes
+        /// assembly_valheim, so private game members resolve - and tools/decompile.ps1
+        /// writes readable source for it if you want to read the whole method.
+        ///
+        /// Note vanilla starts this scan at quality 1, not 0, unlike
+        /// <see cref="Player.GetFirstRequiredItem"/>, which starts at 0. The two disagree,
+        /// and this is the one we are mirroring.
+        /// </remarks>
+        private static int LargestStackByQuality(Inventory inventory, Piece.Requirement req)
+        {
+            ItemDrop.ItemData.SharedData shared = req.m_resItem.m_itemData.m_shared;
+
+            int largest = 0;
+            for (int quality = 1; quality <= shared.m_maxQuality; quality++)
+            {
+                int count = inventory.CountItems(shared.m_name, quality);
+                if (count > largest) largest = count;
+            }
+            return largest;
+        }
+
+        /// <summary>
+        /// Check if this recipe is a mead base, which is anything brewed at the mead cauldron.
         /// </summary>
         /// <returns>
         /// True if the recipe is crafted at the mead cauldron, fish in it or not. Sorting

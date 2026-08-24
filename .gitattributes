@@ -6,6 +6,9 @@
 
 # Binary assets, so Git never tries to diff or convert them.
 *.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
 *.dll binary
 *.pdb binary
 *.zip binary

@@ -1,5 +1,29 @@
 # FishQualityBonus
 
+In base game, recipes that consume a **whole fish** (Fish 'n' Bread, the fish mead bases)
+output the same amount whether you spent a quality-1 perch or a quality-4 anglerfish. This is
+totally inconsistent with how Raw Fish behaves.
+
+This mod adjusts the behavior in the following ways: 
+
+- **Bigger fish make more.** Output scales with the fish's quality, using the same formula
+  the game already applies to Raw Fish. For example, using a quality-5 fish makes 13 instead of 1.
+- **Rarer fish make more.** Each species' flat +0/+1/+2 tier applies on top, read out of
+  the game at load rather than hard-coded. Fish 'n' Bread takes a +2 species, so that
+  quality-5 craft actually lands at 15 meals.
+- **Fish of different sizes can be combined.** The base game refuses to craft when your
+  fish qualities don't match (e.g. two trollfish of different sizes can't brew a mead that needs two,
+  even though the ingredient list says you have enough). This fixes that, and the output is based on
+  the average size of what you spent.
+- **Choose which fish size to prioritize.** Configuration options include *which* fish gets consumed first
+  (e.g. prioritize higher or lower quality in your inventory when crafting).
+
+Most of the above parameters are configurable, including a master switch that restores vanilla exactly.
+
+![A quality-2 anglerfish and two bread dough producing Uncooked Fish 'n' Bread x6](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/fish-quality-bonus-anglerfish.jpg)
+
+## Why I made this
+
 Hello! I created this mod to fix a nitpick that felt, in my opinion, like an oversight, which
 is simply this: fishing recipes should reward you for the quality of the fish.
 
@@ -12,35 +36,63 @@ completely wastes the higher quality fish in those recipes.
 
 Since recipes like Fish 'n' Bread, currently one of the best stamina foods in the game, take
 a whole fish, the player is effectively penalized for using the better quality anglerfish
-in that recipe.
+in that recipe. (Making the joy of actually hooking a high-quality fish not worth the stamina
+spent to reel it in)
 
 This mod adjusts it by applying the same raw fish computation formula to other whole-fish
-recipes, as well!
+recipes, as well! And while I was in the code, I decided to fix the mixed-quality-crafting issue as well.
 
 ## Behavior
 
-    output = amount + (fishQuality - 1) * amount * BonusPerQualityLevel + speciesBonus
+What a recipe that normally makes 1 gives you, at the default settings:
 
-`BonusPerQualityLevel` is configurable, but defaulted to `3` to match the existing
-values used in computation of Fish (raw) (in the base game).
+| Fish quality | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| A +0 species (perch, pike, tetra, trollfish) | 1 | 4 | 7 | 10 | 13 |
+| A +2 species, which is what Fish 'n' Bread takes | 3 | 6 | 9 | 12 | 15 |
 
-`speciesBonus` is the game's own +0/+1/+2 fish tiering based on the species of fish.
-See [Raw Fish](https://valheim.fandom.com/wiki/Raw_Fish), and note the flat bonus
-based on the type. We access this data from `m_extraAmountOnlyOneIngredient` on
-the Fish (raw) recipe and treat the values as a property of the species.
-Essentially, this means that one anglerfish makes as many Fish 'n' Bread as it would raw fish.
-Note that this is a flat bonus that doesn't scale with quality, just like vanilla.
-So, even a little quality-1 anglerfish gets you 3 Fish 'n' Bread with this enabled.
-If you would prefer the bonus from this mod more related to how big the fish was, you can
-turn `UseSpeciesBonus` to false in the config and the species bonus will not apply.
+The formula behind that:
 
-This mod also makes ingredient selection deliberate: vanilla spends whichever fish you
-picked up first, no matter where it sits in your inventory, which is effectively
-random. This mod picks a quality on purpose (e.g. largest first or smallest first, configurable)
-and spends that.
+    sizeBonus = floor( (averageQuality - 1) * amount * BonusPerQualityLevel )
+    output    = amount + sizeBonus + speciesBonus
 
-This **should** be safe to pick up new recipes added via updates and mods, because we're
-loading recipes at runtime and matching via `ItemType.Fish`. A recipe qualifies only if all of these hold:
+`amount` is what the recipe normally makes. `averageQuality` is the mean quality of the fish
+spent, which is just the fish's own quality when they're all the same size.
+
+`BonusPerQualityLevel` is configurable and defaults to `3`, matching the game's own Raw Fish behavior.
+
+`speciesBonus` is the game's +0/+1/+2 tier for the species — see [Raw Fish](https://valheim.fandom.com/wiki/Raw_Fish).
+Like vanilla, it's flat: even a small quality-1 anglerfish still earns its +2. Also configurable.
+
+### Which fish gets eaten
+
+Vanilla spends whichever fish you picked up first, and it doesn't even matter where it sits in your inventory ( effectively random). This mod picks on purpose, smallest or largest first, via `FishToSpend`.
+
+### Fish of different sizes
+
+Vanilla won't let you craft when your fish don't match. It checks your biggest single-size
+stack instead of your total, so two trollfish of different sizes can't brew a Troll Endurance
+mead that needs two. Confusingly, the ingredient list shows 2 of 2 in white, and the Craft button
+stays grayed out with nothing explaining why. This is really only a problem that affects fish recipes,
+as every other crafting material has only one quality level.
+
+This mod allows the craft and pays out on the average of what you spent. Two trollfish in a
+mead base that normally makes 1:
+
+| Fish spent | Output |
+|---|---|
+| two quality-1 | 1 |
+| one quality-1, one quality-2 | 2 |
+| two quality-2 | 4 |
+
+Set `AllowMixedQualities` to `false` to keep vanilla's rules and disallow the craft in these mixed cases.
+
+![One quality-2 and one quality-1 trollfish brewing Mead Base: Troll Endurance x2](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/mixed-fish-qualities.jpg)
+
+### Which recipes qualify
+
+This **should** be safe to pick up new recipes added via updates and mods, because the mod
+loads recipes at runtime and matches via `ItemType.Fish`. A recipe qualifies only if all of these are met:
 
 1. it is not flagged `m_requireOnlyOneIngredient` (currently only `FishRaw` uses this),
 2. its output is not equipment, by the game's own `IsEquipable()` check,
@@ -59,10 +111,13 @@ editable in-game with ConfigurationManager (F1). Changes apply immediately.
 | `General.Enabled` | `true` | Master switch; `false` restores vanilla behaviour entirely. |
 | `Bonus.BonusPerQualityLevel` | `3` | Whole-number multiplier, 1-10. At `3` a 1-item recipe yields 1/4/7/10/13 for quality 1/2/3/4/5 — matching the game's own Fish (raw) tuning. At `1`, 1/2/3/4/5. |
 | `Bonus.FishToSpend` | `SmallestFirst` | `SmallestFirst` spends the lowest-quality fish first,  `LargestFirst` always spends your best fish first. |
+| `Bonus.AllowMixedQualities` | `true` | Let a craft use several sizes of the same fish at once, which vanilla refuses, and the output is based on their average qualities. `false` keeps vanilla's matching-sizes rule. Applies to the same recipes the bonus does. |
 | `Bonus.UseSpeciesBonus` | `true` | Grant each species' flat +0/+1/+2 tier as well, read from the Fish (raw) recipe at load. Anglerfish is +2, so Fish 'n' Bread gains a flat 2. Not scaled by quality. |
 | `Bonus.IncludeMeadRecipes` | `true` | Whether mead bases brewed at the mead cauldron get the bonus too, if they use a whole fish as an ingredient. `false` effectively restricts the mod to food. |
 | `Bonus.ExcludedRecipes` | *(empty)* | Comma-separated output prefab names to skip individually, e.g. `MeadBaseStrength,MeadBaseSwimmer`. |
 | `Diagnostics.LogRecipeReport` | `false` | Dumps every fish and fish-consuming recipe to the log, annotated with whether the bonus applies and why. Development aid; off by default, and also requires `Enabled`. |
+
+![The mod's settings listed in ConfigurationManager in-game](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/FishQualityBonus/docs/config-options.jpg)
 
 ## Multiplayer
 
@@ -73,7 +128,8 @@ different players.
 
 ## Developing
 
-Build instructions, tooling and tests are in the [repo README](../../README.md).
+Build instructions, tooling and tests are in the
+[repo README](https://github.com/pandincus/valheim-mods/blob/main/README.md).
 
 This is my first mod! This was built through a combination of code-diving, wiki reading, and usage
 of Claude Code. Note that even though I used Claude Code to develop the code changes, I've reviewed
@@ -93,4 +149,6 @@ With Valheim 1.0 coming out soon, I'm not sure what will change that might impac
 the devs have already fixed this issue! Or perhaps they'll add more fishing recipes and we'll want to test
 that this continues to work. But since I wrote this mod to use it, I will revisit and update in the near future.
 
-See [CHANGELOG.md](CHANGELOG.md) for release notes.
+See the
+[CHANGELOG](https://github.com/pandincus/valheim-mods/blob/main/src/FishQualityBonus/CHANGELOG.md)
+for release notes. On Thunderstore it is also the Changelog tab on this package's page.

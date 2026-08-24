@@ -8,7 +8,7 @@
     <RootNamespace>FishQualityBonus</RootNamespace>
     <!-- Keep in step with PluginVersion in Plugin.cs. BepInPlugin needs a compile-time
          constant, so the version genuinely has to be written down twice. -->
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <LangVersion>latest</LangVersion>
     <DebugType>portable</DebugType>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>

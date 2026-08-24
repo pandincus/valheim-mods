@@ -19,7 +19,7 @@ namespace FishQualityBonus
         public const string PluginGuid = "pandincus.fishqualitybonus";
         public const string PluginName = "FishQualityBonus";
         // Keep in step with <Version> in FishQualityBonus.csproj.
-        public const string PluginVersion = "0.1.0";
+        public const string PluginVersion = "0.2.0";
 
         internal static ManualLogSource Log;
 
