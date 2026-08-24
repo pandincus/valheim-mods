@@ -61,12 +61,10 @@ namespace FishQualityBonus
                 // Every fish counts as at least quality 1.
                 //
                 // Practically speaking, no quality-0 fish exists: ItemData.m_quality is
-                // declared as `= 1` and nothing in the game sets it lower. Theoretically one
-                // could reach us, because GetFirstRequiredItem scans qualities from 0 and our
-                // own counting mirrors it, so index 0 is a real slot rather than padding.
-                //
-                // A fish sitting there is still a fish, so it counts as 1. That is also what
-                // keeps TotalQuality from ever dropping below TotalFish.
+                // declared as `= 1` and nothing in the game sets it lower. IN THEORY, one
+                // could reach us, because Valheim's GetFirstRequiredItem scans qualities from 0 and our
+                // own counting mirrors it. Just in case, we handle that here by clamping the
+                // quality to 1 at a minimum. (A fish is still a fish, so it counts!)
                 int effectiveQuality = quality < 1 ? 1 : quality;
                 qualitySum += count * effectiveQuality;
             }
@@ -82,14 +80,11 @@ namespace FishQualityBonus
         /// </summary>
         /// <remarks>
         /// Two quality-1 fish give 2, a quality-1 plus a quality-2 gives 3, and two
-        /// quality-5 give 10. Deliberately just the fish, with no notion of a baseline
-        /// or a bonus in it - subtracting the baseline is the formula's business, and
-        /// <see cref="BonusRules.ComputeBonus"/> does it by taking TotalFish off this.
+        /// quality-5 give 10. No portion of the bonus computation formula is involved here;
+        /// <see cref="BonusRules.ComputeBonus"/> handles that.
         ///
         /// Every fish counts as at least quality 1, so this can never drop below
-        /// <see cref="TotalFish"/>. That is a structural guarantee rather than a checked
-        /// one - each fish adds at least 1 here and exactly 1 there - and it is what lets
-        /// ComputeBonus subtract the two without guarding against a negative.
+        /// <see cref="TotalFish"/>.
         /// </remarks>
         internal int TotalQuality => _totalQuality;
 
@@ -103,7 +98,7 @@ namespace FishQualityBonus
         internal int MaxQuality => _byQuality == null ? -1 : _byQuality.Length - 1;
 
         /// <summary>
-        /// How many fish of one quality this plan spends.
+        /// How many fish of the given quality this plan spends.
         /// </summary>
         /// <returns>The count, or 0 for a quality this plan says nothing about.</returns>
         /// <param name="quality">The quality to ask about. Out-of-range is safe, not an error.</param>
@@ -146,7 +141,7 @@ namespace FishQualityBonus
         /// </param>
         /// <param name="plan">
         /// Out parameter holding which fish to spend. See <see cref="FishPlan"/> for what you
-        /// can ask it. The empty plan when we return false.
+        /// can ask it. This holds an empty plan when we return false.
         /// </param>
         /// <remarks>
         /// The fill behavior pays attention to <see cref="ModConfig.FishToSpend"/>.

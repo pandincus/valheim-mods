@@ -6,11 +6,11 @@ namespace FishQualityBonus
     /// <summary>
     /// Everything about a recipe that decides whether it earns a bonus.
     ///
-    /// HasOutput is the one to check first. When it is false the recipe was null or had no
-    /// output item, and none of the other fields were filled in - they are C# defaults
-    /// rather than answers. Nothing reads them in that case, because
+    /// Check HasOutput first. When it is false the recipe was null or had no
+    /// output item, and none of the other fields are filled in.
+    /// Nothing reads them in that case, because
     /// <see cref="BonusRules.IneligibleReason(RecipeFacts)"/> tests HasOutput before
-    /// anything else, so keep that check first if you ever reorder them.
+    /// anything else, so we must keep that check first if we ever reorder them.
     /// </summary>
     internal struct RecipeFacts
     {
@@ -24,8 +24,8 @@ namespace FishQualityBonus
     }
 
     /// <summary>
-    /// Plain class with no Unity/BepInEx/Valheim dependencies, so that we can extract
-    /// out the decision-making logic and test it.
+    /// Plain logic class holding the rules with no Unity/BepInEx/Valheim dependencies,
+    /// so that we can extract out the decision-making logic and unit test it.
     /// </summary>
     internal static class BonusRules
     {
@@ -39,10 +39,9 @@ namespace FishQualityBonus
         /// settings returns 5, so you get 6 meals instead of 1.
         /// </returns>
         /// <param name="plan">
-        /// The fish this craft will spend, from <see cref="TryPickFish"/>. We price it on
-        /// the average size of those fish rather than on their total, so a recipe eating
-        /// three fish is not worth three times one eating a single fish. The empty plan
-        /// earns no size bonus at all.
+        /// The fish this craft will spend, from <see cref="FishPlan.TryPick(IList{int}, int, bool, bool, out FishPlan)"/>.
+        /// To properly handle mixed qualities, we price it on the average size of those fish rather than
+        /// on their total. If the plan is empty, we earn no bonus at all.
         /// </param>
         /// <param name="recipeAmount">
         /// What the recipe normally makes in one craft (Recipe.m_amount). Fish
@@ -67,29 +66,30 @@ namespace FishQualityBonus
         ///     levelsAboveBaseline = plan.TotalQuality - plan.TotalFish
         ///     size bonus          = levelsAboveBaseline * recipeAmount * perQualityLevel / plan.TotalFish
         ///
-        /// Taking TotalFish off TotalQuality is where quality 1 becomes the baseline that
-        /// earns nothing: every fish gives back one level, so a bag of quality-1 fish comes
-        /// to zero. That subtraction belongs here rather than inside the plan - a plan
-        /// reports what fish are being spent, and what counts as "free" is this formula's
-        /// rule, not a fact about fish.
+        /// We subtract TotalFish from TotalQuality so that quality 1 is a baseline:
+        /// every fish gives back one level, so a bag of quality-1 fish comes
+        /// to zero (and as a result, the bonus is, also, zero).
         ///
-        /// Practically speaking, when every fish is the same quality this is exactly what
-        /// the mod did before 0.2.0 and exactly what vanilla does for Fish (raw), because
-        /// levelsAboveBaseline is then fishCount * (quality - 1) and the division cancels.
-        /// Mixed qualities are the new case.
+        /// When every fish is the same quality, this behaves exactly like vanilla does for Fish (raw),
+        /// because levelsAboveBaseline is then fishCount * (quality - 1) and the division cancels.
+        /// 
+        /// This formula accommodates mixed qualities, which version 0.1.0 of this mod and vanilla
+        /// does NOT support.
         ///
-        /// Multiply-then-divide is deliberate: it keeps the precision that dividing first
-        /// would throw away. The division is integer, so it floors, and the mod can never
-        /// pay more for a mixed craft than for the same craft with every fish rounded up
-        /// to the better quality. Worked example - two trollfish, one quality-1 and one
-        /// quality-2, in a mead base that makes 1 at the default multiplier of 3:
-        /// TotalQuality is 3 and TotalFish is 2, so 1 * 1 * 3 / 2 = 1, and you brew 2
-        /// instead of 1. Two quality-2 would give 3, and two quality-1 would give 0.
+        /// We multiply and then divide on purpose: Integer division means we will floor,
+        /// and that way we will never pay more for a mixed craft than for the same craft
+        /// with every fish rounded up to the better quality.
+        /// 
+        /// Here's an example: two trollfish, one quality-1 and one quality-2,
+        /// in a mead base that makes 1 at the default multiplier of 3:
+        /// TotalQuality is 3 and TotalFish is 2, so size bonus = 1 * 1 * 3 / 2 = 1,
+        /// and you brew 2 (original plus the bonus) instead of 1.
+        /// If instead we had two quality-2 trollfish, we'd get a bonus of 3 (4 total),
+        /// and two quality-1 would give a bonus of 0 (just the original 1 as intended).
         ///
-        /// levelsAboveBaseline needs no guard: <see cref="FishPlan"/> counts every fish as
-        /// at least quality 1, so TotalQuality can never fall below TotalFish and the
-        /// subtraction cannot go negative. recipeAmount and speciesExtra still get clamped -
-        /// those come from game data rather than from us.
+        /// levelsAboveBaseline needs no subtraction guard: <see cref="FishPlan"/> counts
+        /// every fish as at least quality 1, so TotalQuality can never fall below TotalFish and the
+        /// subtraction cannot go negative.
         /// </remarks>
         internal static int ComputeBonus(FishPlan plan, int recipeAmount,
                                          int perQualityLevel, int speciesExtra)
@@ -125,13 +125,17 @@ namespace FishQualityBonus
         /// change when the player edits the config.
         /// </param>
         /// <remarks>
-        /// Since 0.2.0 this decides more than the payout. It also decides which recipes may
-        /// be crafted from mixed qualities, because <see cref="FishBonus.CanCraftMixed"/>
-        /// asks the same question. One notion of "a recipe this mod handles" is easier to
-        /// explain than two, and it guarantees we never unblock a craft we would then
-        /// decline to price - which would hand the player a mispriced payout.
+        /// Nothing about mixed qualities happens in here - but three callers ask this
+        /// question, so a rule added below reaches further than the payout:
+        /// <see cref="FishBonus.BonusFor"/> for what a craft pays,
+        /// <see cref="FishBonus.CanCraftMixed"/> for whether mismatched fish may be
+        /// crafted at all, and <see cref="FishRecipeReport"/> for the diagnostic log.
         ///
-        /// Note this does not cover consumption. <see cref="FishBonus.Choose"/> works from a
+        /// Marking a recipe ineligible therefore also re-imposes vanilla's matching-sizes
+        /// rule on it. That pairing is deliberate: it means the mod can never unblock a
+        /// craft it would then decline to price.
+        ///
+        /// Consumption is the exception. <see cref="FishBonus.Choose"/> works from a
         /// requirement list rather than a Recipe, because that is all
         /// Player.ConsumeResources is given, so FishToSpend still steers which fish gets
         /// eaten by an ineligible recipe that happens to use exactly one. That costs
