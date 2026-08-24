@@ -2,26 +2,29 @@
 
 ## 0.2.0 — 2026-08-22
 
-**You can now craft with fish of different sizes.** Vanilla will not let you: its
-requirement check looks at your biggest single-quality stack instead of your
-total, so two trollfish of different sizes cannot brew a Troll Endurance mead
-that needs two — even though the ingredient list shows 2 of 2 and looks perfectly
-happy. The Craft button just sits there greyed out. This release lifts that,
-for the recipes the mod already handles.
+**You can now craft with fish of different qualities!**
+
+Vanilla Valheim will not let you: its requirement check looks at the biggest
+single-quality stack instead of your total, so for example, two trollfish of
+different sizes cannot brew a Troll Endurance mead that needs two (even though
+the ingredient list shows 2 of 2 and looks perfectly happy).
+The Craft button just sits there greyed out.
+This version addresses that for the recipes the mod already handles.
+
+To do that, we had to modify the computation logic slightly.
 
 - A craft that spends fish of several sizes is paid out on their average, rounded
   down. Two trollfish, one quality-1 and one quality-2, now brew 2 mead bases
-  instead of being impossible.
-- `SmallestFirst` now genuinely saves your best catches. Before, a two-fish craft
-  with one small fish and three big ones would pass over the small one and spend
+  (so, a partial bonus) instead of being impossible.
+- `SmallestFirst` (if that's your desired setting) works better now, as a result.
+  Before, a two-fish craft with one small fish and three big ones would pass over the small one and spend
   two big ones, because it needed a single size that could cover the whole craft.
-  It now spends the small fish and only one big one.
+  Now, because this mod supports mixed, you'd spend the small fish and only one bigger one.
 - New `AllowMixedQualities` setting, on by default. Turn it off to keep vanilla's
-  rule about matching sizes and let the mod change only the payout.
+  rule about requiring the same sizes (the mod will then focus essentially the same as 0.1.0).
 
-Nothing changes for a craft where every fish is the same size — the payout is
-identical to 0.1.0. `ExcludedRecipes` and `IncludeMeadRecipes` still hand a
-recipe back to vanilla, mixed-size crafting included.
+Nothing else changes for a craft where every fish is the same size, so the payout is
+identical to 0.1.0.
 
 ## 0.1.0 — 2026-08-21
 

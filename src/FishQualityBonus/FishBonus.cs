@@ -161,21 +161,21 @@ namespace FishQualityBonus
 
         /// <summary>
         /// Decide whether a craft vanilla has just refused should be allowed after all,
-        /// because the player has enough fish once you stop insisting they are all the
-        /// same size.
+        /// because the player does, in fact, have enough fish once we stop insisting they are all the
+        /// same quality.
         /// </summary>
         /// <returns>
         /// True only when every requirement is covered, counting the fish across all
         /// qualities and everything else exactly the way vanilla does. False whenever
         /// we are not sure, so vanilla's refusal stands.
         /// </returns>
-        /// <param name="inventory">The player's inventory, read only.</param>
+        /// <param name="inventory">The player's inventory, we treat it here as read only.</param>
         /// <param name="recipe">The recipe whose Craft button vanilla has just greyed out.</param>
         /// <param name="qualityLevel">The quality of the item being crafted, not of the fish.</param>
         /// <param name="multiplier">1 normally, or the multi-craft amount when shift is held.</param>
         /// <remarks>
-        /// Vanilla's own gate is Player.HaveRequirementItems, and for each requirement it
-        /// takes the *largest single-quality stack* you own rather than the total:
+        /// Vanilla's own gate is <see cref="Player.HaveRequirementItems"/>, and for each
+        /// requirement it takes the *largest single-quality stack* you own rather than the total:
         ///
         ///     for (int j = 1; j &lt; maxQuality + 1; j++)
         ///         num3 = CountItems(name, j);
@@ -192,7 +192,8 @@ namespace FishQualityBonus
         /// Inventory.RemoveItem then walks straight across stacks of different qualities. So
         /// this really is only a gate, and it disagrees with the ingredient list the player
         /// is looking at - InventoryGui.SetupRequirement counts every quality, so the tile
-        /// reads 2 of 2 in white while the Craft button stays dead.
+        /// reads 2 of 2 in white while the Craft button stays dead. (It SHOULD show up as red
+        /// to make it clear to the player what's going on, but it does not)
         ///
         /// We copy vanilla's rule for the non-fish requirements rather than summing those
         /// too. Keeping the change to fish is the whole point, and any modded ingredient
@@ -201,8 +202,10 @@ namespace FishQualityBonus
         internal static bool CanCraftMixed(Inventory inventory, Recipe recipe,
                                            int qualityLevel, int multiplier)
         {
-            if (!ModConfig.AllowMixedQualities.Value) return false;
             if (inventory == null || recipe?.m_resources == null) return false;
+
+            // Allow mixing is turned off, so skip
+            if (!ModConfig.AllowMixedQualities.Value) return false;
 
             // Cheapest check that rules out almost everything goes first. This runs for
             // every recipe the player knows each time the crafting panel rebuilds its list,
@@ -222,16 +225,18 @@ namespace FishQualityBonus
                 int needed = req.GetAmount(qualityLevel) * multiplier;
                 if (needed <= 0) continue;
 
-                // CountItems with no quality argument counts every quality, which is the
-                // whole point here - and is exactly the number the ingredient list has
-                // been showing the player all along.
                 int have = ReferenceEquals(req, fishReq)
+                    // Unlike what vanilla does, we call Inventory.CountItems with no quality argument
+                    // which counts every quality, so that we actually take stock of the entirety of the
+                    // matching items (e.g. trollfish) and don't just focus on the max quality present.
                     ? inventory.CountItems(req.m_resItem.m_itemData.m_shared.m_name)
+                    // If this isn't a fish requirement, we just fall back to vanilla's logic of counting
                     : LargestStackByQuality(inventory, req);
 
                 if (have < needed) return false;
             }
 
+            // Passed all of our checks, so the player should meet the requirements! Enable the crafting button.
             return true;
         }
 
@@ -245,9 +250,15 @@ namespace FishQualityBonus
         /// <param name="inventory">The player's inventory, read only.</param>
         /// <param name="req">The ingredient to count.</param>
         /// <remarks>
-        /// Deliberately reproduces Player.HaveRequirementItems, including its quirk, so
-        /// that a requirement we are not trying to change is judged by exactly the rule
-        /// that just judged it. Note vanilla starts this scan at quality 1, not 0.
+        /// Deliberately reproduces <see cref="Player.HaveRequirementItems"/>, including its
+        /// quirk, so that a requirement we are not trying to change is judged by exactly the
+        /// rule that just judged it. That cref navigates - the build publicizes
+        /// assembly_valheim, so private game members resolve - and tools/decompile.ps1
+        /// writes readable source for it if you want to read the whole method.
+        ///
+        /// Note vanilla starts this scan at quality 1, not 0, unlike
+        /// <see cref="Player.GetFirstRequiredItem"/>, which starts at 0. The two disagree,
+        /// and this is the one we are mirroring.
         /// </remarks>
         private static int LargestStackByQuality(Inventory inventory, Piece.Requirement req)
         {
