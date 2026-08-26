@@ -177,15 +177,14 @@ namespace FishQualityBonus.Logic
         /// </param>
         internal static Dictionary<string, int> BuildSpeciesTable(IEnumerable<KeyValuePair<string, int>> entries)
         {
-            var table = new Dictionary<string, int>();
+            Dictionary<string, int> table = [];
             if (entries == null) return table;
 
             foreach (KeyValuePair<string, int> entry in entries)
             {
                 if (string.IsNullOrEmpty(entry.Key) || entry.Value <= 0) continue;
 
-                int existing;
-                if (table.TryGetValue(entry.Key, out existing) && existing >= entry.Value) continue;
+                if (table.TryGetValue(entry.Key, out int existing) && existing >= entry.Value) continue;
                 table[entry.Key] = entry.Value;
             }
             return table;
@@ -206,13 +205,13 @@ namespace FishQualityBonus.Logic
         /// </param>
         internal static HashSet<string> ParseExclusions(string raw)
         {
-            var set = new HashSet<string>();
+            HashSet<string> set = [];
             if (string.IsNullOrEmpty(raw)) return set;
 
             foreach (string part in raw.Split(','))
             {
                 string trimmed = part.Trim();
-                if (trimmed.Length > 0) set.Add(trimmed);
+                if (trimmed.Length > 0) _ = set.Add(trimmed);
             }
             return set;
         }

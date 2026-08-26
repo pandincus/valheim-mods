@@ -34,20 +34,20 @@ namespace FishQualityBonus
             // Enabled is a full kill switch, so with it off we don't even log.
             if (!ModConfig.Enabled.Value || !ModConfig.LogRecipeReport.Value) return false;
 
-            var sb = new StringBuilder();
-            sb.AppendLine("===== FishQualityBonus report (" + db.m_recipes.Count + " recipes, " +
+            StringBuilder sb = new();
+            _ = sb.AppendLine("===== FishQualityBonus report (" + db.m_recipes.Count + " recipes, " +
                           SpeciesBonusTable.Count + " species bonuses derived) =====");
 
             // Every fish, with the tier we scraped for it. If these all read +0
             // then the scrape found nothing and UseSpeciesBonus is doing nothing.
-            sb.AppendLine("-- Fish items --");
+            _ = sb.AppendLine("-- Fish items --");
             foreach (GameObject go in db.m_items)
             {
                 if (go == null) continue;
-                var drop = go.GetComponent<ItemDrop>();
-                var shared = drop?.m_itemData?.m_shared;
+                ItemDrop drop = go.GetComponent<ItemDrop>();
+                ItemDrop.ItemData.SharedData shared = drop?.m_itemData?.m_shared;
                 if (shared == null || shared.m_itemType != ItemDrop.ItemData.ItemType.Fish) continue;
-                sb.AppendLine("   " + go.name.PadRight(24) + " maxQuality=" + shared.m_maxQuality +
+                _ = sb.AppendLine("   " + go.name.PadRight(24) + " maxQuality=" + shared.m_maxQuality +
                               " scaleWeightByQuality=" + shared.m_scaleWeightByQuality +
                               " speciesBonus=+" + SpeciesBonusTable.ExtraFor(shared));
             }
@@ -57,20 +57,20 @@ namespace FishQualityBonus
             // worth being able to see the whole list rather than assuming it is
             // only Fish (raw) - m_requireOnlyOneIngredient is a general Recipe
             // feature and nothing stops another recipe using it.
-            sb.AppendLine("-- Recipes vanilla already scales (m_requireOnlyOneIngredient) --");
+            _ = sb.AppendLine("-- Recipes vanilla already scales (m_requireOnlyOneIngredient) --");
             int alreadyScaled = 0;
             foreach (Recipe recipe in db.m_recipes)
             {
                 if (recipe == null || recipe.m_item == null || !recipe.m_requireOnlyOneIngredient) continue;
                 alreadyScaled++;
-                sb.AppendLine("   " + recipe.m_item.gameObject.name.PadRight(24) +
+                _ = sb.AppendLine("   " + recipe.m_item.gameObject.name.PadRight(24) +
                               " x" + recipe.m_amount +
                               "   QualityMult=" + recipe.m_qualityResultAmountMultiplier +
                               "   ingredientChoices=" + (recipe.m_resources == null ? 0 : recipe.m_resources.Length));
             }
-            if (alreadyScaled == 0) sb.AppendLine("   (none)");
+            if (alreadyScaled == 0) _ = sb.AppendLine("   (none)");
 
-            sb.AppendLine("-- Recipes consuming a fish --");
+            _ = sb.AppendLine("-- Recipes consuming a fish --");
             foreach (Recipe recipe in db.m_recipes)
             {
                 if (recipe == null || recipe.m_item == null || recipe.m_resources == null) continue;
@@ -78,7 +78,7 @@ namespace FishQualityBonus
                 bool usesFish = false;
                 foreach (Piece.Requirement req in recipe.m_resources)
                 {
-                    var shared = req?.m_resItem?.m_itemData?.m_shared;
+                    ItemDrop.ItemData.SharedData shared = req?.m_resItem?.m_itemData?.m_shared;
                     if (shared != null && shared.m_itemType == ItemDrop.ItemData.ItemType.Fish)
                     {
                         usesFish = true;
@@ -88,28 +88,28 @@ namespace FishQualityBonus
                 if (!usesFish) continue;
 
                 string reason = FishBonus.IneligibleReason(recipe);
-                sb.AppendLine("   " + recipe.m_item.gameObject.name + " x" + recipe.m_amount +
+                _ = sb.AppendLine("   " + recipe.m_item.gameObject.name + " x" + recipe.m_amount +
                               "   OnlyOneIngredient=" + recipe.m_requireOnlyOneIngredient +
                               "   QualityMult=" + recipe.m_qualityResultAmountMultiplier +
                               "   Station=" + (recipe.m_craftingStation ? recipe.m_craftingStation.name : "(none)"));
                 ItemDrop.ItemData.SharedData outShared = recipe.m_item.m_itemData.m_shared;
-                sb.AppendLine("        output: type=" + outShared.m_itemType +
+                _ = sb.AppendLine("        output: type=" + outShared.m_itemType +
                               " maxStackSize=" + outShared.m_maxStackSize +
                               " equipable=" + recipe.m_item.m_itemData.IsEquipable() +
                               " mead=" + FishBonus.IsMeadRecipe(recipe));
-                sb.AppendLine("        --> " + (reason == null ? "BONUS APPLIES" : "skipped: " + reason));
+                _ = sb.AppendLine("        --> " + (reason == null ? "BONUS APPLIES" : "skipped: " + reason));
                 foreach (Piece.Requirement req in recipe.m_resources)
                 {
-                    var shared = req?.m_resItem?.m_itemData?.m_shared;
+                    ItemDrop.ItemData.SharedData shared = req?.m_resItem?.m_itemData?.m_shared;
                     if (shared == null) continue;
-                    sb.AppendLine("        needs " + req.m_resItem.gameObject.name.PadRight(20) +
+                    _ = sb.AppendLine("        needs " + req.m_resItem.gameObject.name.PadRight(20) +
                                   " x" + req.m_amount +
                                   " (type=" + shared.m_itemType + ", maxQuality=" + shared.m_maxQuality +
                                   ", extraOnlyOne=" + req.m_extraAmountOnlyOneIngredient + ")");
                 }
             }
 
-            sb.Append("===== end report =====");
+            _ = sb.Append("===== end report =====");
             FishQualityBonusPlugin.Log.LogInfo(sb.ToString());
             return true;
         }

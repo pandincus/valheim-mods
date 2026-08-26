@@ -23,7 +23,7 @@ namespace FishQualityBonus
     /// </summary>
     internal static class SpeciesBonusTable
     {
-        private static Dictionary<string, int> _extraByFish = new Dictionary<string, int>();
+        private static Dictionary<string, int> _extraByFish = [];
 
         /// <summary>How many species we found a bonus for. The report prints this.</summary>
         internal static int Count => _extraByFish.Count;
@@ -45,7 +45,7 @@ namespace FishQualityBonus
         /// </param>
         internal static void Build(ObjectDB db)
         {
-            var entries = new List<KeyValuePair<string, int>>();
+            List<KeyValuePair<string, int>> entries = [];
 
             if (db?.m_recipes != null)
             {

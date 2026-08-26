@@ -20,7 +20,7 @@ namespace FishQualityBonus.Logic
     /// Being a readonly struct also means wrapping costs no extra allocation, and since this
     /// is invoked from the crafting panel itself (every frame), that does matter a little.
     ///
-    /// This struct wraps an array indexed by quality (<see cref="FishPlan._byQuality"/>).
+    /// This struct wraps an array indexed by quality (<see cref="_byQuality"/>).
     /// This mirrors how the game itself manages qualities, but I wanted to hide some of the weirdness
     /// of the array inside the struct to make it a bit more ergonomic for callers to deal with.
     /// </remarks>
@@ -30,8 +30,6 @@ namespace FishQualityBonus.Logic
         // kept even though no real fish has quality 0, so that index and quality always
         // match, and because vanilla scans from 0 as well.
         private readonly int[] _byQuality;
-        private readonly int _totalFish;
-        private readonly int _totalQuality;
 
         /// <summary>
         /// Wrap a per-quality tally and total it up.
@@ -68,12 +66,12 @@ namespace FishQualityBonus.Logic
                 int effectiveQuality = quality < 1 ? 1 : quality;
                 qualitySum += count * effectiveQuality;
             }
-            _totalFish = fish;
-            _totalQuality = qualitySum;
+            TotalFish = fish;
+            TotalQuality = qualitySum;
         }
 
         /// <summary>How many fish this plan spends in total.</summary>
-        internal int TotalFish => _totalFish;
+        internal int TotalFish { get; }
 
         /// <summary>
         /// The qualities of the fish this plan spends, added up.
@@ -86,7 +84,7 @@ namespace FishQualityBonus.Logic
         /// Every fish counts as at least quality 1, so this can never drop below
         /// <see cref="TotalFish"/>.
         /// </remarks>
-        internal int TotalQuality => _totalQuality;
+        internal int TotalQuality { get; }
 
         /// <summary>
         /// The highest quality this plan can speak for, which is the fish's own max quality.
@@ -158,7 +156,7 @@ namespace FishQualityBonus.Logic
             if (countsByQuality == null || countsByQuality.Count == 0 || needed <= 0) return false;
 
             int last = countsByQuality.Count - 1;
-            var taken = new int[countsByQuality.Count];
+            int[] taken = new int[countsByQuality.Count];
             int remaining = needed;
 
             for (int i = 0; i <= last; i++)
