@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace FishQualityBonus
+namespace FishQualityBonus.Logic
 {
     /// <summary>
     /// Everything about a recipe that decides whether it earns a bonus.

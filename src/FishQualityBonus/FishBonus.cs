@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using FishQualityBonus.Logic;
 
 namespace FishQualityBonus
 {

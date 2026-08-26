@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace FishQualityBonus
+namespace FishQualityBonus.Logic
 {
     /// <summary>
     /// Which fish a craft will spend, and at which qualities.

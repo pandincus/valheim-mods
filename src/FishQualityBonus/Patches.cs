@@ -1,3 +1,4 @@
+using FishQualityBonus.Logic;
 using HarmonyLib;
 
 namespace FishQualityBonus

@@ -1,4 +1,4 @@
-using FishQualityBonus;
+using FishQualityBonus.Logic;
 
 namespace FishQualityBonusTests;
 
