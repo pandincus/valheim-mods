@@ -14,4 +14,16 @@
     <BepInExPlugins>$(BepInExProfile)\BepInEx\plugins</BepInExPlugins>
   </PropertyGroup>
 
+  <!-- We do not want the XML file; we want the check that producing it turns on.
+       Without this, <see cref="..."/> links are never validated. Several of ours
+       point at private Valheim members, which resolve only because the build
+       publicizes assembly_valheim - so an Iron Gate rename would rot them
+       silently. CS1591 stays off: the goal is crefs that resolve, not a doc
+       comment demanded on every public member. Nothing extra ships either way,
+       because package.ps1 names the files it zips. -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
 </Project>

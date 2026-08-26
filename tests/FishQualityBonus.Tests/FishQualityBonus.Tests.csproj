@@ -6,6 +6,12 @@
     <!-- Matches the mod project, which targets net472 and is not annotated. -->
     <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- Overrides Directory.Build.props, which turns this on to get crefs
+         validated. That check is meaningless here: this project is a partial
+         compilation of the mod's source, so a cref to ModConfig or Recipe
+         cannot resolve even though it is perfectly correct in the real
+         assembly. Leaving it on would bury genuine rot under false positives. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
   <!--
