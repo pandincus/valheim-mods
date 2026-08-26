@@ -29,7 +29,7 @@ namespace FishQualityBonus
     /// </summary>
     internal static class FishBonus
     {
-        private static HashSet<string> _excluded = new HashSet<string>();
+        private static HashSet<string> _excluded = [];
         private static string _excludedRaw;
 
         /// <summary>
@@ -111,7 +111,7 @@ namespace FishQualityBonus
             ItemDrop.ItemData.SharedData fish = fishReq.m_resItem.m_itemData.m_shared;
 
             int maxQuality = fish.m_maxQuality < 1 ? 1 : fish.m_maxQuality;
-            var counts = new int[maxQuality + 1];
+            int[] counts = new int[maxQuality + 1];
             for (int quality = 0; quality <= maxQuality; quality++)
             {
                 counts[quality] = inventory.CountItems(fish.m_name, quality);
@@ -311,7 +311,7 @@ namespace FishQualityBonus
         /// <param name="recipe">The recipe to describe.</param>
         private static RecipeFacts Describe(Recipe recipe)
         {
-            var facts = new RecipeFacts();
+            RecipeFacts facts = new();
             if (recipe == null || recipe.m_item == null) return facts;   // HasOutput stays false
 
             facts.HasOutput = true;

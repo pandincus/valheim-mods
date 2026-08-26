@@ -24,6 +24,10 @@
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- Without this the style rules in .editorconfig only ever run in an
+         editor, so they are advisory and drift back. Building is the thing
+         everyone does, so that is where the check belongs. -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 
 </Project>

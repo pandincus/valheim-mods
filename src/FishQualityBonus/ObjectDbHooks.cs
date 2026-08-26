@@ -21,11 +21,17 @@ namespace FishQualityBonus
 
         [HarmonyPostfix]
         [HarmonyPatch(typeof(ObjectDB), "Awake")]
-        private static void AfterAwake(ObjectDB __instance) => Refresh(__instance);
+        private static void AfterAwake(ObjectDB __instance)
+        {
+            Refresh(__instance);
+        }
 
         [HarmonyPostfix]
         [HarmonyPatch(typeof(ObjectDB), nameof(ObjectDB.CopyOtherDB))]
-        private static void AfterCopyOtherDB(ObjectDB __instance) => Refresh(__instance);
+        private static void AfterCopyOtherDB(ObjectDB __instance)
+        {
+            Refresh(__instance);
+        }
 
         /// <summary>
         /// Rebuild whatever depends on the recipe list, and write the report if it is due.

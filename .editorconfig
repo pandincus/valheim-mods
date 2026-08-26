@@ -1,0 +1,44 @@
+# Code style for every project in this repo. The .NET SDK's own analyzers
+# enforce it; Directory.Build.props sets EnforceCodeStyleInBuild so it is
+# checked at build time rather than only in an editor.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.{csproj,props,targets}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+# Take the SDK defaults wholesale rather than curating a house style. There is
+# no long-standing hand-tuned style here to protect, so the community default
+# is the one that needs no justifying and that a newcomer already knows.
+dotnet_analyzer_diagnostic.category-Style.severity = warning
+
+# Off, permanently. Unity calls Awake and OnDestroy by reflection, and Harmony
+# calls Prefix/Postfix the same way, so this rule reports the most load-bearing
+# methods in a BepInEx plugin as dead code. It flagged four such members and was
+# wrong about all four.
+dotnet_diagnostic.IDE0051.severity = none
+
+# Two departures from the defaults, both about a run of guard clauses reading as
+# a table. Aligned one-liners let you scan the conditions down the left and the
+# results down the right; wrapping each in braces turns four scannable lines
+# into twenty and loses that.
+csharp_prefer_braces = when_multiline
+
+# Same reason from the other side. IDE0046 rewrites a trailing guard clause plus
+# its return as one long ternary, which reads worse than the two lines it
+# replaces and breaks the shape of the block above it.
+dotnet_diagnostic.IDE0046.severity = none
