@@ -11,7 +11,7 @@ TestResults/
 decompiled/
 
 # Working notes kept out of the public repo on purpose.
-NOTES.md
+NOTES*.md
 CLAUDE.md
 
 # Packaged mod archives, produced for Thunderstore uploads
