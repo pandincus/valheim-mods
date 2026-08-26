@@ -1,5 +1,4 @@
 using System.Text;
-using FishQualityBonus.Logic;
 using UnityEngine;
 
 namespace FishQualityBonus
