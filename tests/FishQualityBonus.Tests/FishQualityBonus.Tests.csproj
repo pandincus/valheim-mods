@@ -10,18 +10,17 @@
 
   <!--
     The mod targets net472 and references Unity and BepInEx, so this project
-    cannot reference it directly. Instead it compiles the source files that
-    have no such dependencies. That constraint is the point: if either of these
-    ever acquires a Unity or BepInEx using, this project stops building, which
-    is exactly the guard rail we want.
+    cannot reference it directly. Instead it compiles the mod's Logic/ folder,
+    which holds the files that have no such dependencies. That constraint is the
+    point: if anything under Logic/ ever acquires a Unity or BepInEx using, this
+    project stops building, which is exactly the guard rail we want.
 
-    Listed one by one on purpose - a new pure-logic file has to be added here
-    deliberately, rather than being swept in by a wildcard. If that list ever
-    grows past a handful, move them under a Logic/ folder and glob that instead.
+    The glob is deliberate, and so is the folder. Moving a file into Logic/ is
+    the act of promising it stays free of game types - nothing gets swept in by
+    living next to the patches.
   -->
   <ItemGroup>
-    <Compile Include="../../src/FishQualityBonus/BonusRules.cs" Link="BonusRules.cs" />
-    <Compile Include="../../src/FishQualityBonus/FishPlan.cs" Link="FishPlan.cs" />
+    <Compile Include="../../src/FishQualityBonus/Logic/**/*.cs" LinkBase="Logic" />
   </ItemGroup>
 
   <ItemGroup>
