@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <!-- Off to match the mod, which targets net472 and does not enable it. The
+         Logic/ files are compiled by both projects, so the two have to agree on
+         what is implicitly in scope - otherwise a file can lean on an implicit
+         using here and fail to compile there. It also stops IDE0005 reporting
+         the usings those files genuinely need as unnecessary. -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- Matches the mod project, which targets net472 and is not annotated. -->
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+    <!-- Silence just the cref check, not doc generation as a whole. This project
+         is a partial compilation of the mod's source, so a cref to a type that
+         lives outside Logic/ cannot resolve here even though it is perfectly
+         correct in the real assembly. Turning GenerateDocumentationFile off
+         instead would also disable IDE0005, because that rule needs the doc file
+         to see which usings are reachable. -->
+    <NoWarn>$(NoWarn);CS1574</NoWarn>
+  </PropertyGroup>
+
+  <!--
+    The mod targets net472 and references Unity and BepInEx, so this project
+    cannot reference it directly. Instead it compiles the mod's Logic/ folder,
+    which holds the files that have no such dependencies. That constraint is the
+    point: if anything under Logic/ ever acquires a Unity or BepInEx using, this
+    project stops building, which is exactly the guard rail we want.
+
+    The glob is deliberate, and so is the folder. Moving a file into Logic/ is
+    the act of promising it stays free of game types - nothing gets swept in by
+    living next to the patches.
+  -->
+  <ItemGroup>
+    <Compile Include="../../src/ChattyBones/Logic/**/*.cs" LinkBase="Logic" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
