@@ -8,13 +8,16 @@ One repository, one folder per mod, shared tooling at the root.
 | Mod | What it does |
 |---|---|
 | [FishQualityBonus](src/FishQualityBonus/) | Recipes that consume a whole fish — Fish 'n' Bread and the fish mead bases — pay out more when you spend a bigger fish. |
+| [ChattyBones](src/ChattyBones/) | Dead Raiser skeletons talk: they call out targets, yelp when hit, and grumble when idle. Not released yet. |
 
 ## Layout
 
 ```
 ValheimMods.sln              every mod and its tests
 Directory.Build.props        game and BepInEx paths, shared by all projects
+.editorconfig                code style, enforced at build
 src/<ModName>/               one folder per mod, with its own README
+src/<ModName>/Logic/         the parts with no Unity or BepInEx dependency
 tests/<ModName>.Tests/       xUnit tests for that mod
 tools/                       shared scripts (deploy, log watcher, decompiler)
 .vscode/                     editor tasks

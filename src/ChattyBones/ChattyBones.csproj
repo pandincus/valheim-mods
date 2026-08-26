@@ -1,0 +1,81 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Valheim runs on Unity's Mono runtime, which speaks .NET Framework.
+         net472 is the usual target for BepInEx 5 Valheim plugins. -->
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>ChattyBones</AssemblyName>
+    <RootNamespace>ChattyBones</RootNamespace>
+    <!-- Keep in step with PluginVersion in Plugin.cs. BepInPlugin needs a compile-time
+         constant, so the version genuinely has to be written down twice. -->
+    <Version>0.1.0</Version>
+    <LangVersion>latest</LangVersion>
+    <DebugType>portable</DebugType>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <!-- Copy the built DLL straight into the BepInEx profile. -->
+    <Deploy Condition="'$(Deploy)' == ''">true</Deploy>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Supplies net472 reference assemblies so this builds without Visual
+         Studio or a .NET Framework targeting pack installed. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- Rewrites the game reference so private members are visible to the
+         compiler. Harmony can already reach them at runtime; this just stops
+         the compiler complaining. Nothing extra ships in our DLL. -->
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Game + loader assemblies. Private=false means "compile against it, but
+       don't copy it next to my DLL" - the game already has all of these.
+       Kept to what the code actually uses; add more as we need them. Note that
+       Localization and ZInput live in assembly_guiutils / assembly_utils rather
+       than assembly_valheim, which is worth knowing before hunting for them. -->
+  <ItemGroup>
+    <Reference Include="assembly_valheim" Publicize="true">
+      <HintPath>$(ValheimManaged)\assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(ValheimManaged)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ValheimManaged)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>$(BepInExCore)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(BepInExCore)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="DeployToBepInEx" AfterTargets="Build"
+          Condition="'$(Deploy)' == 'true' AND Exists('$(BepInExPlugins)')">
+    <PropertyGroup>
+      <DeployDir>$(BepInExPlugins)\$(AssemblyName)</DeployDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(DeployDir)" />
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)$(AssemblyName).pdb"
+          DestinationFolder="$(DeployDir)" ContinueOnError="true" />
+    <Message Importance="high" Text="Deployed $(AssemblyName).dll -&gt; $(DeployDir)" />
+
+    <!-- Thunderstore installs land in a "<team>-<Package>" folder, so they sit
+         alongside ours rather than replacing it. BepInEx would then find two
+         DLLs claiming the same plugin GUID, load one, and skip the other - and
+         which one wins is load order, so you cannot tell what you are testing.
+         It fails quietly, so say something here. -->
+    <ItemGroup>
+      <ThunderstoreCopy Include="$(BepInExPlugins)\*-$(AssemblyName)\$(AssemblyName).dll" />
+    </ItemGroup>
+    <Warning Condition="'@(ThunderstoreCopy)' != ''"
+             Text="A Thunderstore-installed copy is also present (@(ThunderstoreCopy)). BepInEx will skip one of the two - run tools/undeploy.ps1, or uninstall the mod in Thunderstore Mod Manager." />
+  </Target>
+
+</Project>
