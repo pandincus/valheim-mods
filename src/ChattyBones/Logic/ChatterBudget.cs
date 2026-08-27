@@ -3,157 +3,33 @@ using System.Collections.Generic;
 namespace ChattyBones.Logic
 {
     /// <summary>
-    /// The knobs that decide how talkative a squad is.
-    /// </summary>
-    /// <remarks>
-    /// These all come from the BepInEx config in the real mod, but nothing here
-    /// knows that - the whole point of this folder is that it runs without a game
-    /// attached. The tests just build one of these by hand.
-    ///
-    /// Immutable, and that is load-bearing rather than tidiness. To change a
-    /// setting, build a whole new one and assign
-    /// <see cref="ChatterBudget.Settings"/>. BepInEx's config file-watcher does not
-    /// raise SettingChanged on Unity's main thread, so an edit made there runs while
-    /// the game is somewhere in the middle of a frame. Swapping one reference is a
-    /// single atomic write and a reader sees either the old settings or the new
-    /// ones, whole. Editing in place would let a reader catch a half-rebuilt set -
-    /// which shows up as a skeleton ignoring an event for exactly one frame, roughly
-    /// the least debuggable symptom I can imagine.
-    ///
-    /// This started out as plain mutable fields with a comment asking nicely. A
-    /// review pointed out that the one operation the comment forbade was also the
-    /// easiest thing the type offered, which is a fair definition of a bad contract.
-    ///
-    /// (Get-only properties rather than `init` accessors because the mod targets
-    /// net472, where `init` needs an IsExternalInit shim that the net10.0 test
-    /// project would then define twice.)
-    ///
-    /// The defaults are a starting guess and I fully expect to move them after
-    /// watching an actual squad. Five skeletons is a lot of mouths.
-    /// </remarks>
-    internal sealed class ChatterSettings
-    {
-        private readonly HashSet<ChatterEvent> _disabled;
-
-        /// <summary>Build a set of settings. Everything has a default, so name only what you are changing.</summary>
-        /// <param name="minGapSeconds">How long the whole squad stays quiet after any one of them speaks.</param>
-        /// <param name="preemptGapSeconds">
-        /// The floor that even an important line respects. A death cry may cut in on
-        /// somebody's idle muttering, but not in the same instant - two bits of text
-        /// appearing together are two bits of text nobody reads.
-        /// </param>
-        /// <param name="speakerCooldownSeconds">
-        /// How long one skeleton waits before speaking again. Deliberately much
-        /// longer than the squad gap: the group as a whole can keep up a conversation
-        /// while any individual in it stays fairly quiet, which reads as a group of
-        /// people rather than one person with a lot to say.
-        /// </param>
-        /// <param name="squadEchoWindowSeconds">
-        /// How long one remark about a particular thing stops everyone else remarking
-        /// on the same thing. The one that matters most in practice - send five
-        /// skeletons at one greydwarf and all five acquire it inside the same second.
-        /// </param>
-        /// <param name="disabledEvents">Events the player has switched off, or null for none. Copied, not held.</param>
-        internal ChatterSettings(
-            float minGapSeconds = 2.5f,
-            float preemptGapSeconds = 0.5f,
-            float speakerCooldownSeconds = 8f,
-            float squadEchoWindowSeconds = 6f,
-            IEnumerable<ChatterEvent> disabledEvents = null)
-        {
-            MinGapSeconds = minGapSeconds;
-            PreemptGapSeconds = preemptGapSeconds;
-            SpeakerCooldownSeconds = speakerCooldownSeconds;
-            SquadEchoWindowSeconds = squadEchoWindowSeconds;
-            _disabled = disabledEvents == null ? [] : [.. disabledEvents];
-        }
-
-        /// <summary>How long the whole squad stays quiet after any one of them speaks.</summary>
-        internal float MinGapSeconds { get; }
-
-        /// <summary>The floor that even an important line respects.</summary>
-        internal float PreemptGapSeconds { get; }
-
-        /// <summary>How long one skeleton waits before it is allowed to speak again.</summary>
-        internal float SpeakerCooldownSeconds { get; }
-
-        /// <summary>How long one remark about a thing stops everyone else remarking on it.</summary>
-        internal float SquadEchoWindowSeconds { get; }
-
-        /// <summary>Has the player switched this event off?</summary>
-        /// <param name="kind">The event to check.</param>
-        /// <returns>True if nobody should react to it at all.</returns>
-        /// <remarks>
-        /// A method rather than an exposed set, so that "I am sick of them announcing
-        /// every greydwarf" is one lookup in one place and there is nothing for a
-        /// caller to accidentally edit.
-        /// </remarks>
-        internal bool IsDisabled(ChatterEvent kind)
-        {
-            return _disabled.Contains(kind);
-        }
-    }
-
-    /// <summary>
     /// Decides whether a skeleton is allowed to say something right now.
     /// </summary>
     /// <remarks>
-    /// This is the part that makes the mod bearable rather than the part that makes
-    /// it funny. A Dead Raiser squad is up to five skeletons, and if every one of
-    /// them reacts to everything, you get an unreadable wall of text and the joke is
-    /// dead inside a minute. So every line has to get past four separate checks
-    /// before anyone opens their mouth.
+    /// This is what makes the mod bearable rather than what makes it funny. Five
+    /// skeletons all reacting to everything is an unreadable wall of text, so a line
+    /// has to get past four checks before anyone opens their mouth.
     ///
-    /// Asking and booking are two calls on purpose - <see cref="CanClaim"/> then
-    /// <see cref="Commit"/>. It is tempting to have one method that answers and
-    /// records in one go, and that is what this did first, but the caller cannot know
-    /// there is anything to *say* until after it has asked: the pack may have no
-    /// lines for that personality and event, or every line it does have may want a
-    /// {target} we have not got. A silent event would then have burned the squad's
-    /// gap, the skeleton's cooldown and an echo lock on that subject, for a line
-    /// nobody heard. With a half-written pack - which the shared-personality fallback
-    /// deliberately invites - the squad would just go quieter than the numbers say,
-    /// and nothing in the config would explain why.
+    /// We decide *whether* someone speaks; <see cref="LineChooser"/> decides *what*.
     ///
-    /// Doing it the other way round, choosing a line first and asking afterwards, is
-    /// worse: you would pay for line choice on every event that gets refused, which
-    /// is most of them.
+    /// Asking and booking are separate calls - see <see cref="CanClaim"/>.
     ///
-    /// Note the split of responsibilities too: we decide *whether* someone speaks,
-    /// and <see cref="LineChooser"/> decides *what* they say. Keeping "don't repeat
-    /// the same gag twice running" over there means this class only ever deals in
-    /// timestamps and identifiers.
-    ///
-    /// Everything is passed in - the current time, who is asking, what about. There
-    /// is no clock in here and no game state, so a test can run a whole afternoon of
-    /// skeleton chatter in a few microseconds by just handing it larger numbers.
+    /// There is no clock and no game state in here; the caller passes the time in,
+    /// so a test can cover an afternoon of chatter in microseconds.
     /// </remarks>
     internal sealed class ChatterBudget
     {
         /// <summary>When each skeleton last spoke, keyed by its stable id.</summary>
         /// <remarks>
-        /// This and <see cref="_lastRemarkBySubject"/> grow for the life of a session
-        /// and are never trimmed. That is deliberate: there used to be a Prune pass
-        /// here and it was wrong twice over.
+        /// Never trimmed, and neither is <see cref="_lastRemarkBySubject"/>. One
+        /// entry is 8 bytes of key and 4 of value, so a six-hour session summoning a
+        /// skeleton every ten seconds costs about 50KB - and dead skeletons are the
+        /// cheap case, since they stop adding entries. The subject map is bounded by
+        /// how many kinds of creature the game has.
         ///
-        /// Wrong on cost. This is not a leak worth code. This map holds one small
-        /// entry per skeleton you ever summon, and the other one entry per distinct
-        /// (event, creature type) pair - which the game itself bounds, since there
-        /// are only so many kinds of creature. Even an absurd session lands in the
-        /// tens of kilobytes. See the subject parameter on <see cref="CanClaim"/> for
-        /// the one thing that would break that bound.
-        ///
-        /// Wrong on correctness, once settings became live. Entries were dropped
-        /// against the window as it stood at the time, so raising the speaker
-        /// cooldown from 8 seconds to 30 mid-session let a skeleton that spoke 10
-        /// seconds ago speak again immediately, quietly contradicting the setting the
-        /// player had just changed.
-        ///
-        /// It also could not be tested. Deleting the whole method changed no
-        /// observable behaviour, which is what you would expect of code whose only
-        /// job is to forget things that no longer affect any answer - and is a decent
-        /// sign the code should not exist. <see cref="TrackedSpeakers"/> exists so a
-        /// regression guard can fail if somebody puts it back.
+        /// There was a Prune pass. It was dropped because trimming against the
+        /// *current* window meant raising the speaker cooldown mid-session was
+        /// silently ignored for anyone who had already spoken.
         /// </remarks>
         private readonly Dictionary<long, float> _lastSpokeBySpeaker = [];
 
@@ -203,22 +79,19 @@ namespace ChattyBones.Logic
         /// </param>
         /// <param name="kind">What just happened.</param>
         /// <param name="subject">
-        /// What the event was *about*, when that makes sense - the prefab hash of the
-        /// greydwarf it just charged at, or whatever hit you. Pass 0 for events that
-        /// are not about anything in particular, like Hurt or Idle, and the squad echo
-        /// check below is skipped for them.
+        /// What the remark is about, as a prefab hash - the greydwarf being charged,
+        /// or whatever just hit you. It exists so two skeletons noticing the same
+        /// thing produce one remark rather than two. Pass 0 when the event is not
+        /// about anything (Hurt, Idle) and the echo check is skipped.
         ///
-        /// **This must identify a kind of thing, never a particular one.** A prefab
-        /// hash is per creature type, and that is the only reason
-        /// <see cref="TrackedSubjects"/> is bounded and we can get away with never
-        /// forgetting anything. CompanionHurt is the trap: its subject is naturally
-        /// another skeleton, and folding an instance id in here would make this map
-        /// grow without limit for the whole session. Use the companion's prefab hash
-        /// and carry which one it was somewhere else.
+        /// It must name a *kind* of thing, never a particular one. That is what keeps
+        /// <see cref="TrackedSubjects"/> bounded. CompanionHurt is the trap - its
+        /// subject is naturally one specific skeleton - so use the companion's prefab
+        /// hash here and carry which one it was separately.
         /// </param>
         /// <param name="now">
-        /// Seconds, from the game clock. Only differences matter, so any monotonic
-        /// source will do and the origin is irrelevant.
+        /// Seconds from the game clock (Unity's Time.time), not an epoch timestamp -
+        /// the origin is arbitrary. Only differences are ever used.
         /// </param>
         /// <remarks>
         /// The four checks run cheapest-first, and each one can only refuse:
@@ -229,16 +102,11 @@ namespace ChattyBones.Logic
         /// 4. Has *anyone* spoken too recently - and if so, is this important
         ///    enough to barge in anyway?
         ///
-        /// **Resolve one claim before asking about another.** Because asking does not
-        /// book anything, asking for two skeletons back to back will happily say yes
-        /// twice - and if you then let both speak, the squad gap and the echo window
-        /// have both been defeated. That is not hypothetical: the TargetAcquired poll
-        /// runs over the whole squad several times a second, so "collect everyone
-        /// whose target changed, ask for each, then say them all" is the natural way
-        /// to write it and is wrong.
-        ///
-        /// Ask, then either <see cref="Commit"/> or give up, then move on to the next
-        /// skeleton.
+        /// **Resolve one claim before asking about another.** Asking books nothing, so
+        /// asking for two skeletons in a row says yes twice, and letting both speak
+        /// defeats the squad gap and the echo window. The TargetAcquired poll loops
+        /// over the squad, so the wrong shape is also the obvious one: ask, then
+        /// <see cref="Commit"/> or give up, then move on.
         /// </remarks>
         internal bool CanClaim(long speakerId, ChatterEvent kind, int subject, float now)
         {
@@ -356,14 +224,20 @@ namespace ChattyBones.Logic
         /// <param name="kind">What happened.</param>
         /// <param name="subject">What it happened to. Never 0 here - callers check first.</param>
         /// <remarks>
-        /// Both parts matter. Keying on the subject alone would mean one skeleton
-        /// announcing a greydwarf silences a different skeleton killing that same
-        /// greydwarf a moment later, which are two different remarks and both worth
-        /// hearing.
+        /// Both parts matter. Keying on the subject alone would mean announcing a
+        /// greydwarf silences a different skeleton killing that same greydwarf a
+        /// moment later, and those are two remarks worth hearing.
         ///
-        /// The cast to uint before widening is load-bearing: prefab hashes are
-        /// happily negative, and without it a negative hash sign-extends and stomps
-        /// all over the event bits.
+        /// Worked example. TargetAcquired is event 1, and say the creature's prefab
+        /// hash is -2:
+        ///
+        ///     (long)1 &lt;&lt; 32   0x0000_0001_0000_0000
+        ///     (uint)-2         0x0000_0000_FFFF_FFFE
+        ///     OR               0x0000_0001_FFFF_FFFE
+        ///
+        /// The uint cast is doing real work there. Drop it and (long)-2 is
+        /// 0xFFFF_FFFF_FFFF_FFFE, which floods the event half: Killed about the same
+        /// creature gives the identical key, so one remark silences the other.
         /// </remarks>
         private static long SubjectKey(ChatterEvent kind, int subject)
         {

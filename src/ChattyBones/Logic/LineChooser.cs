@@ -7,41 +7,18 @@ namespace ChattyBones.Logic
     /// Picks what a skeleton actually says, and never says it twice running.
     /// </summary>
     /// <remarks>
-    /// Only the client that owns a skeleton runs this. Everyone else takes the seed
-    /// it settled on and does a plain <see cref="LinePack.TryPick"/> with no state
-    /// of their own, which is the arrangement that keeps two players seeing the same
-    /// line.
+    /// Only the client owning a skeleton runs this; everyone else takes the seed
+    /// and does a stateless <see cref="LinePack.TryPick"/>.
     ///
-    /// That arrangement is the reason the "don't repeat yourself" memory lives here
-    /// rather than at the point of picking a line, and it is worth spelling out
-    /// because the obvious design is wrong. Suppose every client kept its own note
-    /// of what it had heard and skipped a line that matched. Two clients hold
-    /// different notes, because they see different subsets of what happens - you
-    /// have been stood next to the squad for a minute, your friend just ran over
-    /// from the next biome and a ZDO only replicates to clients with the zone
-    /// loaded. The same seed arrives at both, you skip the line it lands on and
-    /// slide to the next one, your friend does not, and now the same skeleton is
-    /// saying two different things on two screens. Which is precisely what sending a
-    /// seed was meant to avoid.
+    /// The no-repeat memory has to live here rather than in the pack. Clients see
+    /// different subsets of what happens - a ZDO only replicates to clients with the
+    /// zone loaded - so if each kept its own "heard lately" list they would skip
+    /// different lines and the same skeleton would say two different things on two
+    /// screens. The owner avoids repeats when it *chooses*; everyone else just looks
+    /// the seed up.
     ///
-    /// So instead the owner does the avoiding when it *chooses*, and broadcasts a
-    /// seed that reproduces its choice. No-repeat is judged from the point of view
-    /// of the player actually stood there watching, which is the right vantage point
-    /// anyway. In single player, where the owner is the only viewer, it is exactly
-    /// correct.
-    ///
-    /// One of these serves the whole squad. Hearing "My bones are itchy" twice
-    /// running is just as tiresome when two different skeletons say it, so Phase 4
-    /// must share a single chooser rather than giving each skeleton its own.
-    ///
-    /// This used to remember the last several lines and roll seeds until it found an
-    /// unheard one. That was more code, one more config knob, and worse: with eight
-    /// rolls there was a small chance of every roll landing on the line just said,
-    /// so the one promise the class made held about 99.7% of the time. Asking the
-    /// pack how many lines there are and walking them costs less and makes the
-    /// promise structural. If it ever feels repetitive with a real pack in real play,
-    /// dealing from a shuffled deck is the natural next step - but that is a
-    /// judgement to make against actual gameplay, not a hunch.
+    /// One chooser serves the whole squad. Hearing a line twice running is just as
+    /// tiresome from two different skeletons.
     /// </remarks>
     internal sealed class LineChooser
     {
@@ -76,18 +53,13 @@ namespace ChattyBones.Logic
         /// <param name="seed">The seed to broadcast, so others reach this same line.</param>
         /// <param name="line">The finished line, tokens filled in.</param>
         /// <remarks>
-        /// We start at a random offset and walk the whole group from there, taking
-        /// the first line that renders and is not the one just said. Every line is
-        /// examined at most once, so this cannot fail through bad luck the way
-        /// rolling seeds could: if any usable line exists, we find it.
+        /// Start at a random offset, walk the group, take the first line that renders
+        /// and is not the one just said. Every line is examined at most once, so if a
+        /// usable line exists we find it - which matters for a group where only one
+        /// line in ten can be rendered right now.
         ///
-        /// That matters most for a group where, say, one line in ten is renderable
-        /// and the other nine want a {target} we have not got. Rolling ten times and
-        /// missing was entirely possible, and the skeleton would go silent for no
-        /// reason a player could ever work out.
-        ///
-        /// Repeating is allowed only as a last resort, when the line just said is the
-        /// single usable one in the group. Falling silent would be worse.
+        /// Repeating is allowed only when the line just said is the single usable one.
+        /// Falling silent would be worse.
         /// </remarks>
         internal bool TryChoose(
             LinePack pack,
@@ -157,20 +129,20 @@ namespace ChattyBones.Logic
         /// <param name="count">How many lines the group holds.</param>
         /// <param name="random">Used to vary which of the many valid seeds we send.</param>
         /// <remarks>
-        /// Receiving clients compute <c>seed % theirCount</c>, so we cannot simply
-        /// send the index - we send a number that lands on it. Any of
-        /// <c>index, index + count, index + 2*count...</c> will do, and we pick among
-        /// them at random so the value on the wire is not trivially the index. That
-        /// costs nothing and means a pack with three lines is not forever sending
-        /// 0, 1 and 2.
+        /// Why not just send the index? Because packs can be different sizes.
         ///
-        /// A client whose pack has a *different* number of lines lands somewhere else
-        /// entirely, which is the intended behaviour - it gets a sensible line out of
-        /// its own file rather than an index that means nothing there.
+        /// Receivers compute <c>seed % theirCount</c>. Send index 2 out of our 3
+        /// lines, and someone whose pack has 10 lines computes 2 % 10 = 2 every
+        /// single time - seven of their ten lines become permanently unreachable and
+        /// they never find out why. Sending any number congruent to 2 mod 3 spreads
+        /// them across their whole pack instead.
         ///
-        /// The guard is for a group with more than 65,536 lines in it, where no seed
-        /// can encode every index. Mirroring degrades to "a line" rather than "the
-        /// same line", which seems a reasonable thing to do for a pack that large.
+        /// So: any of <c>index, index + count, index + 2*count...</c>, picked at
+        /// random.
+        ///
+        /// The guard covers a group bigger than the seed space, where no seed can
+        /// encode every index. Mirroring degrades to "a line" rather than "the same
+        /// line", which seems fair for a pack that large.
         /// </remarks>
         private static int SeedFor(int index, int count, Random random)
         {

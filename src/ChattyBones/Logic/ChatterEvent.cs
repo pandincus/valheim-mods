@@ -58,13 +58,8 @@ namespace ChattyBones.Logic
 
         /// <summary>You took a hit worth mentioning.</summary>
         /// <remarks>
-        /// Damage on a Player resolves on that player's own client, and your client
-        /// owns your summons, so your squad reacts to your injuries. Somebody else's
-        /// skeletons will not, which is the right answer rather than a limitation -
-        /// "cap'n" means their summoner, not you.
-        ///
-        /// Pass the attacker as the subject so the squad echo applies. Five skeletons
-        /// all noticing you got hit should produce one remark, not five.
+        /// Damage on a Player resolves on that player's own client, which also owns
+        /// their summons - so your squad reacts to your injuries and nobody else's.
         /// </remarks>
         PlayerHurt,
 
