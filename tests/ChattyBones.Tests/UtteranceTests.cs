@@ -115,7 +115,7 @@ namespace ChattyBones.Tests
             // TryUnpack reads as "nobody has ever spoken here". The utterance would
             // not fail, it would vanish - and Summoned is the very first thing a
             // skeleton fires, so this is not a far-fetched combination.
-            _ = Assert.Throws<System.ArgumentOutOfRangeException>(
+            Assert.Throws<System.ArgumentOutOfRangeException>(
                 () => new Utterance(0, ChatterEvent.Summoned, 0, NoSubject));
         }
 
@@ -125,11 +125,23 @@ namespace ChattyBones.Tests
             // Silently keeping the low 16 bits would be the worst outcome available:
             // the owner says one line, every remote client folds a different number
             // and says another, and nothing on the machine that caused it looks wrong.
-            _ = Assert.Throws<System.ArgumentOutOfRangeException>(
+            Assert.Throws<System.ArgumentOutOfRangeException>(
                 () => new Utterance(1, ChatterEvent.Idle, Utterance.MaxSeed + 1, NoSubject));
 
-            _ = Assert.Throws<System.ArgumentOutOfRangeException>(
+            Assert.Throws<System.ArgumentOutOfRangeException>(
                 () => new Utterance(1, ChatterEvent.Idle, -1, NoSubject));
+        }
+
+        [Fact]
+        public void AnEventTooBigToFitIsRefusedAtConstruction()
+        {
+            // Pack masks the event down to a byte, so 300 would arrive at the other
+            // end as event 44 - a different event entirely, with no symptom on the
+            // machine that sent it. The enum only reaches 11 today, so this guards a
+            // door nobody is at yet; the point is that the constructor remarks claim
+            // these three checks are the complete set, and that should be true.
+            Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => new Utterance(1, (ChatterEvent)300, 0, NoSubject));
         }
 
         [Fact]

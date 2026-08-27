@@ -96,6 +96,49 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void TheSameJokeAboutADifferentEnemyStillCountsAsARepeat()
+        {
+            // _lastSaid holds the template, not the rendered text. "Get lost,
+            // {target}!" said about a greydwarf and then about a seeker is the same
+            // joke twice, and should feel like one.
+            //
+            // Every other test in this file uses one fixed set of tokens for its whole
+            // run, so template and rendered text are 1:1 and this distinction is
+            // invisible - which is exactly how it went uncovered. Comparing rendered
+            // text instead of templates passed the entire suite.
+            LinePack pack = Pack("Get lost, {target}!", "My bones are itchy.");
+
+            LineTokens greydwarf = new(target: "Greydwarf", player: "Dan", name: "Rattles");
+            LineTokens seeker = new(target: "Seeker", player: "Dan", name: "Rattles");
+
+            for (int sweep = 0; sweep < 50; sweep++)
+            {
+                LineChooser chooser = new();
+                Random random = new(sweep);
+
+                // Drive it to say the joke. With two lines, if the first pick is the
+                // other one then the second pick has to be this.
+                Assert.True(chooser.TryChoose(
+                    pack, Cowardly, ChatterEvent.Idle, greydwarf, random, out _, out string said));
+
+                if (said != "Get lost, Greydwarf!")
+                {
+                    Assert.True(chooser.TryChoose(
+                        pack, Cowardly, ChatterEvent.Idle, greydwarf, random, out _, out said));
+                }
+
+                Assert.Equal("Get lost, Greydwarf!", said);
+
+                // Now a different enemy. The words would differ, but the joke does not,
+                // so we should get the other line.
+                Assert.True(chooser.TryChoose(
+                    pack, Cowardly, ChatterEvent.Idle, seeker, random, out _, out string next));
+
+                Assert.Equal("My bones are itchy.", next);
+            }
+        }
+
+        [Fact]
         public void AGroupWithOneLineRepeatsRatherThanFallingSilent()
         {
             // The only case where a repeat is allowed, because the alternative is a
@@ -181,7 +224,7 @@ namespace ChattyBones.Tests
 
                 Assert.True(chooser.TryChoose(
                     pack, Cowardly, ChatterEvent.Idle, Tokens(), new Random(sweep), out _, out string line));
-                _ = seen.Add(line);
+                seen.Add(line);
             }
 
             Assert.Equal(5, seen.Count);
@@ -289,10 +332,14 @@ namespace ChattyBones.Tests
             // its own pack instead, which is the documented degradation.
             //
             // What must still hold is that we produce something, in range, without
-            // throwing. This is the only branch in SeedFor the size sweep cannot
-            // reach, and an untested branch that quietly returns a wrong-ish number is
-            // exactly the sort of thing that surfaces years later.
-            int size = Utterance.MaxSeed + 2;
+            // throwing, because Utterance's constructor rejects a seed above MaxSeed.
+            //
+            // The size is deliberately far past the limit rather than one over it. My
+            // first attempt at this test used MaxSeed + 2, which reaches the branch
+            // but only exercises the mask for a single index out of 65,537 - so
+            // deleting the mask left every test green. At 200,000 roughly two thirds
+            // of draws need it, and removing it fails here immediately.
+            const int size = 200000;
             string[] lines = new string[size];
             for (int i = 0; i < size; i++)
             {

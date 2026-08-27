@@ -10,68 +10,88 @@ namespace ChattyBones.Logic
     /// knows that - the whole point of this folder is that it runs without a game
     /// attached. The tests just build one of these by hand.
     ///
-    /// **Treat an instance as frozen once you have handed it to a
-    /// <see cref="ChatterBudget"/>.** To change a setting, build a whole new
-    /// ChatterSettings and assign <see cref="ChatterBudget.Settings"/>. Do not reach
-    /// in and edit a field, and above all do not Clear() and refill
-    /// <see cref="DisabledEvents"/> in place.
+    /// Immutable, and that is load-bearing rather than tidiness. To change a
+    /// setting, build a whole new one and assign
+    /// <see cref="ChatterBudget.Settings"/>. BepInEx's config file-watcher does not
+    /// raise SettingChanged on Unity's main thread, so an edit made there runs while
+    /// the game is somewhere in the middle of a frame. Swapping one reference is a
+    /// single atomic write and a reader sees either the old settings or the new
+    /// ones, whole. Editing in place would let a reader catch a half-rebuilt set -
+    /// which shows up as a skeleton ignoring an event for exactly one frame, roughly
+    /// the least debuggable symptom I can imagine.
     ///
-    /// That is not fussiness. BepInEx's config file-watcher does not raise
-    /// SettingChanged on Unity's main thread, so an edit made there runs while the
-    /// game is somewhere in the middle of a frame. Swapping one reference is a
-    /// single atomic write and a reader sees either the old settings or the new ones.
-    /// Mutating in place lets a reader see a half-rebuilt set, which would show up as
-    /// a skeleton ignoring an event for one frame - roughly the least debuggable
-    /// symptom I can imagine.
+    /// This started out as plain mutable fields with a comment asking nicely. A
+    /// review pointed out that the one operation the comment forbade was also the
+    /// easiest thing the type offered, which is a fair definition of a bad contract.
+    ///
+    /// (Get-only properties rather than `init` accessors because the mod targets
+    /// net472, where `init` needs an IsExternalInit shim that the net10.0 test
+    /// project would then define twice.)
     ///
     /// The defaults are a starting guess and I fully expect to move them after
     /// watching an actual squad. Five skeletons is a lot of mouths.
     /// </remarks>
     internal sealed class ChatterSettings
     {
-        /// <summary>How long the whole squad stays quiet after any one of them speaks.</summary>
-        internal float MinGapSeconds = 2.5f;
+        private readonly HashSet<ChatterEvent> _disabled;
 
-        /// <summary>
-        /// The floor that even an important line respects.
-        /// </summary>
-        /// <remarks>
-        /// A death cry is allowed to cut in on someone's idle muttering, but not in
-        /// the same instant - two bits of text appearing together are two bits of
-        /// text nobody reads. So a barge-in still waits this long.
-        /// </remarks>
-        internal float PreemptGapSeconds = 0.5f;
+        /// <summary>Build a set of settings. Everything has a default, so name only what you are changing.</summary>
+        /// <param name="minGapSeconds">How long the whole squad stays quiet after any one of them speaks.</param>
+        /// <param name="preemptGapSeconds">
+        /// The floor that even an important line respects. A death cry may cut in on
+        /// somebody's idle muttering, but not in the same instant - two bits of text
+        /// appearing together are two bits of text nobody reads.
+        /// </param>
+        /// <param name="speakerCooldownSeconds">
+        /// How long one skeleton waits before speaking again. Deliberately much
+        /// longer than the squad gap: the group as a whole can keep up a conversation
+        /// while any individual in it stays fairly quiet, which reads as a group of
+        /// people rather than one person with a lot to say.
+        /// </param>
+        /// <param name="squadEchoWindowSeconds">
+        /// How long one remark about a particular thing stops everyone else remarking
+        /// on the same thing. The one that matters most in practice - send five
+        /// skeletons at one greydwarf and all five acquire it inside the same second.
+        /// </param>
+        /// <param name="disabledEvents">Events the player has switched off, or null for none. Copied, not held.</param>
+        internal ChatterSettings(
+            float minGapSeconds = 2.5f,
+            float preemptGapSeconds = 0.5f,
+            float speakerCooldownSeconds = 8f,
+            float squadEchoWindowSeconds = 6f,
+            IEnumerable<ChatterEvent> disabledEvents = null)
+        {
+            MinGapSeconds = minGapSeconds;
+            PreemptGapSeconds = preemptGapSeconds;
+            SpeakerCooldownSeconds = speakerCooldownSeconds;
+            SquadEchoWindowSeconds = squadEchoWindowSeconds;
+            _disabled = disabledEvents == null ? [] : [.. disabledEvents];
+        }
+
+        /// <summary>How long the whole squad stays quiet after any one of them speaks.</summary>
+        internal float MinGapSeconds { get; }
+
+        /// <summary>The floor that even an important line respects.</summary>
+        internal float PreemptGapSeconds { get; }
 
         /// <summary>How long one skeleton waits before it is allowed to speak again.</summary>
-        /// <remarks>
-        /// Deliberately much longer than <see cref="MinGapSeconds"/>. The squad as a
-        /// whole can keep up a conversation while any individual in it stays
-        /// relatively quiet, which is the effect we want - it reads as a group of
-        /// people rather than one person with a lot to say.
-        /// </remarks>
-        internal float SpeakerCooldownSeconds = 8f;
+        internal float SpeakerCooldownSeconds { get; }
 
-        /// <summary>
-        /// How long one remark about a particular thing stops everyone else
-        /// remarking on the same thing.
-        /// </summary>
-        /// <remarks>
-        /// This is the one that matters most in practice. Send five skeletons at one
-        /// greydwarf and all five acquire it inside the same second, so without this
-        /// you get five near-identical lines stacked on top of each other. With it,
-        /// one of them calls the target and the rest just get on with it.
-        /// </remarks>
-        internal float SquadEchoWindowSeconds = 6f;
+        /// <summary>How long one remark about a thing stops everyone else remarking on it.</summary>
+        internal float SquadEchoWindowSeconds { get; }
 
-        /// <summary>Events the player has switched off.</summary>
+        /// <summary>Has the player switched this event off?</summary>
+        /// <param name="kind">The event to check.</param>
+        /// <returns>True if nobody should react to it at all.</returns>
         /// <remarks>
-        /// Kept here rather than checked at each call site, so that "I am sick of
-        /// them announcing every greydwarf" is one lookup in one place, and so the
-        /// tests can cover it without a game running.
-        ///
-        /// Build it once and leave it alone - see the note on the class.
+        /// A method rather than an exposed set, so that "I am sick of them announcing
+        /// every greydwarf" is one lookup in one place and there is nothing for a
+        /// caller to accidentally edit.
         /// </remarks>
-        internal HashSet<ChatterEvent> DisabledEvents = [];
+        internal bool IsDisabled(ChatterEvent kind)
+        {
+            return _disabled.Contains(kind);
+        }
     }
 
     /// <summary>
@@ -111,6 +131,30 @@ namespace ChattyBones.Logic
     internal sealed class ChatterBudget
     {
         /// <summary>When each skeleton last spoke, keyed by its stable id.</summary>
+        /// <remarks>
+        /// This and <see cref="_lastRemarkBySubject"/> grow for the life of a session
+        /// and are never trimmed. That is deliberate: there used to be a Prune pass
+        /// here and it was wrong twice over.
+        ///
+        /// Wrong on cost. This is not a leak worth code. This map holds one small
+        /// entry per skeleton you ever summon, and the other one entry per distinct
+        /// (event, creature type) pair - which the game itself bounds, since there
+        /// are only so many kinds of creature. Even an absurd session lands in the
+        /// tens of kilobytes. See the subject parameter on <see cref="CanClaim"/> for
+        /// the one thing that would break that bound.
+        ///
+        /// Wrong on correctness, once settings became live. Entries were dropped
+        /// against the window as it stood at the time, so raising the speaker
+        /// cooldown from 8 seconds to 30 mid-session let a skeleton that spoke 10
+        /// seconds ago speak again immediately, quietly contradicting the setting the
+        /// player had just changed.
+        ///
+        /// It also could not be tested. Deleting the whole method changed no
+        /// observable behaviour, which is what you would expect of code whose only
+        /// job is to forget things that no longer affect any answer - and is a decent
+        /// sign the code should not exist. <see cref="TrackedSpeakers"/> exists so a
+        /// regression guard can fail if somebody puts it back.
+        /// </remarks>
         private readonly Dictionary<long, float> _lastSpokeBySpeaker = [];
 
         /// <summary>
@@ -163,6 +207,14 @@ namespace ChattyBones.Logic
         /// greydwarf it just charged at, or whatever hit you. Pass 0 for events that
         /// are not about anything in particular, like Hurt or Idle, and the squad echo
         /// check below is skipped for them.
+        ///
+        /// **This must identify a kind of thing, never a particular one.** A prefab
+        /// hash is per creature type, and that is the only reason
+        /// <see cref="TrackedSubjects"/> is bounded and we can get away with never
+        /// forgetting anything. CompanionHurt is the trap: its subject is naturally
+        /// another skeleton, and folding an instance id in here would make this map
+        /// grow without limit for the whole session. Use the companion's prefab hash
+        /// and carry which one it was somewhere else.
         /// </param>
         /// <param name="now">
         /// Seconds, from the game clock. Only differences matter, so any monotonic
@@ -176,12 +228,23 @@ namespace ChattyBones.Logic
         /// 3. Has this particular skeleton spoken too recently?
         /// 4. Has *anyone* spoken too recently - and if so, is this important
         ///    enough to barge in anyway?
+        ///
+        /// **Resolve one claim before asking about another.** Because asking does not
+        /// book anything, asking for two skeletons back to back will happily say yes
+        /// twice - and if you then let both speak, the squad gap and the echo window
+        /// have both been defeated. That is not hypothetical: the TargetAcquired poll
+        /// runs over the whole squad several times a second, so "collect everyone
+        /// whose target changed, ask for each, then say them all" is the natural way
+        /// to write it and is wrong.
+        ///
+        /// Ask, then either <see cref="Commit"/> or give up, then move on to the next
+        /// skeleton.
         /// </remarks>
         internal bool CanClaim(long speakerId, ChatterEvent kind, int subject, float now)
         {
             ChatterSettings settings = Settings;
 
-            if (settings.DisabledEvents.Contains(kind))
+            if (settings.IsDisabled(kind))
             {
                 return false;
             }
@@ -308,28 +371,6 @@ namespace ChattyBones.Logic
         }
 
         /// <summary>How many speakers we are currently remembering. For tests.</summary>
-        /// <remarks>
-        /// Both dictionaries grow for the life of a session and are never trimmed,
-        /// which was a deliberate reversal. There used to be a Prune method here, and
-        /// it was wrong twice over.
-        ///
-        /// It was wrong on cost: this is not a leak worth code. The speaker map holds
-        /// one small entry per skeleton you ever summon, and the subject map one per
-        /// distinct (event, creature type) pair - which the game itself bounds, since
-        /// there are only so many kinds of creature. Even an absurd session lands in
-        /// the tens of kilobytes.
-        ///
-        /// And it was wrong on correctness, once settings became live. Entries were
-        /// dropped against the window as it stood at the time, so raising the speaker
-        /// cooldown from 8 seconds to 30 mid-session would let a skeleton that spoke
-        /// 10 seconds ago speak again immediately, quietly contradicting the setting
-        /// the player had just changed.
-        ///
-        /// It also could not be tested. Deleting the whole method changed no
-        /// observable behaviour, which is exactly what you would expect of code whose
-        /// only job is to forget things that no longer affect any answer - and is a
-        /// good sign the code should not exist.
-        /// </remarks>
         internal int TrackedSpeakers => _lastSpokeBySpeaker.Count;
 
         /// <summary>How many subjects we are currently remembering. For tests.</summary>

@@ -59,7 +59,7 @@ namespace ChattyBones.Tests
             for (int seed = 0; seed < 30; seed++)
             {
                 Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, seed, out string line));
-                _ = seen.Add(line);
+                seen.Add(line);
             }
 
             Assert.Equal(3, seen.Count);
@@ -234,7 +234,7 @@ namespace ChattyBones.Tests
             for (int seed = 0; seed < 20; seed++)
             {
                 Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, seed, out string line));
-                _ = seen.Add(line);
+                seen.Add(line);
             }
 
             Assert.Equal(2, seen.Count);

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using ChattyBones.Logic;
 
 namespace ChattyBones.Tests
@@ -24,15 +25,21 @@ namespace ChattyBones.Tests
         /// <summary>Nothing in particular - what Hurt and Idle pass as their subject.</summary>
         private const int NoSubject = 0;
 
-        private static ChatterSettings Settings()
+        /// <summary>Round numbers rather than the real defaults.</summary>
+        /// <remarks>
+        /// If a test says three seconds have passed, you should not have to go and
+        /// look up whether that is enough.
+        /// </remarks>
+        private static ChatterSettings Settings(
+            float speakerCooldownSeconds = 10f,
+            IEnumerable<ChatterEvent> disabledEvents = null)
         {
-            return new()
-            {
-                MinGapSeconds = 2f,
-                PreemptGapSeconds = 0.5f,
-                SpeakerCooldownSeconds = 10f,
-                SquadEchoWindowSeconds = 6f,
-            };
+            return new ChatterSettings(
+                minGapSeconds: 2f,
+                preemptGapSeconds: 0.5f,
+                speakerCooldownSeconds: speakerCooldownSeconds,
+                squadEchoWindowSeconds: 6f,
+                disabledEvents: disabledEvents);
         }
 
         private static ChatterBudget Budget()
@@ -154,9 +161,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void AnEventThePlayerSwitchedOffNeverGetsThrough()
         {
-            ChatterSettings settings = Settings();
-            _ = settings.DisabledEvents.Add(ChatterEvent.TargetAcquired);
-            ChatterBudget budget = new(settings);
+            ChatterBudget budget = new(Settings(disabledEvents: [ChatterEvent.TargetAcquired]));
 
             Assert.False(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
 
@@ -326,6 +331,34 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void AskingForTwoSkeletonsBeforeCommittingEitherDefeatsTheEchoWindow()
+        {
+            // The flip side of AskingDoesNotBookTheSlot, and the trap the split
+            // creates. Nothing here can stop a caller doing this, so the test exists
+            // to make the hazard visible rather than to prevent it - the rule lives in
+            // CanClaim's remarks: resolve one claim before asking about the next.
+            //
+            // It matters because the TargetAcquired poll runs over the whole squad
+            // several times a second, so "collect everyone whose target changed, ask
+            // for each, then say them all" is the obvious shape and is wrong.
+            ChatterBudget budget = Budget();
+
+            Assert.True(budget.CanClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+            Assert.True(budget.CanClaim(Bob, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+
+            // Both were told yes about the same greydwarf. Commit both and the echo
+            // window has been defeated - two skeletons announce the same enemy.
+            budget.Commit(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f);
+            budget.Commit(Bob, ChatterEvent.TargetAcquired, Greydwarf, 0f);
+
+            // Done properly - ask, resolve, then ask again - the second one is refused.
+            ChatterBudget careful = Budget();
+            Assert.True(careful.CanClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+            careful.Commit(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f);
+            Assert.False(careful.CanClaim(Bob, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+        }
+
+        [Fact]
         public void AnEventWithNothingToSayCostsTheSquadNothing()
         {
             // The scenario the split is for, spelled out: a half-written pack, which
@@ -354,9 +387,7 @@ namespace ChattyBones.Tests
             // Alice's cooldown is 10s, so she is normally refused here.
             Assert.False(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 5f));
 
-            ChatterSettings chattier = Settings();
-            chattier.SpeakerCooldownSeconds = 1f;
-            budget.Settings = chattier;
+            budget.Settings = Settings(speakerCooldownSeconds: 1f);
 
             Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 5f));
         }
@@ -371,9 +402,7 @@ namespace ChattyBones.Tests
             ChatterBudget budget = Budget();
             Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0f));
 
-            ChatterSettings quieter = Settings();
-            quieter.SpeakerCooldownSeconds = 60f;
-            budget.Settings = quieter;
+            budget.Settings = Settings(speakerCooldownSeconds: 60f);
 
             Assert.False(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 30f));
             Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 61f));
@@ -435,19 +464,19 @@ namespace ChattyBones.Tests
             ChatterBudget budget = Budget();
             Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
 
-            // Well past every window. This also walks over the pruning, so it fails
-            // if throwing old bookkeeping away ever changes an answer.
+            // Well past every window, so every check should have forgotten about the
+            // first remark by now.
             Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 1000f));
         }
 
         [Fact]
-        public void PruningSurvivesASteadyStreamOfDifferentEnemies()
+        public void ASteadyStreamOfDifferentEnemiesKeepsWorking()
         {
             ChatterBudget budget = Budget();
 
-            // Fifty different creatures, comfortably spaced. Nothing here is really
-            // asserting on the pruning itself - the point is that a long session
-            // does not quietly change how the rules behave.
+            // Fifty different creatures, comfortably spaced so nothing should refuse.
+            // A weak test on its own - the point is that a long session does not
+            // quietly change how the rules behave.
             for (int i = 0; i < 50; i++)
             {
                 Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, 9000 + i, i * 20f));

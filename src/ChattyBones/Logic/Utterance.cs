@@ -122,8 +122,9 @@ namespace ChattyBones.Logic
         /// symptom at all on the machine that caused it.
         /// </remarks>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// If <paramref name="counter"/> is outside 1..255 or <paramref name="seed"/>
-        /// is outside 0..<see cref="MaxSeed"/>.
+        /// If <paramref name="counter"/> is outside 1..255, <paramref name="seed"/> is
+        /// outside 0..<see cref="MaxSeed"/>, or <paramref name="kind"/> does not fit
+        /// in a byte.
         /// </exception>
         internal Utterance(int counter, ChatterEvent kind, int seed, int subject)
         {
@@ -137,6 +138,17 @@ namespace ChattyBones.Logic
             {
                 throw new ArgumentOutOfRangeException(
                     nameof(seed), seed, "Seed must fit in " + SeedBits + " bits, so 0.." + MaxSeed + ".");
+            }
+
+            // Pack masks the event down to a byte, so a value of 256 or more would
+            // arrive at the other end as a *different event* - the same silent desync
+            // the seed check above exists to stop. We are 244 events away from that
+            // mattering, but a remark claiming these guards are the complete set
+            // ought to be true.
+            if ((int)kind is < 0 or > KindMask)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(kind), kind, "Event must fit in " + KindBits + " bits, so 0.." + KindMask + ".");
             }
 
             Counter = counter;
