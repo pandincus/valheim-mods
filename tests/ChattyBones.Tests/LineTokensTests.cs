@@ -15,7 +15,7 @@ namespace ChattyBones.Tests
     {
         private static LineTokens Full()
         {
-            return new LineTokens("Greydwarf", "Dan", "Rattles");
+            return new LineTokens(target: "Greydwarf", player: "Dan", name: "Rattles", companion: "Bjorn");
         }
 
         [Fact]
@@ -52,7 +52,7 @@ namespace ChattyBones.Tests
             // "Get lost, !" would look like the mod had fallen over. Refusing means
             // the skeleton picks something else or stays quiet, and every other line
             // in the pack carries on working.
-            LineTokens noTarget = new(null, "Dan", "Rattles");
+            LineTokens noTarget = new(target: null, player: "Dan", name: "Rattles");
 
             Assert.False(noTarget.TryRender("Get lost, {target}!", out string line));
             Assert.Null(line);
@@ -61,7 +61,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void ALineNotWantingTheMissingThingIsStillFine()
         {
-            LineTokens noTarget = new(null, "Dan", "Rattles");
+            LineTokens noTarget = new(target: null, player: "Dan", name: "Rattles");
 
             Assert.True(noTarget.TryRender("Thanks, {player}!", out string line));
             Assert.Equal("Thanks, Dan!", line);
@@ -81,8 +81,8 @@ namespace ChattyBones.Tests
         public void TokensAreCaseSensitive()
         {
             // "{Target}" is not one of ours, so it shows up as itself. I would rather
-            // that than have it quietly work, because the day we add a fourth token
-            // is the day loose matching starts producing surprises.
+            // that than have it quietly work: loose matching is only cheap while the
+            // set of tokens is small, and this set grows.
             Assert.True(Full().TryRender("{Target} and {target}", out string line));
             Assert.Equal("{Target} and Greydwarf", line);
         }
@@ -118,11 +118,39 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void ACompanionIsNamedLikeAnyOtherToken()
+        {
+            // The whole point of the companion events. "Ach, Bjorn!" reads as one
+            // skeleton reacting to another it knows, which is far better than
+            // something vague about a colleague.
+            Assert.True(Full().TryRender("Ach, {companion}!", out string line));
+            Assert.Equal("Ach, Bjorn!", line);
+        }
+
+        [Fact]
+        public void ACompanionLineWhereThereIsNoCompanionIsRefused()
+        {
+            // {companion} is only filled in for the events that are about another
+            // skeleton. Put one in an idle line and that line stays quiet rather than
+            // rendering "Ach, !".
+            LineTokens alone = new(target: "Greydwarf", player: "Dan", name: "Rattles");
+
+            Assert.False(alone.TryRender("Ach, {companion}!", out _));
+        }
+
+        [Fact]
+        public void ASkeletonCanNameItselfAndAnotherInOneLine()
+        {
+            Assert.True(Full().TryRender("{name} has got you, {companion}!", out string line));
+            Assert.Equal("Rattles has got you, Bjorn!", line);
+        }
+
+        [Fact]
         public void WithNothingSuppliedOnlyPlainLinesSurvive()
         {
             // What a skeleton looks like before we know anything about it - no name,
             // no target, and somehow no player either.
-            LineTokens nothing = new(null, null, null);
+            LineTokens nothing = new(target: null, player: null, name: null);
 
             Assert.True(nothing.TryRender("Hrmph.", out string plain));
             Assert.Equal("Hrmph.", plain);

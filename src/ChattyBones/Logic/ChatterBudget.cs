@@ -28,7 +28,61 @@ namespace ChattyBones.Logic
         Buffed,
 
         /// <summary>It killed something.</summary>
+        /// <remarks>
+        /// Not hooked off the victim's death, which sounds like the obvious place and
+        /// is not. Character.OnDeath is reached from CheckDeath, which sits inside an
+        /// IsOwner check, so a creature's death only fires on whichever client owns
+        /// that creature - in a shared world that is often the host or another player,
+        /// and your skeleton's kill would simply go uncommented.
+        ///
+        /// Instead we watch our own skeleton's target go from something to nothing
+        /// and check whether that something is now dead, which reads replicated state
+        /// and works whoever owns it. Attribution gets a little looser - the thing
+        /// might have died to somebody else's axe - but "the creature my skeleton was
+        /// charging at just died" is arguably the better trigger anyway. It fires
+        /// when the skeleton thinks it won, which is the funnier moment.
+        /// </remarks>
         Killed,
+
+        /// <summary>You took a hit worth mentioning.</summary>
+        /// <remarks>
+        /// Damage on a Player resolves on that player's own client, and your client
+        /// owns your summons, so your squad reacts to your injuries. Somebody else's
+        /// skeletons will not, which is the right answer rather than a limitation -
+        /// "cap'n" means their summoner, not you.
+        ///
+        /// Pass the attacker as the subject so the squad echo applies. Five skeletons
+        /// all noticing you got hit should produce one remark, not five.
+        /// </remarks>
+        PlayerHurt,
+
+        /// <summary>You hit something very hard.</summary>
+        /// <remarks>
+        /// The attacking client builds the HitData and calls Character.Damage, which
+        /// is what then sends the RPC. So a hook on Damage rather than RPC_Damage
+        /// runs on your machine with the number in hand, and no networking is
+        /// involved at all - which is a nicer position than the kill events are in.
+        /// </remarks>
+        PlayerLandedABigHit,
+
+        /// <summary>You killed something.</summary>
+        /// <remarks>
+        /// Kept separate from <see cref="PlayerLandedABigHit"/> even though a kill is
+        /// the biggest hit there is, because "You got him!" and "Nice swing!" are
+        /// different lines and a pack author should be able to write both. Event
+        /// space is not scarce - see <see cref="Utterance"/>.
+        /// </remarks>
+        PlayerGotAKill,
+
+        /// <summary>Another of your skeletons took a hit.</summary>
+        /// <remarks>
+        /// Both skeletons are yours and owned by the same client, so this needs no
+        /// cleverness to detect. The fun is in <see cref="LineTokens.Companion"/>:
+        /// they already have names, either the one they came with or whatever you
+        /// renamed them to, so a line can be "Ach, {companion}!" rather than
+        /// something vague about a colleague.
+        /// </remarks>
+        CompanionHurt,
 
         /// <summary>It died.</summary>
         Died,
@@ -262,10 +316,18 @@ namespace ChattyBones.Logic
             {
                 ChatterEvent.Died => 100,
                 ChatterEvent.Unsummoned => 90,
+
+                // Above the skeleton's own injuries on purpose. If you are being
+                // chewed on and a skeleton is too, the one worth hearing about is you.
+                ChatterEvent.PlayerHurt => 80,
+
                 ChatterEvent.Hurt => 70,
+                ChatterEvent.CompanionHurt => 60,
                 ChatterEvent.TargetAcquired => 50,
                 ChatterEvent.Buffed => 40,
+                ChatterEvent.PlayerGotAKill => 35,
                 ChatterEvent.Killed => 30,
+                ChatterEvent.PlayerLandedABigHit => 25,
                 ChatterEvent.Summoned => 20,
                 ChatterEvent.Idle => 10,
 

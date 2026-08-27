@@ -7,15 +7,25 @@ namespace ChattyBones.Logic
     /// </summary>
     /// <remarks>
     /// A pack author writes "Get lost, {target}!" and we turn that into "Get lost,
-    /// Greydwarf!" at the moment it is said. Three tokens, all optional:
+    /// Greydwarf!" at the moment it is said. Four tokens, all optional:
     ///
     /// - {target} is whatever the skeleton is reacting to, already localised
     /// - {player} is you, whoever summoned it
     /// - {name} is the skeleton's own name
+    /// - {companion} is another of your skeletons, for lines about each other
     ///
-    /// Every client fills these in for itself from the prefab hash we sent, so a
-    /// German player reads "Grauzwerg" while you read "Greydwarf" - the word never
-    /// travels, only the hash does.
+    /// Every client fills these in for itself rather than being sent the words. For
+    /// {target} that means a German player reads "Grauzwerg" while you read
+    /// "Greydwarf", because only the prefab hash travels.
+    ///
+    /// {name} and {companion} work the same way for a different reason. Skeletons
+    /// arrive with a name and you can rename them, and that name already syncs
+    /// through the tamed-name field, so every client can read it. We send which
+    /// skeleton rather than what it is called, which matters because the game runs
+    /// tamed names through CensorShittyWords.FilterUGC and that filtering is
+    /// per-user on console and crossplay. Shipping the raw string would route around
+    /// somebody else's filter settings; letting each client resolve the name lets it
+    /// apply its own.
     ///
     /// I hand-rolled the scan below rather than reaching for a regular expression.
     /// It is a short string with at most a couple of braces in it, this runs every
@@ -33,15 +43,31 @@ namespace ChattyBones.Logic
         /// <summary>The skeleton's own name, or null if it has not been given one.</summary>
         internal string Name { get; }
 
+        /// <summary>Another skeleton this line is about, or null when it is about nobody.</summary>
+        /// <remarks>
+        /// Only set for the events where one skeleton is reacting to another, which
+        /// today means <see cref="ChatterEvent.CompanionHurt"/>. Everywhere else this
+        /// is null, so a "{companion}" written into an idle line quietly refuses
+        /// rather than producing a sentence with a hole in it.
+        /// </remarks>
+        internal string Companion { get; }
+
         /// <summary>Gather up whatever we know at the moment of speaking.</summary>
         /// <param name="target">Localised creature name, or null.</param>
         /// <param name="player">Player name, or null.</param>
         /// <param name="name">The skeleton's name, or null.</param>
-        internal LineTokens(string target, string player, string name)
+        /// <param name="companion">Another skeleton's name, or null.</param>
+        /// <remarks>
+        /// Four strings in a row is easy to get subtly wrong, and swapping two of
+        /// them produces a line that reads almost right. Worth using named arguments
+        /// at the call site - the tests all do.
+        /// </remarks>
+        internal LineTokens(string target, string player, string name, string companion = null)
         {
             Target = target;
             Player = player;
             Name = name;
+            Companion = companion;
         }
 
         /// <summary>Fill a template in, if we have everything it asks for.</summary>
@@ -127,18 +153,21 @@ namespace ChattyBones.Logic
             return true;
         }
 
-        /// <summary>Is this one of the three tokens we understand?</summary>
+        /// <summary>Is this one of the tokens we understand?</summary>
         /// <param name="token">The text between the braces, with the braces removed.</param>
-        /// <returns>True for target, player and name. False for anything else.</returns>
+        /// <returns>True for target, player, name and companion. False for anything else.</returns>
         /// <remarks>
         /// Case-sensitive on purpose. The pack is a file people edit by hand, and I
-        /// would rather "{Target}" show up in game looking wrong than quietly work,
-        /// because the day we add a fourth token is the day case-insensitivity starts
-        /// producing surprises.
+        /// would rather "{Target}" show up in game looking wrong than quietly work.
+        ///
+        /// I originally justified that by saying it would matter "the day we add a
+        /// fourth token", which turned out to be about an hour later when {companion}
+        /// arrived. The reasoning holds up better than the timescale did: loose
+        /// matching is only ever cheap while the set is small, and this set grows.
         /// </remarks>
         private static bool IsKnown(string token)
         {
-            return token is "target" or "player" or "name";
+            return token is "target" or "player" or "name" or "companion";
         }
 
         /// <summary>The value for a known token, or null when we do not have one.</summary>
@@ -151,6 +180,7 @@ namespace ChattyBones.Logic
                 "target" => Target,
                 "player" => Player,
                 "name" => Name,
+                "companion" => Companion,
                 _ => null,
             };
         }

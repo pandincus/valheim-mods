@@ -190,6 +190,103 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void YourInjuriesOutrankTheirs()
+        {
+            ChatterBudget budget = Budget();
+            Assert.True(budget.TryClaim(Alice, ChatterEvent.Hurt, NoSubject, 0f));
+
+            // A skeleton is being chewed on and so are you. Yours is the one worth
+            // hearing about, so it gets to cut in.
+            Assert.True(budget.TryClaim(Bob, ChatterEvent.PlayerHurt, Greydwarf, 1f));
+        }
+
+        [Fact]
+        public void ACompanionsInjuriesDoNotOutrankYourOwn()
+        {
+            ChatterBudget budget = Budget();
+            Assert.True(budget.TryClaim(Alice, ChatterEvent.PlayerHurt, Greydwarf, 0f));
+
+            Assert.False(budget.TryClaim(Bob, ChatterEvent.CompanionHurt, NoSubject, 1f));
+        }
+
+        [Fact]
+        public void OnlyOneSkeletonCommentsOnYouGettingHit()
+        {
+            ChatterBudget budget = Budget();
+
+            // One hit on you, five skeletons that all noticed. The squad echo already
+            // handles this: pass whatever hit you as the subject and it collapses to
+            // a single remark, exactly as it does for a shared target.
+            Assert.True(budget.TryClaim(Alice, ChatterEvent.PlayerHurt, Greydwarf, 0f));
+            Assert.False(budget.TryClaim(Bob, ChatterEvent.PlayerHurt, Greydwarf, 3f));
+            Assert.False(budget.TryClaim(Carol, ChatterEvent.PlayerHurt, Greydwarf, 5f));
+        }
+
+        /// <summary>Can <paramref name="barger"/> interrupt <paramref name="sitting"/>?</summary>
+        /// <remarks>
+        /// A fresh budget each time, two different speakers so no per-speaker cooldown
+        /// is involved, and no subject so the squad echo stays out of it. The second
+        /// claim lands inside the squad gap but past the barge-in floor, so the only
+        /// thing that can decide it is which event outranks the other.
+        /// </remarks>
+        private static bool CanInterrupt(ChatterEvent barger, ChatterEvent sitting)
+        {
+            ChatterBudget budget = Budget();
+            Assert.True(budget.TryClaim(Alice, sitting, NoSubject, 0f));
+
+            return budget.TryClaim(Bob, barger, NoSubject, 1f);
+        }
+
+        [Fact]
+        public void NoTwoEventsShareARank()
+        {
+            // Ties are invisible and awkward: barging in needs a *strictly* higher
+            // rank, so two events on the same number can never interrupt each other
+            // in either direction. You would only notice by wondering why a death cry
+            // went missing, months later.
+            //
+            // Reached entirely through behaviour rather than by reflecting on the
+            // private table, so it keeps working if the ranks are ever moved into
+            // config.
+            ChatterEvent[] all = (ChatterEvent[])System.Enum.GetValues(typeof(ChatterEvent));
+
+            foreach (ChatterEvent a in all)
+            {
+                foreach (ChatterEvent b in all)
+                {
+                    if (a.Equals(b))
+                    {
+                        continue;
+                    }
+
+                    // Exactly one direction must work. Both would be nonsense, and
+                    // neither means they are tied.
+                    Assert.True(
+                        CanInterrupt(a, b) != CanInterrupt(b, a),
+                        a + " and " + b + " appear to share a rank");
+                }
+            }
+        }
+
+        [Fact]
+        public void DyingOutranksAbsolutelyEverything()
+        {
+            ChatterEvent[] all = (ChatterEvent[])System.Enum.GetValues(typeof(ChatterEvent));
+
+            foreach (ChatterEvent kind in all)
+            {
+                if (kind.Equals(ChatterEvent.Died))
+                {
+                    continue;
+                }
+
+                Assert.True(
+                    CanInterrupt(ChatterEvent.Died, kind),
+                    "a death cry should have cut in on " + kind);
+            }
+        }
+
+        [Fact]
         public void BeingRefusedDoesNotCountAsHavingSpoken()
         {
             ChatterBudget budget = Budget();
