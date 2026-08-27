@@ -19,9 +19,15 @@ namespace ChattyBones.Logic
     /// packs each get something sensible out of their own file, which is the reason
     /// we send a seed rather than a line number.
     ///
-    /// Not knowing about YAML is also deliberate. A pack is built by calling
-    /// <see cref="LinePackBuilder.Add"/>, and reading the file is somebody else's
-    /// job - which keeps this testable without a file on disk, and keeps the
+    /// <see cref="Builder"/> is the only way to make one, the same way
+    /// <c>FishPlan.TryPick</c> is the only way to make a FishPlan. A pack in memory
+    /// is therefore always one the builder produced: no empty groups (which
+    /// <see cref="TryPick"/> would divide by), no unsorted personality list (which
+    /// would make a stored personality index mean different things on different
+    /// clients), and no "common" masquerading as a character.
+    ///
+    /// Not knowing about YAML is also deliberate. Reading the file is somebody
+    /// else's job, which keeps this testable without a file on disk and keeps the
     /// question of what a malformed pack does out of here entirely.
     /// </remarks>
     internal sealed class LinePack
@@ -44,6 +50,21 @@ namespace ChattyBones.Logic
 
         private readonly Dictionary<string, Dictionary<ChatterEvent, string[]>> _byPersonality;
 
+        /// <summary>Wrap what the builder assembled.</summary>
+        /// <param name="byPersonality">Personality to event to lines. Every group non-empty.</param>
+        /// <param name="personalities">The characters, sorted, without the shared fallback.</param>
+        /// <remarks>
+        /// Private, and reachable only from <see cref="Builder.Build"/>, which is
+        /// what lets everything downstream stop checking for empty groups.
+        /// </remarks>
+        private LinePack(
+            Dictionary<string, Dictionary<ChatterEvent, string[]>> byPersonality,
+            IReadOnlyList<string> personalities)
+        {
+            _byPersonality = byPersonality;
+            Personalities = personalities;
+        }
+
         /// <summary>Every personality in the pack, in a stable order.</summary>
         /// <remarks>
         /// Sorted, and that matters more than it looks. Assigning a personality to a
@@ -52,20 +73,15 @@ namespace ChattyBones.Logic
         /// would mean different personalities on different clients - or on the same
         /// client after a restart.
         ///
+        /// Read-only for the same reason. Nine lines of comment defending a stable
+        /// order would sit oddly next to a list any caller could Sort.
+        ///
         /// <see cref="SharedPersonality"/> is excluded, because it is a fallback
         /// rather than a character. Nobody should be summoned as "common".
         /// </remarks>
-        internal IList<string> Personalities { get; }
+        internal IReadOnlyList<string> Personalities { get; }
 
-        internal LinePack(
-            Dictionary<string, Dictionary<ChatterEvent, string[]>> byPersonality,
-            IList<string> personalities)
-        {
-            _byPersonality = byPersonality;
-            Personalities = personalities;
-        }
-
-        /// <summary>Choose the line a given seed points at.</summary>
+        /// <summary>Find the lines available for one personality and event.</summary>
         /// <returns>
         /// False when there is nothing to say, in which case the skeleton stays quiet.
         /// That happens when neither the personality nor
@@ -73,6 +89,40 @@ namespace ChattyBones.Logic
         /// perfectly ordinary situation rather than an error - a pack author is
         /// allowed to decide that nobody comments on being unsummoned.
         /// </returns>
+        /// <param name="personality">Which character is speaking. Null and unknown names are both fine, and fall back.</param>
+        /// <param name="kind">What just happened.</param>
+        /// <param name="lines">The group, never empty when we return true.</param>
+        /// <remarks>
+        /// Exposed for <see cref="LineChooser"/>, which needs to know how many lines
+        /// there are so that it can walk them deliberately rather than rolling dice
+        /// and hoping. That is what lets "never say the same thing twice running" be
+        /// a guarantee rather than a very likely outcome.
+        ///
+        /// Falling back to <see cref="SharedPersonality"/> is per event, not per
+        /// personality. A cowardly skeleton with its own idle lines but no death
+        /// lines uses its own idle lines and the shared death ones, which is the
+        /// behaviour you would want when filling a pack in gradually.
+        /// </remarks>
+        internal bool TryGetGroup(string personality, ChatterEvent kind, out IReadOnlyList<string> lines)
+        {
+            if (TryGetLines(personality, kind, out string[] own))
+            {
+                lines = own;
+                return true;
+            }
+
+            if (TryGetLines(SharedPersonality, kind, out string[] shared))
+            {
+                lines = shared;
+                return true;
+            }
+
+            lines = null;
+            return false;
+        }
+
+        /// <summary>Choose the line a given seed points at.</summary>
+        /// <returns>False when there is nothing to say. See <see cref="TryGetGroup"/>.</returns>
         /// <param name="personality">Which character is speaking.</param>
         /// <param name="kind">What just happened.</param>
         /// <param name="seed">
@@ -82,39 +132,34 @@ namespace ChattyBones.Logic
         /// </param>
         /// <param name="template">The raw line, tokens unfilled. See <see cref="LineTokens"/>.</param>
         /// <remarks>
-        /// Falling back to <see cref="SharedPersonality"/> is per event, not per
-        /// personality. A cowardly skeleton with its own idle lines but no death
-        /// lines uses its own idle lines and the shared death ones, which is the
-        /// behaviour you would want when filling a pack in gradually.
+        /// This is what a client that did *not* choose the line runs: a seed arrives
+        /// over the network and this turns it into words, with no state involved.
         /// </remarks>
         internal bool TryPick(string personality, ChatterEvent kind, int seed, out string template)
         {
-            template = null;
-
-            if (!TryGetLines(personality, kind, out string[] lines)
-                && !TryGetLines(SharedPersonality, kind, out lines))
+            if (!TryGetGroup(personality, kind, out IReadOnlyList<string> lines))
             {
+                template = null;
                 return false;
             }
 
             // Modulo of a negative seed is negative in C#, and a negative index
             // throws. Seeds reaching us from another client are whatever that client
             // put in a ZDO, so this is not a theoretical worry.
-            int index = (int)((uint)seed % (uint)lines.Length);
-            template = lines[index];
+            template = lines[(int)((uint)seed % (uint)lines.Count)];
             return true;
         }
 
-        /// <summary>Look up one personality's lines for one event.</summary>
+        /// <summary>Look up one personality's lines for one event, with no fallback.</summary>
         /// <param name="personality">Which character. A name we have never heard of is fine, and finds nothing.</param>
         /// <param name="kind">What happened.</param>
         /// <param name="lines">The lines, guaranteed non-empty when we return true.</param>
         /// <returns>True when there is at least one line to choose from.</returns>
         /// <remarks>
         /// The builder drops empty groups, so anything in the dictionary has content.
-        /// That saves <see cref="TryPick"/> from having to tell "no lines" apart from
-        /// "an empty list of lines", which would otherwise be two ways of saying the
-        /// same thing and one of them would eventually divide by zero.
+        /// That saves callers from having to tell "no lines" apart from "an empty list
+        /// of lines", which would otherwise be two ways of saying the same thing and
+        /// one of them would eventually divide by zero.
         /// </remarks>
         private bool TryGetLines(string personality, ChatterEvent kind, out string[] lines)
         {
@@ -124,114 +169,120 @@ namespace ChattyBones.Logic
                 && _byPersonality.TryGetValue(personality, out Dictionary<ChatterEvent, string[]> byEvent)
                 && byEvent.TryGetValue(kind, out lines);
         }
-    }
 
-    /// <summary>
-    /// Assembles a <see cref="LinePack"/> one group of lines at a time.
-    /// </summary>
-    /// <remarks>
-    /// The real mod will drive this from a YAML file. The tests drive it by hand,
-    /// which is exactly why the pack does not read files itself - a test that needs
-    /// four lines can just say so in four lines.
-    /// </remarks>
-    internal sealed class LinePackBuilder
-    {
-        private readonly Dictionary<string, Dictionary<ChatterEvent, List<string>>> _lines = [];
-
-        /// <summary>Add some lines for one personality reacting to one event.</summary>
-        /// <returns>This builder, so calls can be chained.</returns>
-        /// <param name="personality">
-        /// The character speaking, or <see cref="LinePack.SharedPersonality"/> for
-        /// lines anyone may fall back on.
-        /// </param>
-        /// <param name="kind">What the lines are a reaction to.</param>
-        /// <param name="lines">
-        /// The lines themselves, tokens and all. Nulls and blanks are skipped rather
-        /// than rejected - a hand-edited file will eventually contain a stray empty
-        /// entry, and throwing the whole pack away over one is not a kindness.
-        /// </param>
+        /// <summary>
+        /// Assembles a <see cref="LinePack"/> one group of lines at a time.
+        /// </summary>
         /// <remarks>
-        /// Calling this twice for the same personality and event adds to that group
-        /// rather than replacing it, so a pack file can list a personality in more
-        /// than one place without one half quietly winning.
+        /// Nested so that it can reach the private constructor, which is the whole
+        /// point - if it sat alongside as its own class, the constructor would have
+        /// to be internal and anybody could build a pack that breaks the guarantees
+        /// the pack's own comments promise.
+        ///
+        /// The real mod will drive this from a YAML file. The tests drive it by hand,
+        /// which is exactly why the pack does not read files itself - a test that
+        /// needs four lines can just say so in four lines.
         /// </remarks>
-        internal LinePackBuilder Add(string personality, ChatterEvent kind, params string[] lines)
+        internal sealed class Builder
         {
-            if (string.IsNullOrWhiteSpace(personality) || lines == null)
-            {
-                return this;
-            }
+            private readonly Dictionary<string, Dictionary<ChatterEvent, List<string>>> _lines = [];
 
-            if (!_lines.TryGetValue(personality, out Dictionary<ChatterEvent, List<string>> byEvent))
+            /// <summary>Add some lines for one personality reacting to one event.</summary>
+            /// <returns>This builder, so calls can be chained.</returns>
+            /// <param name="personality">
+            /// The character speaking, or <see cref="SharedPersonality"/> for lines
+            /// anyone may fall back on.
+            /// </param>
+            /// <param name="kind">What the lines are a reaction to.</param>
+            /// <param name="lines">
+            /// The lines themselves, tokens and all. Nulls and blanks are skipped
+            /// rather than rejected - a hand-edited file will eventually contain a
+            /// stray empty entry, and throwing the whole pack away over one is not a
+            /// kindness.
+            /// </param>
+            /// <remarks>
+            /// Calling this twice for the same personality and event adds to that
+            /// group rather than replacing it, so a pack file can list a personality
+            /// in more than one place without one half quietly winning.
+            /// </remarks>
+            internal Builder Add(string personality, ChatterEvent kind, params string[] lines)
             {
-                byEvent = [];
-                _lines[personality] = byEvent;
-            }
-
-            if (!byEvent.TryGetValue(kind, out List<string> group))
-            {
-                group = [];
-                byEvent[kind] = group;
-            }
-
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (!string.IsNullOrWhiteSpace(lines[i]))
+                if (string.IsNullOrWhiteSpace(personality) || lines == null)
                 {
-                    group.Add(lines[i]);
+                    return this;
                 }
-            }
 
-            return this;
-        }
-
-        /// <summary>Freeze what has been added into a pack.</summary>
-        /// <returns>
-        /// A pack holding only the groups that ended up with lines in them. A
-        /// personality whose every line was blank does not appear at all, and will
-        /// not turn up in <see cref="LinePack.Personalities"/> to be assigned to some
-        /// unfortunate skeleton who then never speaks.
-        /// </returns>
-        /// <remarks>
-        /// The lists become arrays here. Nothing after this point ever adds a line,
-        /// and an array is the cheaper thing to index into over and over.
-        /// </remarks>
-        internal LinePack Build()
-        {
-            Dictionary<string, Dictionary<ChatterEvent, string[]>> byPersonality = [];
-            List<string> personalities = [];
-
-            foreach (KeyValuePair<string, Dictionary<ChatterEvent, List<string>>> entry in _lines)
-            {
-                Dictionary<ChatterEvent, string[]> byEvent = [];
-
-                foreach (KeyValuePair<ChatterEvent, List<string>> group in entry.Value)
+                if (!_lines.TryGetValue(personality, out Dictionary<ChatterEvent, List<string>> byEvent))
                 {
-                    if (group.Value.Count > 0)
+                    byEvent = [];
+                    _lines[personality] = byEvent;
+                }
+
+                if (!byEvent.TryGetValue(kind, out List<string> group))
+                {
+                    group = [];
+                    byEvent[kind] = group;
+                }
+
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    if (!string.IsNullOrWhiteSpace(lines[i]))
                     {
-                        byEvent[group.Key] = [.. group.Value];
+                        group.Add(lines[i]);
                     }
                 }
 
-                if (byEvent.Count == 0)
-                {
-                    continue;
-                }
-
-                byPersonality[entry.Key] = byEvent;
-
-                if (entry.Key != LinePack.SharedPersonality)
-                {
-                    personalities.Add(entry.Key);
-                }
+                return this;
             }
 
-            // See the note on LinePack.Personalities - a stable order is what lets a
-            // stored personality index mean the same thing on every client and after
-            // every restart.
-            personalities.Sort(StringComparer.Ordinal);
+            /// <summary>Freeze what has been added into a pack.</summary>
+            /// <returns>
+            /// A pack holding only the groups that ended up with lines in them. A
+            /// personality whose every line was blank does not appear at all, and
+            /// will not turn up in <see cref="Personalities"/> to be assigned to some
+            /// unfortunate skeleton who then never speaks.
+            /// </returns>
+            /// <remarks>
+            /// The lists become arrays here. Nothing after this point ever adds a
+            /// line, and an array is the cheaper thing to index into over and over.
+            /// </remarks>
+            internal LinePack Build()
+            {
+                Dictionary<string, Dictionary<ChatterEvent, string[]>> byPersonality = [];
+                List<string> personalities = [];
 
-            return new LinePack(byPersonality, personalities);
+                foreach (KeyValuePair<string, Dictionary<ChatterEvent, List<string>>> entry in _lines)
+                {
+                    Dictionary<ChatterEvent, string[]> byEvent = [];
+
+                    foreach (KeyValuePair<ChatterEvent, List<string>> group in entry.Value)
+                    {
+                        if (group.Value.Count > 0)
+                        {
+                            byEvent[group.Key] = [.. group.Value];
+                        }
+                    }
+
+                    if (byEvent.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    byPersonality[entry.Key] = byEvent;
+
+                    if (entry.Key != SharedPersonality)
+                    {
+                        personalities.Add(entry.Key);
+                    }
+                }
+
+                // See the note on Personalities - a stable order is what lets a stored
+                // personality index mean the same thing on every client and after
+                // every restart.
+                personalities.Sort(StringComparer.Ordinal);
+
+                return new LinePack(byPersonality, personalities);
+            }
         }
     }
 }

@@ -40,44 +40,61 @@ namespace ChattyBones.Tests
             return new(Settings());
         }
 
+        /// <summary>Ask, and book it if the answer is yes.</summary>
+        /// <remarks>
+        /// Almost every test below wants "did this skeleton get to speak", which is
+        /// both halves of the real caller's job. The tests that care about the two
+        /// halves being separate call CanClaim and Commit directly.
+        /// </remarks>
+        private static bool Speak(ChatterBudget budget, long speaker, ChatterEvent kind, int subject, float now)
+        {
+            if (!budget.CanClaim(speaker, kind, subject, now))
+            {
+                return false;
+            }
+
+            budget.Commit(speaker, kind, subject, now);
+            return true;
+        }
+
         [Fact]
         public void TheFirstThingAnyoneSaysIsAlwaysAllowed()
         {
             ChatterBudget budget = Budget();
 
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Idle, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0f));
         }
 
         [Fact]
         public void NobodyElseSpeaksInsideTheGlobalGap()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Idle, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0f));
 
             // Bob has said nothing at all, so only the squad-wide gap is stopping him.
-            Assert.False(budget.TryClaim(Bob, ChatterEvent.Idle, NoSubject, 1.9f));
+            Assert.False(Speak(budget, Bob, ChatterEvent.Idle, NoSubject, 1.9f));
         }
 
         [Fact]
         public void SomebodyElseSpeaksOnceTheGlobalGapHasPassed()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Idle, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0f));
 
-            Assert.True(budget.TryClaim(Bob, ChatterEvent.Idle, NoSubject, 2f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.Idle, NoSubject, 2f));
         }
 
         [Fact]
         public void OneSkeletonStaysQuietForMuchLongerThanTheSquadDoes()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Idle, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0f));
 
             // The squad gap (2s) is long gone, but Alice's own cooldown is 10s.
             // This is the effect we want: the group keeps chatting, any one member
             // of it does not.
-            Assert.False(budget.TryClaim(Alice, ChatterEvent.Idle, NoSubject, 5f));
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Idle, NoSubject, 10f));
+            Assert.False(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 5f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 10f));
         }
 
         [Fact]
@@ -88,38 +105,38 @@ namespace ChattyBones.Tests
             // All three charge the same greydwarf at once, which is exactly what a
             // squad does. Bob is refused for the echo even though 3s is past the
             // squad gap and he has never spoken.
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
-            Assert.False(budget.TryClaim(Bob, ChatterEvent.TargetAcquired, Greydwarf, 3f));
-            Assert.False(budget.TryClaim(Carol, ChatterEvent.TargetAcquired, Greydwarf, 5f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+            Assert.False(Speak(budget, Bob, ChatterEvent.TargetAcquired, Greydwarf, 3f));
+            Assert.False(Speak(budget, Carol, ChatterEvent.TargetAcquired, Greydwarf, 5f));
         }
 
         [Fact]
         public void TheSameEnemyIsWorthMentioningAgainMuchLater()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
 
-            Assert.True(budget.TryClaim(Bob, ChatterEvent.TargetAcquired, Greydwarf, 6f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.TargetAcquired, Greydwarf, 6f));
         }
 
         [Fact]
         public void ADifferentEnemyIsWorthItsOwnRemark()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
 
-            Assert.True(budget.TryClaim(Bob, ChatterEvent.TargetAcquired, Seeker, 2f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.TargetAcquired, Seeker, 2f));
         }
 
         [Fact]
         public void CallingAnEnemyOutDoesNotSilenceKillingIt()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
 
             // Same subject, different event. "A greydwarf!" and "Got him!" are two
             // different remarks and both deserve to land.
-            Assert.True(budget.TryClaim(Bob, ChatterEvent.Killed, Greydwarf, 2f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.Killed, Greydwarf, 2f));
         }
 
         [Fact]
@@ -130,8 +147,8 @@ namespace ChattyBones.Tests
             // Two skeletons taking a hit are two separate yelps. If the echo check
             // ran on subject 0 it would treat these as the same thing and swallow
             // the second one.
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Hurt, NoSubject, 0f));
-            Assert.True(budget.TryClaim(Bob, ChatterEvent.Hurt, NoSubject, 2f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Hurt, NoSubject, 0f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.Hurt, NoSubject, 2f));
         }
 
         [Fact]
@@ -141,72 +158,72 @@ namespace ChattyBones.Tests
             _ = settings.DisabledEvents.Add(ChatterEvent.TargetAcquired);
             ChatterBudget budget = new(settings);
 
-            Assert.False(budget.TryClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+            Assert.False(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
 
             // And switching one event off leaves the rest alone.
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Hurt, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Hurt, NoSubject, 0f));
         }
 
         [Fact]
         public void SomethingImportantInterruptsIdleChatter()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Idle, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0f));
 
             // 1s is inside the 2s squad gap, so ordinary chatter would be refused -
             // but dying outranks muttering, and 1s clears the half-second floor.
-            Assert.True(budget.TryClaim(Bob, ChatterEvent.Died, NoSubject, 1f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.Died, NoSubject, 1f));
         }
 
         [Fact]
         public void EvenSomethingImportantWaitsABeat()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Idle, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0f));
 
             // Two lines appearing together are two lines nobody reads, so the
             // barge-in still respects PreemptGapSeconds.
-            Assert.False(budget.TryClaim(Bob, ChatterEvent.Died, NoSubject, 0.2f));
+            Assert.False(Speak(budget, Bob, ChatterEvent.Died, NoSubject, 0.2f));
         }
 
         [Fact]
         public void MutteringDoesNotInterruptSomethingImportant()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Died, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Died, NoSubject, 0f));
 
-            Assert.False(budget.TryClaim(Bob, ChatterEvent.Idle, NoSubject, 1f));
+            Assert.False(Speak(budget, Bob, ChatterEvent.Idle, NoSubject, 1f));
         }
 
         [Fact]
         public void TwoSkeletonsDyingTogetherGiveOneSetOfLastWords()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Died, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Died, NoSubject, 0f));
 
             // Equal priority is not *higher* priority, so Bob does not get to barge
             // in. Overlapping death cries would be noise rather than drama.
-            Assert.False(budget.TryClaim(Bob, ChatterEvent.Died, NoSubject, 1f));
+            Assert.False(Speak(budget, Bob, ChatterEvent.Died, NoSubject, 1f));
         }
 
         [Fact]
         public void YourInjuriesOutrankTheirs()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Hurt, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Hurt, NoSubject, 0f));
 
             // A skeleton is being chewed on and so are you. Yours is the one worth
             // hearing about, so it gets to cut in.
-            Assert.True(budget.TryClaim(Bob, ChatterEvent.PlayerHurt, Greydwarf, 1f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.PlayerHurt, Greydwarf, 1f));
         }
 
         [Fact]
         public void ACompanionsInjuriesDoNotOutrankYourOwn()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.PlayerHurt, Greydwarf, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.PlayerHurt, Greydwarf, 0f));
 
-            Assert.False(budget.TryClaim(Bob, ChatterEvent.CompanionHurt, NoSubject, 1f));
+            Assert.False(Speak(budget, Bob, ChatterEvent.CompanionHurt, NoSubject, 1f));
         }
 
         [Fact]
@@ -217,9 +234,9 @@ namespace ChattyBones.Tests
             // One hit on you, five skeletons that all noticed. The squad echo already
             // handles this: pass whatever hit you as the subject and it collapses to
             // a single remark, exactly as it does for a shared target.
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.PlayerHurt, Greydwarf, 0f));
-            Assert.False(budget.TryClaim(Bob, ChatterEvent.PlayerHurt, Greydwarf, 3f));
-            Assert.False(budget.TryClaim(Carol, ChatterEvent.PlayerHurt, Greydwarf, 5f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.PlayerHurt, Greydwarf, 0f));
+            Assert.False(Speak(budget, Bob, ChatterEvent.PlayerHurt, Greydwarf, 3f));
+            Assert.False(Speak(budget, Carol, ChatterEvent.PlayerHurt, Greydwarf, 5f));
         }
 
         /// <summary>Can <paramref name="barger"/> interrupt <paramref name="sitting"/>?</summary>
@@ -232,9 +249,9 @@ namespace ChattyBones.Tests
         private static bool CanInterrupt(ChatterEvent barger, ChatterEvent sitting)
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, sitting, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, sitting, NoSubject, 0f));
 
-            return budget.TryClaim(Bob, barger, NoSubject, 1f);
+            return Speak(budget, Bob, barger, NoSubject, 1f);
         }
 
         [Fact]
@@ -287,16 +304,114 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void AskingDoesNotBookTheSlot()
+        {
+            // The reason CanClaim and Commit are separate calls. The caller cannot
+            // know there is anything to *say* until after it has asked - the pack may
+            // have no lines for that personality and event, or every line may want a
+            // {target} we have not got. If asking booked the slot, that silent event
+            // would have burned the squad's gap, the skeleton's cooldown and an echo
+            // lock, for a line nobody heard.
+            ChatterBudget budget = Budget();
+
+            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 0f));
+            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 0f));
+            Assert.True(budget.CanClaim(Bob, ChatterEvent.Idle, NoSubject, 0f));
+
+            // Nothing was recorded, so a real claim a moment later is still allowed.
+            Assert.True(Speak(budget, Bob, ChatterEvent.Idle, NoSubject, 0f));
+
+            // And now it has been.
+            Assert.False(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 0.5f));
+        }
+
+        [Fact]
+        public void AnEventWithNothingToSayCostsTheSquadNothing()
+        {
+            // The scenario the split is for, spelled out: a half-written pack, which
+            // the shared-personality fallback deliberately invites. Three events fire,
+            // none of them produces a line, and the squad is no quieter for it.
+            ChatterBudget budget = Budget();
+
+            for (int i = 0; i < 3; i++)
+            {
+                Assert.True(budget.CanClaim(Alice, ChatterEvent.Buffed, NoSubject, i * 0.1f));
+                // ...LineChooser returns false here, so no Commit.
+            }
+
+            Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0.4f));
+        }
+
+        [Fact]
+        public void ChangingASettingTakesEffectOnTheVeryNextQuestion()
+        {
+            // Settings are swapped wholesale rather than edited in place, because
+            // BepInEx raises SettingChanged off the main thread and a half-rebuilt set
+            // would be read mid-frame. Swapping one reference is atomic.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0f));
+
+            // Alice's cooldown is 10s, so she is normally refused here.
+            Assert.False(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 5f));
+
+            ChatterSettings chattier = Settings();
+            chattier.SpeakerCooldownSeconds = 1f;
+            budget.Settings = chattier;
+
+            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 5f));
+        }
+
+        [Fact]
+        public void RaisingACooldownMidSessionIsHonouredForSkeletonsThatAlreadySpoke()
+        {
+            // This is the test that a pruning pass would fail, which is one of two
+            // reasons there no longer is one. Dropping entries against the window as
+            // it stood at the time meant a setting the player had just raised was
+            // quietly ignored for anyone who had already spoken.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0f));
+
+            ChatterSettings quieter = Settings();
+            quieter.SpeakerCooldownSeconds = 60f;
+            budget.Settings = quieter;
+
+            Assert.False(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 30f));
+            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 61f));
+        }
+
+        [Fact]
+        public void WeRememberEverythingForTheWholeSessionOnPurpose()
+        {
+            // The other reason there is no pruning. Both maps are tiny - one small
+            // entry per skeleton ever summoned, and one per distinct (event, creature)
+            // pair, which the game itself bounds. Forgetting cost correctness under
+            // live settings and bought a few kilobytes.
+            //
+            // This is a regression guard for that decision rather than a test of
+            // behaviour: if somebody adds pruning back, it should be a deliberate act
+            // that fails here first.
+            ChatterBudget budget = Budget();
+
+            for (int i = 0; i < 50; i++)
+            {
+                Assert.True(Speak(budget, 5000 + i, ChatterEvent.TargetAcquired, 9000 + i, i * 100f));
+            }
+
+            Assert.Equal(50, budget.TrackedSpeakers);
+            Assert.Equal(50, budget.TrackedSubjects);
+        }
+
+        [Fact]
         public void BeingRefusedDoesNotCountAsHavingSpoken()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.Idle, NoSubject, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0f));
 
             // Bob is refused here, and that refusal must not start Bob's own cooldown
             // or push the squad gap out. Otherwise a squad that keeps trying to talk
             // would keep talking itself out of ever being allowed to.
-            Assert.False(budget.TryClaim(Bob, ChatterEvent.Idle, NoSubject, 1f));
-            Assert.True(budget.TryClaim(Bob, ChatterEvent.Idle, NoSubject, 2f));
+            Assert.False(Speak(budget, Bob, ChatterEvent.Idle, NoSubject, 1f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.Idle, NoSubject, 2f));
         }
 
         [Fact]
@@ -310,19 +425,19 @@ namespace ChattyBones.Tests
             // different events collide. Both of these should be allowed.
             const int negativeHash = -12345;
 
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.TargetAcquired, negativeHash, 0f));
-            Assert.True(budget.TryClaim(Bob, ChatterEvent.Killed, negativeHash, 2f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, negativeHash, 0f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.Killed, negativeHash, 2f));
         }
 
         [Fact]
         public void ALongQuietSpellPutsEverythingBackToNormal()
         {
             ChatterBudget budget = Budget();
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
 
             // Well past every window. This also walks over the pruning, so it fails
             // if throwing old bookkeeping away ever changes an answer.
-            Assert.True(budget.TryClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 1000f));
+            Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 1000f));
         }
 
         [Fact]
@@ -335,7 +450,7 @@ namespace ChattyBones.Tests
             // does not quietly change how the rules behave.
             for (int i = 0; i < 50; i++)
             {
-                Assert.True(budget.TryClaim(Alice, ChatterEvent.TargetAcquired, 9000 + i, i * 20f));
+                Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, 9000 + i, i * 20f));
             }
         }
     }

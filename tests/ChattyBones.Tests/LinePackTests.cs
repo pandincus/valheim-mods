@@ -20,7 +20,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void APersonalitySaysItsOwnLines()
         {
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.TargetAcquired, "Oh gods, a {target}...")
                 .Build();
 
@@ -34,7 +34,7 @@ namespace ChattyBones.Tests
             // This is the property the whole multiplayer design rests on. Two clients
             // never compare notes; they are handed the same seed and are expected to
             // arrive at the same line on their own.
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "a", "b", "c", "d", "e")
                 .Build();
 
@@ -51,7 +51,7 @@ namespace ChattyBones.Tests
         {
             // Not a distribution test - just enough to catch a fold that can only
             // ever land on one line, which would make every skeleton a broken record.
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "a", "b", "c")
                 .Build();
 
@@ -72,7 +72,7 @@ namespace ChattyBones.Tests
             // result for the remainder of a negative number, and a negative array
             // index throws, so this would be an exception in the middle of a fight on
             // somebody else's machine.
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "a", "b", "c")
                 .Build();
 
@@ -86,7 +86,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void APersonalityWithNothingToSayFallsBackToTheSharedLines()
         {
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "My bones are itchy.")
                 .Add(LinePack.SharedPersonality, ChatterEvent.Died, "Ohh, that's it for me.")
                 .Build();
@@ -101,7 +101,7 @@ namespace ChattyBones.Tests
             // A half-written personality uses its own lines where it has them and the
             // shared ones where it does not, rather than being all-or-nothing. That is
             // what makes filling a pack in gradually pleasant.
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "mine")
                 .Add(LinePack.SharedPersonality, ChatterEvent.Idle, "shared idle")
                 .Add(LinePack.SharedPersonality, ChatterEvent.Died, "shared death")
@@ -117,7 +117,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void NothingToSayIsAnOrdinaryAnswer()
         {
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "hmm")
                 .Build();
 
@@ -130,7 +130,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void APersonalityNobodyDefinedSaysNothing()
         {
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "hmm")
                 .Build();
 
@@ -140,7 +140,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void AMissingPersonalityStillReachesTheSharedLines()
         {
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(LinePack.SharedPersonality, ChatterEvent.Idle, "shared")
                 .Build();
 
@@ -154,7 +154,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void ANullPersonalityIsHandledRatherThanThrowing()
         {
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(LinePack.SharedPersonality, ChatterEvent.Idle, "shared")
                 .Build();
 
@@ -168,7 +168,7 @@ namespace ChattyBones.Tests
             // Assigning a personality means choosing an index into this list, so the
             // order has to be the same on every client and after every restart. Added
             // deliberately out of order here.
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add("zealous", ChatterEvent.Idle, "z")
                 .Add(Cowardly, ChatterEvent.Idle, "c")
                 .Add(Boastful, ChatterEvent.Idle, "b")
@@ -180,7 +180,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void TheSharedPersonalityIsNotSomethingYouCanBe()
         {
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "c")
                 .Add(LinePack.SharedPersonality, ChatterEvent.Idle, "shared")
                 .Build();
@@ -196,7 +196,7 @@ namespace ChattyBones.Tests
             // A hand-edited file will eventually have a stray empty entry in it.
             // Keeping it would give a skeleton that occasionally says nothing at all
             // while using up its turn, which looks exactly like a bug.
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "real", "", "   ", null)
                 .Build();
 
@@ -210,7 +210,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void APersonalityWithOnlyBlanksDoesNotExist()
         {
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "real")
                 .Add(Boastful, ChatterEvent.Idle, "", "  ")
                 .Build();
@@ -225,7 +225,7 @@ namespace ChattyBones.Tests
         {
             // A pack file is allowed to mention a personality in more than one place,
             // and losing the first half silently would be a miserable thing to debug.
-            LinePack pack = new LinePackBuilder()
+            LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "first")
                 .Add(Cowardly, ChatterEvent.Idle, "second")
                 .Build();
@@ -245,7 +245,7 @@ namespace ChattyBones.Tests
         {
             // What we hand out if the player's file is missing or unreadable. Every
             // skeleton is simply mute, and nothing anywhere has to special-case null.
-            LinePack pack = new LinePackBuilder().Build();
+            LinePack pack = new LinePack.Builder().Build();
 
             Assert.Empty(pack.Personalities);
             Assert.False(pack.TryPick(Cowardly, ChatterEvent.Idle, 0, out _));

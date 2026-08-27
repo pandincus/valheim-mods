@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace ChattyBones.Logic
 {
     /// <summary>
-    /// Picks what a skeleton actually says, and remembers enough not to repeat itself.
+    /// Picks what a skeleton actually says, and never says it twice running.
     /// </summary>
     /// <remarks>
     /// Only the client that owns a skeleton runs this. Everyone else takes the seed
@@ -14,102 +14,80 @@ namespace ChattyBones.Logic
     ///
     /// That arrangement is the reason the "don't repeat yourself" memory lives here
     /// rather than at the point of picking a line, and it is worth spelling out
-    /// because the obvious design is wrong. Suppose every client kept its own list
-    /// of what it had heard lately and skipped a line that was on it. Two clients
-    /// have different lists, because they see different subsets of what happens -
-    /// you have been stood next to the squad for a minute, your friend just ran over
+    /// because the obvious design is wrong. Suppose every client kept its own note
+    /// of what it had heard and skipped a line that matched. Two clients hold
+    /// different notes, because they see different subsets of what happens - you
+    /// have been stood next to the squad for a minute, your friend just ran over
     /// from the next biome and a ZDO only replicates to clients with the zone
-    /// loaded. The same seed arrives at both, you skip the line it lands on and slide
-    /// to the next one, your friend does not, and now the same skeleton is saying
-    /// two different things on two screens. Which is precisely what sending a seed
-    /// was meant to avoid.
+    /// loaded. The same seed arrives at both, you skip the line it lands on and
+    /// slide to the next one, your friend does not, and now the same skeleton is
+    /// saying two different things on two screens. Which is precisely what sending a
+    /// seed was meant to avoid.
     ///
-    /// So instead the owner does the avoiding when it *chooses* the seed: roll one,
-    /// see which line that gives in its own pack, roll again if it has heard that
-    /// one lately. Whatever it settles on is broadcast, and every client - the owner
-    /// included - does the same stateless lookup. No-repeat still works, judged from
-    /// the point of view of the player actually stood there watching, which is the
-    /// right vantage point anyway. In single player, where the owner is the only
-    /// viewer, it is exactly correct.
+    /// So instead the owner does the avoiding when it *chooses*, and broadcasts a
+    /// seed that reproduces its choice. No-repeat is judged from the point of view
+    /// of the player actually stood there watching, which is the right vantage point
+    /// anyway. In single player, where the owner is the only viewer, it is exactly
+    /// correct.
     ///
-    /// Your friend might occasionally hear a line you heard two minutes ago. They
-    /// have never heard it, so it is not a repeat for them.
+    /// One of these serves the whole squad. Hearing "My bones are itchy" twice
+    /// running is just as tiresome when two different skeletons say it, so Phase 4
+    /// must share a single chooser rather than giving each skeleton its own.
+    ///
+    /// This used to remember the last several lines and roll seeds until it found an
+    /// unheard one. That was more code, one more config knob, and worse: with eight
+    /// rolls there was a small chance of every roll landing on the line just said,
+    /// so the one promise the class made held about 99.7% of the time. Asking the
+    /// pack how many lines there are and walking them costs less and makes the
+    /// promise structural. If it ever feels repetitive with a real pack in real play,
+    /// dealing from a shuffled deck is the natural next step - but that is a
+    /// judgement to make against actual gameplay, not a hunch.
     /// </remarks>
     internal sealed class LineChooser
     {
-        /// <summary>The last few lines anyone said, newest last.</summary>
+        /// <summary>The last thing anybody said, or null before anything has been.</summary>
         /// <remarks>
-        /// Templates rather than indices, and shared across the whole squad rather
-        /// than kept per skeleton. Both follow from asking what the *player* would
-        /// find repetitive: hearing "My bones are itchy" twice running is just as
-        /// tiresome when it comes from two different skeletons, and a line reached
-        /// through <see cref="LinePack.SharedPersonality"/> is the same line however
-        /// many personalities can reach it.
-        /// </remarks>
-        private readonly Queue<string> _recent = new();
-
-        private readonly int _memory;
-        private readonly int _attempts;
-
-        /// <summary>The very last thing said, which we work hardest to avoid repeating.</summary>
-        /// <remarks>
-        /// <see cref="_recent"/> already holds this, so why keep it twice? Because
-        /// the two get treated differently when we run out of attempts. Saying
-        /// something you heard four lines ago is barely noticeable; saying the same
-        /// thing twice in a row is the exact effect this class exists to prevent, and
-        /// it is worth giving up a little variety elsewhere to guarantee it.
-        ///
-        /// A test caught this. With a memory of 5 over a group of 6 lines, nearly
-        /// every roll lands on something remembered, so we reach the fallback
-        /// constantly - and the fallback used to be "whatever we rolled last", which
-        /// perfectly happily handed back the line we had just said.
+        /// The template rather than the rendered text. "Get lost, {target}!" said
+        /// about a greydwarf and then about a seeker is the same joke twice, and it
+        /// should feel like one.
         /// </remarks>
         private string _lastSaid;
-
-        /// <summary>Build a chooser.</summary>
-        /// <param name="memory">
-        /// How many recent lines to steer away from. Small on purpose - this is
-        /// "don't say that again straight away", not "work through the whole pack
-        /// before repeating". Set it near the size of a group and every roll starts
-        /// failing, at which point you are just paying for attempts.
-        /// </param>
-        /// <param name="attempts">
-        /// How many seeds to try before giving up and repeating something. There has
-        /// to be a limit: a group with one line in it can never produce anything
-        /// unheard, and neither can a group where every line is already in memory.
-        /// Repeating is much better than saying nothing.
-        /// </param>
-        internal LineChooser(int memory = 5, int attempts = 8)
-        {
-            _memory = memory < 0 ? 0 : memory;
-            _attempts = attempts < 1 ? 1 : attempts;
-        }
 
         /// <summary>Choose a line, and the seed that reproduces it anywhere else.</summary>
         /// <returns>
         /// False when this skeleton has nothing it can say, and the caller should
-        /// drop the whole thing. Two ways that happens, and neither is an error:
-        /// the pack has no lines for this personality and event, or every line it
-        /// does have wants a token we cannot fill.
+        /// drop the whole thing without committing anything to the budget. Two ways
+        /// that happens, and neither is an error: the pack has no lines for this
+        /// personality and event, or every line it does have wants a token we cannot
+        /// fill.
         /// </returns>
         /// <param name="pack">The owner's own pack. Other clients may well have a different one.</param>
         /// <param name="personality">Which character is speaking.</param>
         /// <param name="kind">What happened.</param>
         /// <param name="tokens">
-        /// What we know at this moment. Used to reject a line we could not render -
-        /// a {target} in an idle line, say - rather than discovering that after we
-        /// have already told everybody to say it.
+        /// What we know at this moment. Used to skip a line we could not render - a
+        /// {target} in an idle line, say - rather than discovering that after we have
+        /// already told everybody to say it.
         /// </param>
         /// <param name="random">
-        /// Where seeds come from. Passed in rather than owned so the tests can hand
-        /// over a seeded Random and get the same answers every run.
+        /// Where the starting point comes from. Passed in rather than owned so the
+        /// tests can hand over a seeded Random and get the same answers every run.
         /// </param>
         /// <param name="seed">The seed to broadcast, so others reach this same line.</param>
         /// <param name="line">The finished line, tokens filled in.</param>
         /// <remarks>
-        /// Note what gets remembered: the template, not the rendered text. "Get lost,
-        /// {target}!" said about a greydwarf and then about a seeker is the same joke
-        /// twice, and it should feel like one.
+        /// We start at a random offset and walk the whole group from there, taking
+        /// the first line that renders and is not the one just said. Every line is
+        /// examined at most once, so this cannot fail through bad luck the way
+        /// rolling seeds could: if any usable line exists, we find it.
+        ///
+        /// That matters most for a group where, say, one line in ten is renderable
+        /// and the other nine want a {target} we have not got. Rolling ten times and
+        /// missing was entirely possible, and the skeleton would go silent for no
+        /// reason a player could ever work out.
+        ///
+        /// Repeating is allowed only as a last resort, when the line just said is the
+        /// single usable one in the group. Falling silent would be worse.
         /// </remarks>
         internal bool TryChoose(
             LinePack pack,
@@ -123,104 +101,84 @@ namespace ChattyBones.Logic
             seed = 0;
             line = null;
 
-            // Two grades of fallback, used only if every attempt turns up something
-            // we have heard lately. "Stale" is a line from further back, which is
-            // barely noticeable. "Repeat" is the line we said last, which is the one
-            // thing we really do not want, and is taken only when nothing else came up.
-            string staleTemplate = null;
-            string staleLine = null;
-            int staleSeed = 0;
-
-            string repeatTemplate = null;
-            string repeatLine = null;
-            int repeatSeed = 0;
-
-            for (int attempt = 0; attempt < _attempts; attempt++)
+            if (!pack.TryGetGroup(personality, kind, out IReadOnlyList<string> lines))
             {
-                int candidate = random.Next(0, Utterance.MaxSeed + 1);
+                return false;
+            }
 
-                if (!pack.TryPick(personality, kind, candidate, out string template))
-                {
-                    // Nothing for this personality and event at all, and another roll
-                    // will not change that.
-                    return false;
-                }
+            int count = lines.Count;
+            int start = random.Next(0, count);
+
+            string repeatLine = null;
+            int repeatIndex = -1;
+
+            for (int offset = 0; offset < count; offset++)
+            {
+                int index = (start + offset) % count;
+                string template = lines[index];
 
                 if (!tokens.TryRender(template, out string rendered))
                 {
-                    // This particular line wants something we do not have. A different
-                    // line in the same group might not, so keep rolling - but do not
-                    // let it become the fallback, because we cannot say it.
                     continue;
                 }
 
-                // The _lastSaid half is what makes "never twice in a row" hold even
-                // with the memory turned off. When the memory is on, _recent already
-                // contains it and this costs nothing.
-                if (template != _lastSaid && !_recent.Contains(template))
-                {
-                    Remember(template);
-                    seed = candidate;
-                    line = rendered;
-                    return true;
-                }
-
-                // Heard it lately. Hold on to it in case every remaining roll is also
-                // something we have heard, because repeating beats falling silent -
-                // but file it by how bad a repeat it would be.
                 if (template == _lastSaid)
                 {
-                    repeatTemplate = template;
-                    repeatLine = rendered;
-                    repeatSeed = candidate;
-                }
-                else if (staleTemplate == null)
-                {
-                    staleTemplate = template;
-                    staleLine = rendered;
-                    staleSeed = candidate;
-                }
-            }
+                    // Hold on to it in case it turns out to be the only thing we can
+                    // say, but keep looking first.
+                    if (repeatIndex < 0)
+                    {
+                        repeatLine = rendered;
+                        repeatIndex = index;
+                    }
 
-            if (staleTemplate != null)
-            {
-                Remember(staleTemplate);
-                seed = staleSeed;
-                line = staleLine;
+                    continue;
+                }
+
+                _lastSaid = template;
+                seed = SeedFor(index, count, random);
+                line = rendered;
                 return true;
             }
 
-            if (repeatTemplate != null)
+            if (repeatIndex < 0)
             {
-                Remember(repeatTemplate);
-                seed = repeatSeed;
-                line = repeatLine;
-                return true;
+                return false;
             }
 
-            return false;
+            seed = SeedFor(repeatIndex, count, random);
+            line = repeatLine;
+            return true;
         }
 
-        /// <summary>Note that a line has just been used, dropping the oldest if we are full.</summary>
-        /// <param name="template">The raw line, before tokens were filled in.</param>
-        private void Remember(string template)
+        /// <summary>Find a seed that any client will fold back to this index.</summary>
+        /// <returns>A value in 0..<see cref="Utterance.MaxSeed"/> whose remainder by <paramref name="count"/> is <paramref name="index"/>.</returns>
+        /// <param name="index">The line we chose, within its group.</param>
+        /// <param name="count">How many lines the group holds.</param>
+        /// <param name="random">Used to vary which of the many valid seeds we send.</param>
+        /// <remarks>
+        /// Receiving clients compute <c>seed % theirCount</c>, so we cannot simply
+        /// send the index - we send a number that lands on it. Any of
+        /// <c>index, index + count, index + 2*count...</c> will do, and we pick among
+        /// them at random so the value on the wire is not trivially the index. That
+        /// costs nothing and means a pack with three lines is not forever sending
+        /// 0, 1 and 2.
+        ///
+        /// A client whose pack has a *different* number of lines lands somewhere else
+        /// entirely, which is the intended behaviour - it gets a sensible line out of
+        /// its own file rather than an index that means nothing there.
+        ///
+        /// The guard is for a group with more than 65,536 lines in it, where no seed
+        /// can encode every index. Mirroring degrades to "a line" rather than "the
+        /// same line", which seems a reasonable thing to do for a pack that large.
+        /// </remarks>
+        private static int SeedFor(int index, int count, Random random)
         {
-            // Tracked even when the memory is switched off entirely, so that "never
-            // twice in a row" holds regardless of how the memory is configured. It is
-            // the one promise this class makes unconditionally.
-            _lastSaid = template;
+            int cycles = (Utterance.MaxSeed + 1) / count;
 
-            if (_memory == 0)
-            {
-                return;
-            }
-
-            _recent.Enqueue(template);
-
-            while (_recent.Count > _memory)
-            {
-                _ = _recent.Dequeue();
-            }
+            return cycles <= 0
+                ? index & Utterance.MaxSeed
+                : index + (count * random.Next(0, cycles));
         }
     }
 }

@@ -81,10 +81,18 @@ namespace ChattyBones.Logic
         /// {target} in an idle line gets silence on that line and working lines
         /// everywhere else, which is a much gentler way to find out.
         ///
-        /// Worth noting for the multiplayer side: whether a token can be filled
-        /// depends only on values every client works out from the same broadcast
-        /// information, so all of them succeed or all of them refuse. This does not
-        /// put us at risk of two players seeing different lines.
+        /// Worth being precise about the multiplayer side, because it is tempting to
+        /// state this more strongly than it deserves. Every client works its values
+        /// out from the same broadcast information, so nobody ends up with a
+        /// *different* value for a token - which is the failure that would matter,
+        /// two players seeing the same skeleton say two different things.
+        ///
+        /// It is not quite true that everyone always agrees on whether a token can be
+        /// filled at all. A remote client may not have the companion loaded, or may
+        /// not know a creature we can name. When that happens it stays quiet while
+        /// the owner speaks. A missing remark is a much smaller problem than a
+        /// contradictory one, but it is not nothing, and Phase 6 should expect it
+        /// rather than be surprised by it.
         /// </returns>
         /// <param name="template">The raw line from the pack, braces and all.</param>
         /// <param name="rendered">The finished line, or null when we return false.</param>
@@ -171,7 +179,7 @@ namespace ChattyBones.Logic
         }
 
         /// <summary>The value for a known token, or null when we do not have one.</summary>
-        /// <param name="token">One of target, player or name.</param>
+        /// <param name="token">One of target, player, name or companion.</param>
         /// <returns>The value, or null if it was not supplied.</returns>
         private string ValueOf(string token)
         {

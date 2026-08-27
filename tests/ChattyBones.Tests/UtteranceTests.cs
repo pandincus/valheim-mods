@@ -109,6 +109,42 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void ACounterOfZeroIsRefusedAtConstruction()
+        {
+            // 0 with a Summoned event and a 0 seed packs to exactly 0, which
+            // TryUnpack reads as "nobody has ever spoken here". The utterance would
+            // not fail, it would vanish - and Summoned is the very first thing a
+            // skeleton fires, so this is not a far-fetched combination.
+            _ = Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => new Utterance(0, ChatterEvent.Summoned, 0, NoSubject));
+        }
+
+        [Fact]
+        public void ASeedTooBigToFitIsRefusedAtConstruction()
+        {
+            // Silently keeping the low 16 bits would be the worst outcome available:
+            // the owner says one line, every remote client folds a different number
+            // and says another, and nothing on the machine that caused it looks wrong.
+            _ = Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => new Utterance(1, ChatterEvent.Idle, Utterance.MaxSeed + 1, NoSubject));
+
+            _ = Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => new Utterance(1, ChatterEvent.Idle, -1, NoSubject));
+        }
+
+        [Fact]
+        public void APackedValueClaimingCounterZeroIsRejected()
+        {
+            // Our own packing cannot produce this - a 0 counter with other bits set
+            // means somebody else wrote to the field. A future version of the mod, or
+            // another mod that picked the same ZDO key. Either way, do not guess.
+            int packed = (0 << 24) | ((int)ChatterEvent.Idle << 16) | 1234;
+
+            Assert.NotEqual(0, packed);
+            Assert.False(Utterance.TryUnpack(packed, NoSubject, out _));
+        }
+
+        [Fact]
         public void TheCounterWalksUpAndWrapsPastZero()
         {
             Assert.Equal(1, Utterance.NextCounter(0));

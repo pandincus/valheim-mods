@@ -107,13 +107,38 @@ namespace ChattyBones.Logic
         /// <param name="seed">0 to <see cref="MaxSeed"/>.</param>
         /// <param name="subject">A prefab hash, or 0 for events that are not about anything.</param>
         /// <remarks>
-        /// Nothing is validated here. <see cref="TryUnpack"/> is the guarded door,
-        /// because that is where values arrive from somewhere we do not control -
-        /// another player's client, possibly running a different version of this mod.
-        /// Values built locally come from our own code and are already in range.
+        /// This throws on a bad value, and <see cref="TryUnpack"/> never does. That
+        /// split is the point of both. Values arriving here come from our own code,
+        /// so one out of range is a bug in the mod and should be loud the first time
+        /// it is run. Values arriving at TryUnpack come off the network from a client
+        /// we do not control, so a bad one there is a Tuesday and gets a quiet no.
+        ///
+        /// Both of the checks below were originally absent, and both were quiet
+        /// disasters. A counter of 0 packs the whole value to 0, which TryUnpack
+        /// reads as "nobody has ever spoken" - so the utterance would vanish rather
+        /// than fail. And a seed above <see cref="MaxSeed"/> silently loses its top
+        /// bits, so remote clients would fold a different number and say a different
+        /// line: the exact desync this whole type exists to prevent, arriving with no
+        /// symptom at all on the machine that caused it.
         /// </remarks>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// If <paramref name="counter"/> is outside 1..255 or <paramref name="seed"/>
+        /// is outside 0..<see cref="MaxSeed"/>.
+        /// </exception>
         internal Utterance(int counter, ChatterEvent kind, int seed, int subject)
         {
+            if (counter is < 1 or > CounterMask)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(counter), counter, "Counter runs 1.." + CounterMask + "; 0 would pack to a value meaning 'never spoken'.");
+            }
+
+            if (seed is < 0 or > MaxSeed)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(seed), seed, "Seed must fit in " + SeedBits + " bits, so 0.." + MaxSeed + ".");
+            }
+
             Counter = counter;
             Kind = kind;
             Seed = seed;
@@ -185,6 +210,15 @@ namespace ChattyBones.Logic
             int counter = (int)((bits >> (SeedBits + KindBits)) & CounterMask);
             int kind = (int)((bits >> SeedBits) & KindMask);
             int seed = (int)(bits & SeedMask);
+
+            // Belt as well as braces. A counter of 0 with anything else set is not
+            // something our own packing can produce, so it means the field was
+            // written by something that is not us - a future version, or another mod
+            // that happened to pick the same ZDO key. Either way we should not guess.
+            if (counter == 0)
+            {
+                return false;
+            }
 
             // Enum.IsDefined goes through reflection and is not something I would put
             // on a per-frame path. This runs when a watching client notices a ZDO

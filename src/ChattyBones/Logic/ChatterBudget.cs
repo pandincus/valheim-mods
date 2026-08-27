@@ -3,104 +3,26 @@ using System.Collections.Generic;
 namespace ChattyBones.Logic
 {
     /// <summary>
-    /// The things a skeleton can react to.
-    /// </summary>
-    /// <remarks>
-    /// One entry per hook we install, plus Idle, which nothing triggers - it is
-    /// just a timer running down with nothing else to say.
-    ///
-    /// The order here is not the priority order. Priority lives in
-    /// <see cref="ChatterBudget.PriorityOf"/>, so that reordering this enum for
-    /// readability cannot quietly change which skeleton gets to speak.
-    /// </remarks>
-    internal enum ChatterEvent
-    {
-        /// <summary>You just raised it with the Dead Raiser.</summary>
-        Summoned,
-
-        /// <summary>It picked something to attack, and is heading over.</summary>
-        TargetAcquired,
-
-        /// <summary>Something hit it hard enough to be worth mentioning.</summary>
-        Hurt,
-
-        /// <summary>It gained a status effect, e.g. you dropped a shield on it.</summary>
-        Buffed,
-
-        /// <summary>It killed something.</summary>
-        /// <remarks>
-        /// Not hooked off the victim's death, which sounds like the obvious place and
-        /// is not. Character.OnDeath is reached from CheckDeath, which sits inside an
-        /// IsOwner check, so a creature's death only fires on whichever client owns
-        /// that creature - in a shared world that is often the host or another player,
-        /// and your skeleton's kill would simply go uncommented.
-        ///
-        /// Instead we watch our own skeleton's target go from something to nothing
-        /// and check whether that something is now dead, which reads replicated state
-        /// and works whoever owns it. Attribution gets a little looser - the thing
-        /// might have died to somebody else's axe - but "the creature my skeleton was
-        /// charging at just died" is arguably the better trigger anyway. It fires
-        /// when the skeleton thinks it won, which is the funnier moment.
-        /// </remarks>
-        Killed,
-
-        /// <summary>You took a hit worth mentioning.</summary>
-        /// <remarks>
-        /// Damage on a Player resolves on that player's own client, and your client
-        /// owns your summons, so your squad reacts to your injuries. Somebody else's
-        /// skeletons will not, which is the right answer rather than a limitation -
-        /// "cap'n" means their summoner, not you.
-        ///
-        /// Pass the attacker as the subject so the squad echo applies. Five skeletons
-        /// all noticing you got hit should produce one remark, not five.
-        /// </remarks>
-        PlayerHurt,
-
-        /// <summary>You hit something very hard.</summary>
-        /// <remarks>
-        /// The attacking client builds the HitData and calls Character.Damage, which
-        /// is what then sends the RPC. So a hook on Damage rather than RPC_Damage
-        /// runs on your machine with the number in hand, and no networking is
-        /// involved at all - which is a nicer position than the kill events are in.
-        /// </remarks>
-        PlayerLandedABigHit,
-
-        /// <summary>You killed something.</summary>
-        /// <remarks>
-        /// Kept separate from <see cref="PlayerLandedABigHit"/> even though a kill is
-        /// the biggest hit there is, because "You got him!" and "Nice swing!" are
-        /// different lines and a pack author should be able to write both. Event
-        /// space is not scarce - see <see cref="Utterance"/>.
-        /// </remarks>
-        PlayerGotAKill,
-
-        /// <summary>Another of your skeletons took a hit.</summary>
-        /// <remarks>
-        /// Both skeletons are yours and owned by the same client, so this needs no
-        /// cleverness to detect. The fun is in <see cref="LineTokens.Companion"/>:
-        /// they already have names, either the one they came with or whatever you
-        /// renamed them to, so a line can be "Ach, {companion}!" rather than
-        /// something vague about a colleague.
-        /// </remarks>
-        CompanionHurt,
-
-        /// <summary>It died.</summary>
-        Died,
-
-        /// <summary>It timed out, or you summoned enough others to push it over the cap.</summary>
-        Unsummoned,
-
-        /// <summary>Nothing is happening and it feels the need to fill the silence.</summary>
-        Idle,
-    }
-
-    /// <summary>
     /// The knobs that decide how talkative a squad is.
     /// </summary>
     /// <remarks>
     /// These all come from the BepInEx config in the real mod, but nothing here
     /// knows that - the whole point of this folder is that it runs without a game
     /// attached. The tests just build one of these by hand.
+    ///
+    /// **Treat an instance as frozen once you have handed it to a
+    /// <see cref="ChatterBudget"/>.** To change a setting, build a whole new
+    /// ChatterSettings and assign <see cref="ChatterBudget.Settings"/>. Do not reach
+    /// in and edit a field, and above all do not Clear() and refill
+    /// <see cref="DisabledEvents"/> in place.
+    ///
+    /// That is not fussiness. BepInEx's config file-watcher does not raise
+    /// SettingChanged on Unity's main thread, so an edit made there runs while the
+    /// game is somewhere in the middle of a frame. Swapping one reference is a
+    /// single atomic write and a reader sees either the old settings or the new ones.
+    /// Mutating in place lets a reader see a half-rebuilt set, which would show up as
+    /// a skeleton ignoring an event for one frame - roughly the least debuggable
+    /// symptom I can imagine.
     ///
     /// The defaults are a starting guess and I fully expect to move them after
     /// watching an actual squad. Five skeletons is a lot of mouths.
@@ -146,6 +68,8 @@ namespace ChattyBones.Logic
         /// Kept here rather than checked at each call site, so that "I am sick of
         /// them announcing every greydwarf" is one lookup in one place, and so the
         /// tests can cover it without a game running.
+        ///
+        /// Build it once and leave it alone - see the note on the class.
         /// </remarks>
         internal HashSet<ChatterEvent> DisabledEvents = [];
     }
@@ -160,10 +84,25 @@ namespace ChattyBones.Logic
     /// dead inside a minute. So every line has to get past four separate checks
     /// before anyone opens their mouth.
     ///
-    /// Note the split: we decide *whether* someone speaks, and the line pack
-    /// decides *what* they say. Keeping "don't repeat the same gag twice running"
-    /// over there means this class only ever deals in timestamps and identifiers,
-    /// which is much easier to reason about and to test.
+    /// Asking and booking are two calls on purpose - <see cref="CanClaim"/> then
+    /// <see cref="Commit"/>. It is tempting to have one method that answers and
+    /// records in one go, and that is what this did first, but the caller cannot know
+    /// there is anything to *say* until after it has asked: the pack may have no
+    /// lines for that personality and event, or every line it does have may want a
+    /// {target} we have not got. A silent event would then have burned the squad's
+    /// gap, the skeleton's cooldown and an echo lock on that subject, for a line
+    /// nobody heard. With a half-written pack - which the shared-personality fallback
+    /// deliberately invites - the squad would just go quieter than the numbers say,
+    /// and nothing in the config would explain why.
+    ///
+    /// Doing it the other way round, choosing a line first and asking afterwards, is
+    /// worse: you would pay for line choice on every event that gets refused, which
+    /// is most of them.
+    ///
+    /// Note the split of responsibilities too: we decide *whether* someone speaks,
+    /// and <see cref="LineChooser"/> decides *what* they say. Keeping "don't repeat
+    /// the same gag twice running" over there means this class only ever deals in
+    /// timestamps and identifiers.
     ///
     /// Everything is passed in - the current time, who is asking, what about. There
     /// is no clock in here and no game state, so a test can run a whole afternoon of
@@ -171,8 +110,6 @@ namespace ChattyBones.Logic
     /// </remarks>
     internal sealed class ChatterBudget
     {
-        private readonly ChatterSettings _settings;
-
         /// <summary>When each skeleton last spoke, keyed by its stable id.</summary>
         private readonly Dictionary<long, float> _lastSpokeBySpeaker = [];
 
@@ -184,33 +121,36 @@ namespace ChattyBones.Logic
         /// </remarks>
         private readonly Dictionary<long, float> _lastRemarkBySubject = [];
 
-        /// <summary>Scratch space for <see cref="Prune"/>, reused so it doesn't allocate.</summary>
-        private readonly List<long> _expired = [];
-
         private float _lastSpokeAt = float.NegativeInfinity;
         private int _lastPriority = int.MinValue;
 
         /// <summary>Build a budget over the given settings.</summary>
-        /// <param name="settings">
-        /// Held by reference on purpose, not copied. The mod hands over the same
-        /// object it updates when the player edits the config, so changes in
-        /// ConfigurationManager take effect on the very next line without anyone
-        /// having to rebuild this.
-        /// </param>
+        /// <param name="settings">The starting settings. See <see cref="Settings"/>.</param>
         internal ChatterBudget(ChatterSettings settings)
         {
-            _settings = settings;
+            Settings = settings;
         }
 
+        /// <summary>The settings in force.</summary>
+        /// <remarks>
+        /// Assign a freshly built <see cref="ChatterSettings"/> to change anything;
+        /// never edit the one already in here. The reasoning is on ChatterSettings
+        /// itself, and it comes down to BepInEx raising SettingChanged off the main
+        /// thread.
+        /// </remarks>
+        internal ChatterSettings Settings { get; set; }
+
         /// <summary>
-        /// Ask whether this skeleton may speak, and book the slot if so.
+        /// Would this skeleton be allowed to speak right now?
         /// </summary>
         /// <returns>
-        /// True if it may talk, in which case we have already recorded that it did.
-        /// False if it should stay quiet, and the caller should simply drop the line
-        /// on the floor - there is no queue, and nothing is owed a turn later.
-        /// Dropping is the right behaviour: a reaction to something that happened
-        /// eight seconds ago is worse than no reaction at all.
+        /// True if it may talk. Nothing has been recorded - call <see cref="Commit"/>
+        /// once you actually have a line, and only then.
+        ///
+        /// False if it should stay quiet, and the caller should simply drop the event
+        /// on the floor. There is no queue and nothing is owed a turn later, which is
+        /// deliberate: a reaction to something that happened eight seconds ago is
+        /// worse than no reaction at all.
         /// </returns>
         /// <param name="speakerId">
         /// Whichever stable number identifies this skeleton. The real mod derives it
@@ -220,16 +160,16 @@ namespace ChattyBones.Logic
         /// <param name="kind">What just happened.</param>
         /// <param name="subject">
         /// What the event was *about*, when that makes sense - the prefab hash of the
-        /// greydwarf it just charged at, for instance. Pass 0 for events that are not
-        /// about anything in particular, like Hurt or Idle, and the squad echo check
-        /// below is skipped for them.
+        /// greydwarf it just charged at, or whatever hit you. Pass 0 for events that
+        /// are not about anything in particular, like Hurt or Idle, and the squad echo
+        /// check below is skipped for them.
         /// </param>
         /// <param name="now">
         /// Seconds, from the game clock. Only differences matter, so any monotonic
         /// source will do and the origin is irrelevant.
         /// </param>
         /// <remarks>
-        /// The four checks run cheapest-first, and each one can only reject:
+        /// The four checks run cheapest-first, and each one can only refuse:
         ///
         /// 1. Did the player switch this event off?
         /// 2. Has somebody already remarked on this exact thing recently?
@@ -237,58 +177,64 @@ namespace ChattyBones.Logic
         /// 4. Has *anyone* spoken too recently - and if so, is this important
         ///    enough to barge in anyway?
         /// </remarks>
-        internal bool TryClaim(long speakerId, ChatterEvent kind, int subject, float now)
+        internal bool CanClaim(long speakerId, ChatterEvent kind, int subject, float now)
         {
-            if (_settings.DisabledEvents.Contains(kind))
+            ChatterSettings settings = Settings;
+
+            if (settings.DisabledEvents.Contains(kind))
             {
                 return false;
             }
 
-            if (subject != 0)
+            if (subject != 0
+                && _lastRemarkBySubject.TryGetValue(SubjectKey(kind, subject), out float remarkedAt)
+                && now - remarkedAt < settings.SquadEchoWindowSeconds)
             {
-                long subjectKey = SubjectKey(kind, subject);
-                if (_lastRemarkBySubject.TryGetValue(subjectKey, out float remarkedAt)
-                    && now - remarkedAt < _settings.SquadEchoWindowSeconds)
-                {
-                    return false;
-                }
+                return false;
             }
 
             if (_lastSpokeBySpeaker.TryGetValue(speakerId, out float spokeAt)
-                && now - spokeAt < _settings.SpeakerCooldownSeconds)
+                && now - spokeAt < settings.SpeakerCooldownSeconds)
             {
                 return false;
             }
 
-            int priority = PriorityOf(kind);
             float sinceAnyone = now - _lastSpokeAt;
-            if (sinceAnyone < _settings.MinGapSeconds)
+            if (sinceAnyone >= settings.MinGapSeconds)
             {
-                // Something more important than whatever was last said gets to
-                // interrupt, as long as it still leaves a beat. Note the strict
-                // greater-than: two skeletons dying together does not produce two
-                // overlapping death cries, because the second one is not *more*
-                // important than the first. One set of last words is plenty.
-                bool mayBargeIn = priority > _lastPriority
-                    && sinceAnyone >= _settings.PreemptGapSeconds;
-
-                if (!mayBargeIn)
-                {
-                    return false;
-                }
+                return true;
             }
 
+            // Something more important than whatever was last said gets to interrupt,
+            // as long as it still leaves a beat. Note the strict greater-than: two
+            // skeletons dying together does not produce two overlapping death cries,
+            // because the second one is not *more* important than the first. One set
+            // of last words is plenty.
+            return PriorityOf(kind) > _lastPriority
+                && sinceAnyone >= settings.PreemptGapSeconds;
+        }
+
+        /// <summary>Record that this skeleton did in fact speak.</summary>
+        /// <param name="speakerId">Who spoke.</param>
+        /// <param name="kind">What about.</param>
+        /// <param name="subject">What it concerned, or 0.</param>
+        /// <param name="now">The same time you passed to <see cref="CanClaim"/>.</param>
+        /// <remarks>
+        /// Call this only after a line has actually been produced and said. Calling it
+        /// without <see cref="CanClaim"/> having returned true is not checked for and
+        /// will simply push the windows out, which is the caller getting what it asked
+        /// for rather than something to guard against.
+        /// </remarks>
+        internal void Commit(long speakerId, ChatterEvent kind, int subject, float now)
+        {
             _lastSpokeAt = now;
-            _lastPriority = priority;
+            _lastPriority = PriorityOf(kind);
             _lastSpokeBySpeaker[speakerId] = now;
 
             if (subject != 0)
             {
                 _lastRemarkBySubject[SubjectKey(kind, subject)] = now;
             }
-
-            Prune(now);
-            return true;
         }
 
         /// <summary>
@@ -299,9 +245,12 @@ namespace ChattyBones.Logic
         /// the ordering between them is used, and only ever inside
         /// <see cref="ChatterSettings.MinGapSeconds"/> of somebody else speaking.
         /// </returns>
+        /// <param name="kind">The event to rank.</param>
         /// <remarks>
         /// The gaps are wide so there is room to slot something in later without
-        /// renumbering everything.
+        /// renumbering everything. No two events may share a rank - barging in needs
+        /// a strictly higher number, so a tie silently means neither can ever
+        /// interrupt the other. There is a test for that.
         ///
         /// I have left this hard-coded rather than exposing it in the config. It is
         /// hard to describe to a player in a way they could act on, and getting it
@@ -358,60 +307,32 @@ namespace ChattyBones.Logic
             return ((long)kind << 32) | (uint)subject;
         }
 
-        /// <summary>
-        /// Forget bookkeeping that is too old to change any future answer.
-        /// </summary>
-        /// <param name="now">The current time, same clock as everything else.</param>
+        /// <summary>How many speakers we are currently remembering. For tests.</summary>
         /// <remarks>
-        /// Without this, both dictionaries would grow for as long as the session
-        /// lasts: a new entry per skeleton you ever summon, and per thing anyone ever
-        /// remarks on. Neither is large, but "small leak that runs for eight hours"
-        /// is still a leak.
+        /// Both dictionaries grow for the life of a session and are never trimmed,
+        /// which was a deliberate reversal. There used to be a Prune method here, and
+        /// it was wrong twice over.
         ///
-        /// An entry can go once it is older than the longest window that would
-        /// consult it, because from then on every comparison against it succeeds
-        /// anyway and an absent entry gives the same answer as an ancient one.
+        /// It was wrong on cost: this is not a leak worth code. The speaker map holds
+        /// one small entry per skeleton you ever summon, and the subject map one per
+        /// distinct (event, creature type) pair - which the game itself bounds, since
+        /// there are only so many kinds of creature. Even an absurd session lands in
+        /// the tens of kilobytes.
         ///
-        /// This is a scan of both dictionaries on every line spoken, which sounds
-        /// worse than it is - we are talking about a handful of skeletons and the
-        /// things they recently shouted at, and it only runs when somebody actually
-        /// speaks rather than every frame.
+        /// And it was wrong on correctness, once settings became live. Entries were
+        /// dropped against the window as it stood at the time, so raising the speaker
+        /// cooldown from 8 seconds to 30 mid-session would let a skeleton that spoke
+        /// 10 seconds ago speak again immediately, quietly contradicting the setting
+        /// the player had just changed.
+        ///
+        /// It also could not be tested. Deleting the whole method changed no
+        /// observable behaviour, which is exactly what you would expect of code whose
+        /// only job is to forget things that no longer affect any answer - and is a
+        /// good sign the code should not exist.
         /// </remarks>
-        private void Prune(float now)
-        {
-            CollectExpired(_lastSpokeBySpeaker, now, _settings.SpeakerCooldownSeconds);
-            for (int i = 0; i < _expired.Count; i++)
-            {
-                _lastSpokeBySpeaker.Remove(_expired[i]);
-            }
+        internal int TrackedSpeakers => _lastSpokeBySpeaker.Count;
 
-            CollectExpired(_lastRemarkBySubject, now, _settings.SquadEchoWindowSeconds);
-            for (int i = 0; i < _expired.Count; i++)
-            {
-                _lastRemarkBySubject.Remove(_expired[i]);
-            }
-        }
-
-        /// <summary>Fill <see cref="_expired"/> with the keys older than the given window.</summary>
-        /// <param name="times">The bookkeeping to scan.</param>
-        /// <param name="now">The current time.</param>
-        /// <param name="window">How long an entry stays interesting.</param>
-        /// <remarks>
-        /// We gather first and delete afterwards because you cannot remove from a
-        /// Dictionary while you are enumerating it. The list is a field rather than a
-        /// local so that this allocates nothing on the repeat visits.
-        /// </remarks>
-        private void CollectExpired(Dictionary<long, float> times, float now, float window)
-        {
-            _expired.Clear();
-
-            foreach (KeyValuePair<long, float> entry in times)
-            {
-                if (now - entry.Value >= window)
-                {
-                    _expired.Add(entry.Key);
-                }
-            }
-        }
+        /// <summary>How many subjects we are currently remembering. For tests.</summary>
+        internal int TrackedSubjects => _lastRemarkBySubject.Count;
     }
 }
