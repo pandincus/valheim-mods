@@ -18,8 +18,9 @@ loaded; nothing talks yet.
   a kill, dying, and being idle
 - A personality per skeleton, assigned at summon and stable for as long as it
   lives
-- Every line is yours: the pack is a plain JSON file you can edit, and it
-  reloads while the game is running
+- Every line lives in a plain YAML file you can edit, and it reloads while the
+  game is running — so a group playing together can agree on one pack and all
+  hear the same skeletons
 - Per-event toggles and chattiness settings in the config, editable in-game with
   ConfigurationManager (F1)
 - A squad of five skeletons will not all talk over each other

@@ -7,9 +7,9 @@ namespace ChattyBones.Tests
     /// Covers choosing a line, and the fallback that keeps half-written packs working.
     /// </summary>
     /// <remarks>
-    /// The one to read first is the pair about the same seed giving the same line,
-    /// and a negative seed not throwing. Both are really tests about multiplayer:
-    /// the seed arrives from somebody else's machine, and everything downstream
+    /// The one to read first is the pair about the same lineRef giving the same line,
+    /// and a negative lineRef not throwing. Both are really tests about multiplayer:
+    /// the line ref arrives from somebody else's machine, and everything downstream
     /// assumes two clients with the same pack agree.
     /// </remarks>
     public class LinePackTests
@@ -29,25 +29,25 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void TheSameSeedAlwaysGivesTheSameLine()
+        public void TheSameLineRefAlwaysGivesTheSameLine()
         {
             // This is the property the whole multiplayer design rests on. Two clients
-            // never compare notes; they are handed the same seed and are expected to
+            // never compare notes; they are handed the same lineRef and are expected to
             // arrive at the same line on their own.
             LinePack pack = new LinePack.Builder()
                 .Add(Cowardly, ChatterEvent.Idle, "a", "b", "c", "d", "e")
                 .Build();
 
-            for (int seed = 0; seed < 200; seed++)
+            for (int lineRef = 0; lineRef < 200; lineRef++)
             {
-                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, seed, out string first));
-                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, seed, out string second));
+                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, lineRef, out string first));
+                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, lineRef, out string second));
                 Assert.Equal(first, second);
             }
         }
 
         [Fact]
-        public void DifferentSeedsReachEveryLineEventually()
+        public void DifferentLineRefsReachEveryLineEventually()
         {
             // Not a distribution test - just enough to catch a fold that can only
             // ever land on one line, which would make every skeleton a broken record.
@@ -56,9 +56,9 @@ namespace ChattyBones.Tests
                 .Build();
 
             HashSet<string> seen = [];
-            for (int seed = 0; seed < 30; seed++)
+            for (int lineRef = 0; lineRef < 30; lineRef++)
             {
-                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, seed, out string line));
+                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, lineRef, out string line));
                 seen.Add(line);
             }
 
@@ -66,9 +66,9 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void ANegativeSeedIsFineRatherThanFatal()
+        public void ANegativeLineRefIsFineRatherThanFatal()
         {
-            // A seed is whatever another client wrote into a ZDO. C# gives a negative
+            // A line ref is whatever another client wrote into a ZDO. C# gives a negative
             // result for the remainder of a negative number, and a negative array
             // index throws, so this would be an exception in the middle of a fight on
             // somebody else's machine.
@@ -200,9 +200,9 @@ namespace ChattyBones.Tests
                 .Add(Cowardly, ChatterEvent.Idle, "real", "", "   ", null)
                 .Build();
 
-            for (int seed = 0; seed < 20; seed++)
+            for (int lineRef = 0; lineRef < 20; lineRef++)
             {
-                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, seed, out string line));
+                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, lineRef, out string line));
                 Assert.Equal("real", line);
             }
         }
@@ -231,9 +231,9 @@ namespace ChattyBones.Tests
                 .Build();
 
             HashSet<string> seen = [];
-            for (int seed = 0; seed < 20; seed++)
+            for (int lineRef = 0; lineRef < 20; lineRef++)
             {
-                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, seed, out string line));
+                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, lineRef, out string line));
                 seen.Add(line);
             }
 

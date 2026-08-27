@@ -20,7 +20,7 @@ namespace ChattyBones.Logic
     /// The obvious approach is to send the line that got picked. I tried that on
     /// paper and it falls apart the moment two players have different line packs:
     /// line 7 in mine is a different joke to line 7 in yours, or does not exist at
-    /// all. So we send a *seed* instead, and each client picks from whatever pack it
+    /// all. So we send a *lineRef* instead, and each client picks from whatever pack it
     /// happens to have. Same pack on both sides gives the same line; different packs
     /// each give something sensible; and nobody has to know anything about anybody
     /// else's files. That also deletes the whole question of versioning a pack
@@ -44,21 +44,16 @@ namespace ChattyBones.Logic
         /// elsewhere, and buys the ability to read a packed value in hex and see
         /// straight away which part is which, which I have already been grateful for.
         /// </remarks>
-        private const int SeedBits = 16;
+        private const int LineRefBits = 16;
         private const int KindBits = 8;
         private const int CounterBits = 8;
 
-        private const int SeedMask = (1 << SeedBits) - 1;
+        private const int LineRefMask = (1 << LineRefBits) - 1;
         private const int KindMask = (1 << KindBits) - 1;
         private const int CounterMask = (1 << CounterBits) - 1;
 
-        /// <summary>The largest seed that survives a round trip.</summary>
-        /// <remarks>
-        /// 65535, which is enormously more than we need - a pack would have to hold
-        /// tens of thousands of lines for a seed this size to start repeating in any
-        /// way a player could notice.
-        /// </remarks>
-        internal const int MaxSeed = SeedMask;
+        /// <summary>The largest line ref that fits, so 65535.</summary>
+        internal const int MaxLineRef = LineRefMask;
 
         /// <summary>
         /// Ticks up every time the skeleton says something, so watchers spot the change.
@@ -80,13 +75,14 @@ namespace ChattyBones.Logic
         /// <summary>What happened.</summary>
         internal ChatterEvent Kind { get; }
 
-        /// <summary>Which line to pick, once a pack has been consulted.</summary>
+        /// <summary>Which line to say.</summary>
         /// <remarks>
-        /// Meaningless on its own. It only becomes a line when combined with a pack
-        /// and a personality, which is exactly the property that lets two players
-        /// with different packs both make sense of the same number.
+        /// Not an index - fold it with <c>% count</c> against whatever pack you have.
+        /// The same pack on both sides gives the same line; a different pack gives
+        /// something sensible out of its own file. Nothing random about it, despite
+        /// how it is arrived at - see <c>LineChooser.LineRefFor</c>.
         /// </remarks>
-        internal int Seed { get; }
+        internal int LineRef { get; }
 
         /// <summary>
         /// What the event was about, or 0 when it was not about anything.
@@ -104,7 +100,7 @@ namespace ChattyBones.Logic
         /// <summary>Build an utterance from its parts.</summary>
         /// <param name="counter">1 to 255. See <see cref="Counter"/> for why not 0.</param>
         /// <param name="kind">What happened.</param>
-        /// <param name="seed">0 to <see cref="MaxSeed"/>.</param>
+        /// <param name="lineRef">0 to <see cref="MaxLineRef"/>.</param>
         /// <param name="subject">A prefab hash, or 0 for events that are not about anything.</param>
         /// <remarks>
         /// This throws on a bad value, and <see cref="TryUnpack"/> never does. That
@@ -116,17 +112,17 @@ namespace ChattyBones.Logic
         /// Both of the checks below were originally absent, and both were quiet
         /// disasters. A counter of 0 packs the whole value to 0, which TryUnpack
         /// reads as "nobody has ever spoken" - so the utterance would vanish rather
-        /// than fail. And a seed above <see cref="MaxSeed"/> silently loses its top
+        /// than fail. And a line ref above <see cref="MaxLineRef"/> silently loses its top
         /// bits, so remote clients would fold a different number and say a different
         /// line: the exact desync this whole type exists to prevent, arriving with no
         /// symptom at all on the machine that caused it.
         /// </remarks>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// If <paramref name="counter"/> is outside 1..255, <paramref name="seed"/> is
-        /// outside 0..<see cref="MaxSeed"/>, or <paramref name="kind"/> does not fit
+        /// If <paramref name="counter"/> is outside 1..255, <paramref name="lineRef"/> is
+        /// outside 0..<see cref="MaxLineRef"/>, or <paramref name="kind"/> does not fit
         /// in a byte.
         /// </exception>
-        internal Utterance(int counter, ChatterEvent kind, int seed, int subject)
+        internal Utterance(int counter, ChatterEvent kind, int lineRef, int subject)
         {
             if (counter is < 1 or > CounterMask)
             {
@@ -134,15 +130,15 @@ namespace ChattyBones.Logic
                     nameof(counter), counter, "Counter runs 1.." + CounterMask + "; 0 would pack to a value meaning 'never spoken'.");
             }
 
-            if (seed is < 0 or > MaxSeed)
+            if (lineRef is < 0 or > MaxLineRef)
             {
                 throw new ArgumentOutOfRangeException(
-                    nameof(seed), seed, "Seed must fit in " + SeedBits + " bits, so 0.." + MaxSeed + ".");
+                    nameof(lineRef), lineRef, "LineRef must fit in " + LineRefBits + " bits, so 0.." + MaxLineRef + ".");
             }
 
             // Pack masks the event down to a byte, so a value of 256 or more would
             // arrive at the other end as a *different event* - the same silent desync
-            // the seed check above exists to stop. We are 244 events away from that
+            // the line ref check above exists to stop. We are 244 events away from that
             // mattering, but a remark claiming these guards are the complete set
             // ought to be true.
             if ((int)kind is < 0 or > KindMask)
@@ -153,13 +149,13 @@ namespace ChattyBones.Logic
 
             Counter = counter;
             Kind = kind;
-            Seed = seed;
+            LineRef = lineRef;
             Subject = subject;
         }
 
-        /// <summary>Squeeze the counter, event and seed into one int.</summary>
+        /// <summary>Squeeze the counter, event and lineRef into one int.</summary>
         /// <returns>
-        /// Counter in the top byte, event in the next, seed in the bottom two.
+        /// Counter in the top byte, event in the next, lineRef in the bottom two.
         /// Never 0 for a validly built utterance, because the counter never is.
         /// </returns>
         /// <remarks>
@@ -169,7 +165,7 @@ namespace ChattyBones.Logic
         ///
         /// <see cref="TryUnpack"/> shifts as unsigned, and I want to be honest about
         /// why: it is for the reader, not for correctness. I assumed a signed shift
-        /// would smear sign bits down into the event and seed, wrote a test for a
+        /// would smear sign bits down into the event and lineRef, wrote a test for a
         /// counter of 200 expecting it to fail, and it passed either way - because
         /// every field is masked after the shift, and the mask throws the smeared
         /// bits away again. The unsigned cast stays because "shift an unsigned value"
@@ -178,9 +174,9 @@ namespace ChattyBones.Logic
         /// </remarks>
         internal int Pack()
         {
-            uint packed = ((uint)(Counter & CounterMask) << (SeedBits + KindBits))
-                | ((uint)((int)Kind & KindMask) << SeedBits)
-                | (uint)(Seed & SeedMask);
+            uint packed = ((uint)(Counter & CounterMask) << (LineRefBits + KindBits))
+                | ((uint)((int)Kind & KindMask) << LineRefBits)
+                | (uint)(LineRef & LineRefMask);
 
             return (int)packed;
         }
@@ -219,9 +215,9 @@ namespace ChattyBones.Logic
             }
 
             uint bits = (uint)packed;
-            int counter = (int)((bits >> (SeedBits + KindBits)) & CounterMask);
-            int kind = (int)((bits >> SeedBits) & KindMask);
-            int seed = (int)(bits & SeedMask);
+            int counter = (int)((bits >> (LineRefBits + KindBits)) & CounterMask);
+            int kind = (int)((bits >> LineRefBits) & KindMask);
+            int lineRef = (int)(bits & LineRefMask);
 
             // Belt as well as braces. A counter of 0 with anything else set is not
             // something our own packing can produce, so it means the field was
@@ -242,7 +238,7 @@ namespace ChattyBones.Logic
                 return false;
             }
 
-            utterance = new Utterance(counter, (ChatterEvent)kind, seed, subject);
+            utterance = new Utterance(counter, (ChatterEvent)kind, lineRef, subject);
             return true;
         }
 

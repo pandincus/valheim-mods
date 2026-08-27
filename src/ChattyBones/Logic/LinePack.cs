@@ -10,14 +10,9 @@ namespace ChattyBones.Logic
     /// Lines are grouped by personality and then by event, so a cowardly skeleton
     /// and a boastful one react to the same greydwarf quite differently.
     ///
-    /// This class holds no state and remembers nothing.
-    /// <see cref="TryPick"/> is a pure function of the pack, the personality, the
-    /// event and a seed, and that is the whole point: the client that owns a
-    /// skeleton broadcasts the seed, every other client looks it up in whatever pack
-    /// it happens to have, and two players running the same pack land on the same
-    /// line without ever having compared notes. Two players running *different*
-    /// packs each get something sensible out of their own file, which is the reason
-    /// we send a seed rather than a line number.
+    /// No state, and <see cref="TryPick"/> is a pure function. The client owning a
+    /// skeleton broadcasts a line ref; everyone else folds it against their own
+    /// pack. Same pack, same line, with nobody comparing notes.
     ///
     /// <see cref="Builder"/> is the only way to make one, the same way
     /// <c>FishPlan.TryPick</c> is the only way to make a FishPlan. A pack in memory
@@ -121,21 +116,21 @@ namespace ChattyBones.Logic
             return false;
         }
 
-        /// <summary>Choose the line a given seed points at.</summary>
+        /// <summary>Choose the line a given line ref points at.</summary>
         /// <returns>False when there is nothing to say. See <see cref="TryGetGroup"/>.</returns>
         /// <param name="personality">Which character is speaking.</param>
         /// <param name="kind">What just happened.</param>
-        /// <param name="seed">
+        /// <param name="lineRef">
         /// Any number at all. It gets folded down to an index, so the caller does not
         /// have to know how many lines exist - which is just as well, because the
-        /// client that chose the seed may have a different pack to the one reading it.
+        /// client that chose the line ref may have a different pack to the one reading it.
         /// </param>
         /// <param name="template">The raw line, tokens unfilled. See <see cref="LineTokens"/>.</param>
         /// <remarks>
-        /// This is what a client that did *not* choose the line runs: a seed arrives
+        /// This is what a client that did *not* choose the line runs: a line ref arrives
         /// over the network and this turns it into words, with no state involved.
         /// </remarks>
-        internal bool TryPick(string personality, ChatterEvent kind, int seed, out string template)
+        internal bool TryPick(string personality, ChatterEvent kind, int lineRef, out string template)
         {
             if (!TryGetGroup(personality, kind, out IReadOnlyList<string> lines))
             {
@@ -143,10 +138,10 @@ namespace ChattyBones.Logic
                 return false;
             }
 
-            // Modulo of a negative seed is negative in C#, and a negative index
-            // throws. Seeds reaching us from another client are whatever that client
+            // Modulo of a negative line ref is negative in C#, and a negative index
+            // throws. LineRefs reaching us from another client are whatever that client
             // put in a ZDO, so this is not a theoretical worry.
-            template = lines[(int)((uint)seed % (uint)lines.Count)];
+            template = lines[(int)((uint)lineRef % (uint)lines.Count)];
             return true;
         }
 

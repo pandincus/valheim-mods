@@ -9,12 +9,12 @@ namespace ChattyBones.Tests
     /// </summary>
     /// <remarks>
     /// Two tests carry the weight here.
-    /// <see cref="TheBroadcastSeedReproducesTheLineWithoutAnyOfOurState"/> is the
+    /// <see cref="TheBroadcastLineRefReproducesTheLineWithoutAnyOfOurState"/> is the
     /// multiplayer contract written down - it does exactly what a receiving client
     /// does and checks it lands on the same words. And
-    /// <see cref="ItNeverRepeatsImmediatelyForAnySeedAtAll"/> sweeps thousands of
+    /// <see cref="ItNeverRepeatsImmediatelyForAnyLineRefAtAll"/> sweeps thousands of
     /// starting points rather than trusting one, because the previous design passed
-    /// a single-seed version of this very test while failing about one time in 256.
+    /// a single-lineRef version of this very test while failing about one time in 256.
     ///
     /// Every Random is constructed with a literal so a failure is the same failure
     /// tomorrow.
@@ -60,13 +60,13 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void ItNeverRepeatsImmediatelyForAnySeedAtAll()
+        public void ItNeverRepeatsImmediatelyForAnyLineRefAtAll()
         {
             // The one promise this class makes. It is structural now - we walk the
             // group and take the first usable line that is not the last one said - so
             // it should hold for every starting point rather than most of them.
             //
-            // The sweep is the whole point. The previous design rolled seeds and gave
+            // The sweep is the whole point. The previous design rolled line refs and gave
             // up after eight tries, which failed roughly 1 in 256 and happily passed a
             // single-Random version of this test.
             LinePack pack = Pack("a", "b");
@@ -231,7 +231,7 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void TheBroadcastSeedReproducesTheLineWithoutAnyOfOurState()
+        public void TheBroadcastLineRefReproducesTheLineWithoutAnyOfOurState()
         {
             // This is the contract the whole multiplayer design rests on. We choose a
             // line using state nobody else has, then hand over only a number. A client
@@ -248,10 +248,10 @@ namespace ChattyBones.Tests
             {
                 Assert.True(chooser.TryChoose(
                     pack, Cowardly, ChatterEvent.TargetAcquired, Tokens(), random,
-                    out int seed, out string ours));
+                    out int lineRef, out string ours));
 
-                // The receiving client: pick by seed, render, and nothing else.
-                Assert.True(pack.TryPick(Cowardly, ChatterEvent.TargetAcquired, seed, out string template));
+                // The receiving client: pick by lineRef, render, and nothing else.
+                Assert.True(pack.TryPick(Cowardly, ChatterEvent.TargetAcquired, lineRef, out string template));
                 Assert.True(Tokens().TryRender(template, out string theirs));
 
                 Assert.Equal(ours, theirs);
@@ -259,9 +259,9 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void TheSeedSurvivesBeingPackedIntoAnUtterance()
+        public void TheLineRefSurvivesBeingPackedIntoAnUtterance()
         {
-            // The seed does not travel on its own; it goes into 16 bits of a packed
+            // The line ref does not travel on its own; it goes into 16 bits of a packed
             // int, and the Utterance constructor now refuses anything that would not
             // fit. A chooser producing values too large would work perfectly in single
             // player and throw the first time somebody joined.
@@ -272,21 +272,21 @@ namespace ChattyBones.Tests
             for (int i = 0; i < 200; i++)
             {
                 Assert.True(chooser.TryChoose(
-                    pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out int seed, out _));
+                    pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out int lineRef, out _));
 
-                Assert.InRange(seed, 0, Utterance.MaxSeed);
+                Assert.InRange(lineRef, 0, Utterance.MaxLineRef);
 
-                Utterance sent = new(1, ChatterEvent.Idle, seed, 0);
+                Utterance sent = new(1, ChatterEvent.Idle, lineRef, 0);
                 Assert.True(Utterance.TryUnpack(sent.Pack(), 0, out Utterance got));
-                Assert.Equal(seed, got.Seed);
+                Assert.Equal(lineRef, got.LineRef);
             }
         }
 
         [Fact]
-        public void TheSeedRoundTripsAtEveryGroupSizeNotJustConvenientOnes()
+        public void TheLineRefRoundTripsAtEveryGroupSizeNotJustConvenientOnes()
         {
-            // SeedFor is the one bit of genuinely new arithmetic here: given an index
-            // and a count, produce a seed that folds back to that index and still fits
+            // LineRefFor is the one bit of genuinely new arithmetic here: given an index
+            // and a count, produce a line ref that folds back to that index and still fits
             // in the 16 bits an Utterance allows. Testing it at one group size proves
             // very little - 65536 divides evenly by some counts and awkwardly by
             // others, and the interesting failures live at the edges.
@@ -310,13 +310,13 @@ namespace ChattyBones.Tests
                 for (int attempt = 0; attempt < 25; attempt++)
                 {
                     Assert.True(chooser.TryChoose(
-                        pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out int seed, out string ours));
+                        pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out int lineRef, out string ours));
 
                     // Must survive the wire...
-                    Assert.InRange(seed, 0, Utterance.MaxSeed);
+                    Assert.InRange(lineRef, 0, Utterance.MaxLineRef);
 
                     // ...and must reproduce the same words on a client with no state.
-                    Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, seed, out string template));
+                    Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, lineRef, out string template));
                     Assert.True(Tokens().TryRender(template, out string theirs));
                     Assert.Equal(ours, theirs);
                 }
@@ -326,16 +326,16 @@ namespace ChattyBones.Tests
         [Fact]
         public void AnAbsurdlyLargeGroupDegradesRatherThanBreaking()
         {
-            // More lines in one group than a 16-bit seed can address. No seed can
+            // More lines in one group than a 16-bit lineRef can address. No lineRef can
             // encode every index, so the promise that a remote client lands on the
             // *same* line genuinely cannot hold here - it gets a sensible line from
             // its own pack instead, which is the documented degradation.
             //
             // What must still hold is that we produce something, in range, without
-            // throwing, because Utterance's constructor rejects a seed above MaxSeed.
+            // throwing, because Utterance's constructor rejects a line ref above MaxLineRef.
             //
             // The size is deliberately far past the limit rather than one over it. My
-            // first attempt at this test used MaxSeed + 2, which reaches the branch
+            // first attempt at this test used MaxLineRef + 2, which reaches the branch
             // but only exercises the mask for a single index out of 65,537 - so
             // deleting the mask left every test green. At 200,000 roughly two thirds
             // of draws need it, and removing it fails here immediately.
@@ -353,21 +353,21 @@ namespace ChattyBones.Tests
             for (int attempt = 0; attempt < 20; attempt++)
             {
                 Assert.True(chooser.TryChoose(
-                    pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out int seed, out string line));
+                    pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out int lineRef, out string line));
 
-                Assert.InRange(seed, 0, Utterance.MaxSeed);
+                Assert.InRange(lineRef, 0, Utterance.MaxLineRef);
                 Assert.NotNull(line);
 
                 // And it still packs, which is what would actually throw.
-                Utterance sent = new(1, ChatterEvent.Idle, seed, 0);
+                Utterance sent = new(1, ChatterEvent.Idle, lineRef, 0);
                 Assert.True(Utterance.TryUnpack(sent.Pack(), 0, out _));
             }
         }
 
         [Fact]
-        public void TheSeedIsNotJustTheIndex()
+        public void TheLineRefIsNotJustTheIndex()
         {
-            // We send one of the many seeds that fold to the chosen index rather than
+            // We send one of the many line refs that fold to the chosen index rather than
             // the index itself. Nothing breaks if we sent the index, but a pack with
             // three lines would then forever put 0, 1 and 2 on the wire, which is a
             // needlessly legible thing to be broadcasting.
@@ -379,9 +379,9 @@ namespace ChattyBones.Tests
             for (int i = 0; i < 100; i++)
             {
                 Assert.True(chooser.TryChoose(
-                    pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out int seed, out _));
+                    pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out int lineRef, out _));
 
-                if (seed > 2)
+                if (lineRef > 2)
                 {
                     sawSomethingBigger = true;
                 }

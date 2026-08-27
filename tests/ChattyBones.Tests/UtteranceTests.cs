@@ -27,7 +27,7 @@ namespace ChattyBones.Tests
 
             Assert.Equal(7, got.Counter);
             Assert.Equal(ChatterEvent.TargetAcquired, got.Kind);
-            Assert.Equal(4242, got.Seed);
+            Assert.Equal(4242, got.LineRef);
             Assert.Equal(Greydwarf, got.Subject);
         }
 
@@ -61,16 +61,16 @@ namespace ChattyBones.Tests
 
             Assert.Equal(200, got.Counter);
             Assert.Equal(ChatterEvent.Died, got.Kind);
-            Assert.Equal(65535, got.Seed);
+            Assert.Equal(65535, got.LineRef);
         }
 
         [Fact]
-        public void TheBiggestSeedWeAdvertiseActuallyFits()
+        public void TheBiggestLineRefWeAdvertiseActuallyFits()
         {
-            Utterance sent = new(1, ChatterEvent.Idle, Utterance.MaxSeed, NoSubject);
+            Utterance sent = new(1, ChatterEvent.Idle, Utterance.MaxLineRef, NoSubject);
 
             Assert.True(Utterance.TryUnpack(sent.Pack(), NoSubject, out Utterance got));
-            Assert.Equal(Utterance.MaxSeed, got.Seed);
+            Assert.Equal(Utterance.MaxLineRef, got.LineRef);
         }
 
         [Fact]
@@ -111,7 +111,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void ACounterOfZeroIsRefusedAtConstruction()
         {
-            // 0 with a Summoned event and a 0 seed packs to exactly 0, which
+            // 0 with a Summoned event and a 0 lineRef packs to exactly 0, which
             // TryUnpack reads as "nobody has ever spoken here". The utterance would
             // not fail, it would vanish - and Summoned is the very first thing a
             // skeleton fires, so this is not a far-fetched combination.
@@ -120,13 +120,13 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void ASeedTooBigToFitIsRefusedAtConstruction()
+        public void ALineRefTooBigToFitIsRefusedAtConstruction()
         {
             // Silently keeping the low 16 bits would be the worst outcome available:
             // the owner says one line, every remote client folds a different number
             // and says another, and nothing on the machine that caused it looks wrong.
             Assert.Throws<System.ArgumentOutOfRangeException>(
-                () => new Utterance(1, ChatterEvent.Idle, Utterance.MaxSeed + 1, NoSubject));
+                () => new Utterance(1, ChatterEvent.Idle, Utterance.MaxLineRef + 1, NoSubject));
 
             Assert.Throws<System.ArgumentOutOfRangeException>(
                 () => new Utterance(1, ChatterEvent.Idle, -1, NoSubject));
