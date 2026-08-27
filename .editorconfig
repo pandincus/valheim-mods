@@ -42,3 +42,13 @@ csharp_prefer_braces = when_multiline
 # its return as one long ternary, which reads worse than the two lines it
 # replaces and breaks the shape of the block above it.
 dotnet_diagnostic.IDE0046.severity = none
+
+# Off, and this one took a second look to spot, because dotnet format quietly
+# "fixed" it rather than leaving a warning for us to argue with. What it does is
+# prefix a discard onto any call whose return value you ignore, so a report
+# builder made of StringBuilder.AppendLine calls turns into twelve lines of
+# "_ = sb.AppendLine(...)", and Dictionary.Remove needs one too. In a codebase
+# where ignoring a return value hides a failure this rule genuinely helps. Here
+# it fires on the places where discarding is exactly the right thing to do, and
+# all it buys is noise.
+dotnet_diagnostic.IDE0058.severity = none

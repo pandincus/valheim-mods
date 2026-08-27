@@ -320,13 +320,13 @@ namespace ChattyBones.Logic
             CollectExpired(_lastSpokeBySpeaker, now, _settings.SpeakerCooldownSeconds);
             for (int i = 0; i < _expired.Count; i++)
             {
-                _ = _lastSpokeBySpeaker.Remove(_expired[i]);
+                _lastSpokeBySpeaker.Remove(_expired[i]);
             }
 
             CollectExpired(_lastRemarkBySubject, now, _settings.SquadEchoWindowSeconds);
             for (int i = 0; i < _expired.Count; i++)
             {
-                _ = _lastRemarkBySubject.Remove(_expired[i]);
+                _lastRemarkBySubject.Remove(_expired[i]);
             }
         }
 
