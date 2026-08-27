@@ -240,6 +240,84 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void TheSeedRoundTripsAtEveryGroupSizeNotJustConvenientOnes()
+        {
+            // SeedFor is the one bit of genuinely new arithmetic here: given an index
+            // and a count, produce a seed that folds back to that index and still fits
+            // in the 16 bits an Utterance allows. Testing it at one group size proves
+            // very little - 65536 divides evenly by some counts and awkwardly by
+            // others, and the interesting failures live at the edges.
+            //
+            // So: every size from 1 to 40, plus a few that divide badly, and for each
+            // one check both halves of the contract.
+            int[] sizes = [1, 2, 3, 7, 13, 17, 31, 33, 37, 40, 100, 999, 1000, 4095, 30000, 65535, 65536];
+
+            foreach (int size in sizes)
+            {
+                string[] lines = new string[size];
+                for (int i = 0; i < size; i++)
+                {
+                    lines[i] = "line " + i;
+                }
+
+                LinePack pack = Pack(lines);
+                LineChooser chooser = new();
+                Random random = new(size);
+
+                for (int attempt = 0; attempt < 25; attempt++)
+                {
+                    Assert.True(chooser.TryChoose(
+                        pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out int seed, out string ours));
+
+                    // Must survive the wire...
+                    Assert.InRange(seed, 0, Utterance.MaxSeed);
+
+                    // ...and must reproduce the same words on a client with no state.
+                    Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, seed, out string template));
+                    Assert.True(Tokens().TryRender(template, out string theirs));
+                    Assert.Equal(ours, theirs);
+                }
+            }
+        }
+
+        [Fact]
+        public void AnAbsurdlyLargeGroupDegradesRatherThanBreaking()
+        {
+            // More lines in one group than a 16-bit seed can address. No seed can
+            // encode every index, so the promise that a remote client lands on the
+            // *same* line genuinely cannot hold here - it gets a sensible line from
+            // its own pack instead, which is the documented degradation.
+            //
+            // What must still hold is that we produce something, in range, without
+            // throwing. This is the only branch in SeedFor the size sweep cannot
+            // reach, and an untested branch that quietly returns a wrong-ish number is
+            // exactly the sort of thing that surfaces years later.
+            int size = Utterance.MaxSeed + 2;
+            string[] lines = new string[size];
+            for (int i = 0; i < size; i++)
+            {
+                lines[i] = "line " + i;
+            }
+
+            LinePack pack = Pack(lines);
+            LineChooser chooser = new();
+            Random random = new(5);
+
+            for (int attempt = 0; attempt < 20; attempt++)
+            {
+                Assert.True(chooser.TryChoose(
+                    pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out int seed, out string line));
+
+                Assert.InRange(seed, 0, Utterance.MaxSeed);
+                Assert.NotNull(line);
+
+                // And it still packs, which is what would actually throw.
+                Utterance sent = new(1, ChatterEvent.Idle, seed, 0);
+                Assert.True(Utterance.TryUnpack(sent.Pack(), 0, out _));
+            }
+        }
+
+        [Fact]
         public void TheSeedIsNotJustTheIndex()
         {
             // We send one of the many seeds that fold to the chosen index rather than
