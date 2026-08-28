@@ -25,7 +25,7 @@ namespace ChattyBones.Tests
 
         private static LineTokens Tokens()
         {
-            return new LineTokens(target: "Greydwarf", player: "Dan", name: "Rattles", companion: "Bjorn");
+            return new LineTokens(target: "Greydwarf", player: "Ragnar", name: "Rattles", companion: "Bjorn");
         }
 
         private static LinePack Pack(params string[] idleLines)
@@ -108,8 +108,8 @@ namespace ChattyBones.Tests
             // text instead of templates passed the entire suite.
             LinePack pack = Pack("Get lost, {target}!", "My bones are itchy.");
 
-            LineTokens greydwarf = new(target: "Greydwarf", player: "Dan", name: "Rattles");
-            LineTokens seeker = new(target: "Seeker", player: "Dan", name: "Rattles");
+            LineTokens greydwarf = new(target: "Greydwarf", player: "Ragnar", name: "Rattles");
+            LineTokens seeker = new(target: "Seeker", player: "Ragnar", name: "Rattles");
 
             for (int sweep = 0; sweep < 50; sweep++)
             {
@@ -167,7 +167,7 @@ namespace ChattyBones.Tests
                 "My bones are itchy.",
                 "{target}!", "Ugh, {target}", "{target} once more", "Still {target}", "{target} yet again");
 
-            LineTokens noTarget = new(target: null, player: "Dan", name: "Rattles");
+            LineTokens noTarget = new(target: null, player: "Ragnar", name: "Rattles");
 
             for (int sweep = 0; sweep < 500; sweep++)
             {
@@ -184,7 +184,7 @@ namespace ChattyBones.Tests
         {
             LinePack pack = Pack("A {target}!", "Another {target}!");
             LineChooser chooser = new();
-            LineTokens noTarget = new(target: null, player: "Dan", name: "Rattles");
+            LineTokens noTarget = new(target: null, player: "Ragnar", name: "Rattles");
 
             Assert.False(chooser.TryChoose(
                 pack, Cowardly, ChatterEvent.Idle, noTarget, new Random(5), out _, out _));

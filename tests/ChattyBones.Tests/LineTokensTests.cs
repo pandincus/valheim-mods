@@ -15,7 +15,7 @@ namespace ChattyBones.Tests
     {
         private static LineTokens Full()
         {
-            return new LineTokens(target: "Greydwarf", player: "Dan", name: "Rattles", companion: "Bjorn");
+            return new LineTokens(target: "Greydwarf", player: "Ragnar", name: "Rattles", companion: "Bjorn");
         }
 
         [Fact]
@@ -29,7 +29,7 @@ namespace ChattyBones.Tests
         public void EachTokenIsFilledIn()
         {
             Assert.True(Full().TryRender("{name} here. Get lost, {target}! Right, {player}?", out string line));
-            Assert.Equal("Rattles here. Get lost, Greydwarf! Right, Dan?", line);
+            Assert.Equal("Rattles here. Get lost, Greydwarf! Right, Ragnar?", line);
         }
 
         [Fact]
@@ -52,7 +52,7 @@ namespace ChattyBones.Tests
             // "Get lost, !" would look like the mod had fallen over. Refusing means
             // the skeleton picks something else or stays quiet, and every other line
             // in the pack carries on working.
-            LineTokens noTarget = new(target: null, player: "Dan", name: "Rattles");
+            LineTokens noTarget = new(target: null, player: "Ragnar", name: "Rattles");
 
             Assert.False(noTarget.TryRender("Get lost, {target}!", out string line));
             Assert.Null(line);
@@ -61,10 +61,10 @@ namespace ChattyBones.Tests
         [Fact]
         public void ALineNotWantingTheMissingThingIsStillFine()
         {
-            LineTokens noTarget = new(target: null, player: "Dan", name: "Rattles");
+            LineTokens noTarget = new(target: null, player: "Ragnar", name: "Rattles");
 
             Assert.True(noTarget.TryRender("Thanks, {player}!", out string line));
-            Assert.Equal("Thanks, Dan!", line);
+            Assert.Equal("Thanks, Ragnar!", line);
         }
 
         [Fact]
@@ -133,7 +133,7 @@ namespace ChattyBones.Tests
             // {companion} is only filled in for the events that are about another
             // skeleton. Put one in an idle line and that line stays quiet rather than
             // rendering "Ach, !".
-            LineTokens alone = new(target: "Greydwarf", player: "Dan", name: "Rattles");
+            LineTokens alone = new(target: "Greydwarf", player: "Ragnar", name: "Rattles");
 
             Assert.False(alone.TryRender("Ach, {companion}!", out _));
         }
