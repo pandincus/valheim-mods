@@ -32,6 +32,9 @@ namespace ChattyBones
         /// </remarks>
         private const long SenderSalt = 0x43_48_41_54_54_59L;
 
+        /// <summary>Name of the empty child we hang the text from.</summary>
+        private const string AnchorName = "ChattyBonesSpeechAnchor";
+
         private static MethodInfo _addInworldText;
         private static bool _resolved;
 
@@ -118,7 +121,7 @@ namespace ChattyBones
             {
                 _ = _addInworldText.Invoke(
                     chat,
-                    [speaker.gameObject, SenderIdFor(speaker), speaker.GetHeadPoint(), Talker.Type.Normal, new UserInfo(), line]);
+                    [AnchorFor(speaker), SenderIdFor(speaker), speaker.GetHeadPoint(), Talker.Type.Normal, new UserInfo(), line]);
 
                 return true;
             }
@@ -149,6 +152,55 @@ namespace ChattyBones
                 speakerName ?? string.Empty,
                 line,
                 large: false);
+        }
+
+        /// <summary>Which object the text should hang from.</summary>
+        /// <param name="speaker">Whoever is talking.</param>
+        /// <returns>An empty child above the skeleton's head, or the skeleton itself.</returns>
+        /// <remarks>
+        /// The position we pass to AddInworldText is thrown away. UpdateWorldTexts
+        /// recomputes it every frame, and for anything with a Character on it that
+        /// means <c>GetHeadPoint() + 0.3</c> - which lands on top of the name label.
+        ///
+        /// The escape is the other branch of that same line: an object *without* a
+        /// Character is drawn at its own transform position instead. So we hang the
+        /// text on an empty child parented above the head. It still follows the
+        /// skeleton, because the child moves with it, and we choose the height.
+        ///
+        /// Parented to the root rather than the head bone, so the text does not bob
+        /// with the walk animation. Skeletons only rotate about Y, so a straight-up
+        /// local offset stays straight up.
+        ///
+        /// Height 0 gives the skeleton itself back, and with it Valheim's exact
+        /// vanilla placement.
+        /// </remarks>
+        private static GameObject AnchorFor(Character speaker)
+        {
+            float extra = ModConfig.TextHeight.Value;
+            if (extra <= 0f)
+            {
+                return speaker.gameObject;
+            }
+
+            Transform existing = speaker.transform.Find(AnchorName);
+            GameObject anchor;
+
+            if (existing == null)
+            {
+                anchor = new GameObject(AnchorName);
+                anchor.transform.SetParent(speaker.transform, worldPositionStays: false);
+            }
+            else
+            {
+                anchor = existing.gameObject;
+            }
+
+            // Re-measured every time so that dragging the slider in ConfigurationManager
+            // moves the text on the next line rather than the next summon.
+            float headHeight = speaker.GetHeadPoint().y - speaker.transform.position.y;
+            anchor.transform.localPosition = new Vector3(0f, headHeight + extra, 0f);
+
+            return anchor;
         }
 
         /// <summary>A stable id for this skeleton, for Chat to key its bubble by.</summary>

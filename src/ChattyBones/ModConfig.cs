@@ -41,6 +41,7 @@ namespace ChattyBones
         internal static ConfigEntry<BubbleStyle> Bubble;
         internal static ConfigEntry<float> PanelSeconds;
         internal static ConfigEntry<float> PanelCullDistance;
+        internal static ConfigEntry<float> TextHeight;
 
         /// <summary>
         /// Declare every setting. Called once from <see cref="ChattyBonesPlugin.Awake"/>.
@@ -73,6 +74,12 @@ namespace ChattyBones
                 "Appearance", "DialoguePanelSeconds", 5f,
                 "How long a DialoguePanel line stays up. Ignored by FloatingText, which " +
                 "uses Valheim's own chat timeout.");
+
+            TextHeight = cfg.Bind(
+                "Appearance", "TextHeight", 0.7f,
+                "Extra height above the skeleton's head, in metres, so the line clears " +
+                "the name label. Raise it if they still overlap. 0 puts the text exactly " +
+                "where Valheim would put a player's chat, which sits right on the name.");
 
             PanelCullDistance = cfg.Bind(
                 "Appearance", "DialoguePanelCullDistance", 20f,
