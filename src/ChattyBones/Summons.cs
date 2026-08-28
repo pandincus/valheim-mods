@@ -3,19 +3,20 @@ using UnityEngine;
 
 namespace ChattyBones
 {
-    /// <summary>Finding the skeletons this mod cares about.</summary>
+    /// <summary>Finds the skeletons this mod cares about.</summary>
     /// <remarks>
     /// A Dead Raiser skeleton is a tamed creature with a Tameable whose ZDO carries
     /// the summoner's name in <c>s_follow</c> - which is how SpawnAbility marks one
     /// when it calls <c>Tameable.Command</c>. No prefab names involved, so it keeps
-    /// working if Iron Gate renames anything, and it would pick up wolves and boars
-    /// too if we ever wanted that.
+    /// working if Iron Gate renames anything. It also matches any other tamed
+    /// follower - a wolf you have told to heel counts - which has not been worth
+    /// excluding yet, since Dead Raiser skeletons are what people are summoning.
     /// </remarks>
     internal static class Summons
     {
         /// <summary>Is this one of ours?</summary>
-        /// <param name="character">Any creature.</param>
         /// <returns>True for a tamed creature that is following somebody.</returns>
+        /// <param name="character">Any creature.</param>
         internal static bool IsSummoned(Character character)
         {
             if (character == null || !character.IsTamed())
@@ -34,10 +35,10 @@ namespace ChattyBones
         }
 
         /// <summary>The summoned skeleton nearest a point, if there is one in range.</summary>
+        /// <returns>True if we found one.</returns>
         /// <param name="point">Usually the player.</param>
         /// <param name="maxDistance">How far to look.</param>
         /// <param name="found">The nearest one, or null.</param>
-        /// <returns>True if we found one.</returns>
         /// <remarks>
         /// Walks <c>Character.GetAllCharacters()</c>, which is every loaded creature -
         /// fine for a console command, and not something to do every frame.
@@ -68,8 +69,8 @@ namespace ChattyBones
         }
 
         /// <summary>What to call this skeleton.</summary>
-        /// <param name="character">One of ours.</param>
         /// <returns>Its given name, or its creature name if it has not got one.</returns>
+        /// <param name="character">One of ours.</param>
         /// <remarks>
         /// Skeletons arrive named and players can rename them, both of which live in
         /// the ZDO's tamed-name field and sync to everyone. Tameable.GetHoverName

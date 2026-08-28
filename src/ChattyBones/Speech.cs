@@ -11,24 +11,26 @@ namespace ChattyBones
     ///
     /// <c>Chat.AddInworldText</c> draws the floating chat text that follows a
     /// character's head, which is exactly the look we want. It is private, so we
-    /// reach it with AccessTools once at startup. Reflection is an advantage here
-    /// rather than a cost: we learn at load time whether a game update has moved it,
-    /// instead of throwing in the middle of a fight.
+    /// reach it with AccessTools once at startup rather than per line - which means
+    /// a game update that moves it shows up as a warning while the game is still
+    /// loading, instead of as an exception mid-fight.
     ///
     /// <c>Chat.SetNpcText</c> is public and safe, but draws the Haldor dialogue
-    /// panel and sits at a fixed offset instead of tracking the head. It is the
-    /// fallback, and <see cref="ModConfig.Bubble"/> can force it.
+    /// panel and sits at a fixed offset instead of tracking the head. I kept it as
+    /// the fallback anyway - a mod that looks wrong is a far better outcome than one
+    /// that throws - and <see cref="ModConfig.Bubble"/> can force it.
     ///
-    /// Both are local UI. Nothing here reaches another player's screen - that is
-    /// Phase 6's problem.
+    /// Both are local UI: nothing here reaches another player's screen.
     /// </remarks>
     internal static class Speech
     {
-        /// <summary>Mixed into the sender id so ours cannot look like a player's.</summary>
+        /// <summary>Mixed into the sender id so ours are unlikely to land on a player's.</summary>
         /// <remarks>
         /// Chat keys its bubbles by sender, and a real one is a platform user id. A
         /// collision would mean a skeleton stealing a player's bubble for a few
         /// seconds - not serious, but free to avoid.
+        ///
+        /// (The bytes spell CHATTY. That is not doing anything, but it did amuse me.)
         /// </remarks>
         private const long SenderSalt = 0x43_48_41_54_54_59L;
 
@@ -42,11 +44,11 @@ namespace ChattyBones
         private static string _checkedColour;
         private static string _colourTag;
 
-        /// <summary>Find the private method once, and say in the log what we found.</summary>
+        /// <summary>Find the private method once, and warn if it has moved.</summary>
         /// <remarks>
-        /// Called from <see cref="ChattyBonesPlugin.Awake"/>. The log line matters:
-        /// "why do my skeletons look like Haldor" is otherwise a mystery, and this
-        /// turns it into one grep.
+        /// Called from <see cref="ChattyBonesPlugin.Awake"/>. The warning is worth
+        /// having: otherwise "why do my skeletons look like Haldor" has no visible
+        /// cause anywhere.
         /// </remarks>
         internal static void Resolve()
         {
@@ -102,18 +104,16 @@ namespace ChattyBones
         }
 
         /// <summary>Wrap the line in a TextMeshPro colour tag, if one is configured.</summary>
-        /// <param name="line">The finished text.</param>
         /// <returns>The line, possibly wrapped. Unchanged when no colour is set.</returns>
+        /// <param name="line">The finished text.</param>
         /// <remarks>
-        /// Both places we draw into are TextMeshProUGUI fields, so rich text works.
-        /// It reaches them intact because we call AddInworldText directly:
-        /// OnNewChatMessage is the thing that strips angle brackets out of player
-        /// chat, and it strips them precisely because TMP would otherwise render
-        /// them.
+        /// Both places we draw into are TextMeshProUGUI, so rich text works. It
+        /// survives because we call AddInworldText directly and skip
+        /// OnNewChatMessage, which is what strips angle brackets out of player chat.
         ///
-        /// A bad hex code would show up in game as literal tag text, so it is checked
-        /// once per distinct value and complained about in the log rather than
-        /// silently drawn.
+        /// A bad hex code reaches the screen as literal text - "#GGG" would appear
+        /// over a skeleton's head as &lt;color=#GGG&gt; - so it is checked once per
+        /// distinct value and complained about in the log instead.
         /// </remarks>
         private static string Colourise(string line)
         {
@@ -134,8 +134,8 @@ namespace ChattyBones
         }
 
         /// <summary>Turn a configured hex code into an opening colour tag.</summary>
-        /// <param name="wanted">Whatever the player typed.</param>
         /// <returns>The opening tag, or null if it was not a hex colour.</returns>
+        /// <param name="wanted">Whatever the player typed.</param>
         private static string TryBuildTag(string wanted)
         {
             string hex = wanted.Trim().TrimStart('#');
@@ -170,9 +170,9 @@ namespace ChattyBones
         /// so Normal gives a plain white line, which is what a bubble should be. A
         /// pack that wants the name in the text can use {name}.
         ///
-        /// A failure here disables the path rather than retrying every line. If it
-        /// broke once it will break every time, and a per-line exception in a Harmony
-        /// hook is a good way to make the whole mod look broken.
+        /// A failure here disables the path rather than retrying every line. If the
+        /// invoke throws once it will throw every time, and the dialogue panel still
+        /// draws something.
         /// </remarks>
         private static bool TryFloatingText(Chat chat, Character speaker, string line)
         {
@@ -203,40 +203,38 @@ namespace ChattyBones
         /// <param name="speakerName">Shown as the panel's topic.</param>
         /// <param name="line">Finished text.</param>
         /// <remarks>
-        /// The offset is a guess at head height, because unlike the floating text
-        /// this one is placed once and does not follow the skeleton.
+        /// 1.5m is a guess at skeleton head height. Unlike the floating text this is
+        /// placed once and never re-evaluated, so there is nothing to measure it
+        /// against.
         /// </remarks>
         private static void ShowPanel(Chat chat, Character speaker, string speakerName, string line)
         {
             chat.SetNpcText(
                 speaker.gameObject,
                 Vector3.up * 1.5f,
-                ModConfig.PanelCullDistance.Value,
-                ModConfig.PanelSeconds.Value,
+                ModConfig.DialoguePanelCullDistance.Value,
+                ModConfig.DialoguePanelSeconds.Value,
                 speakerName ?? string.Empty,
                 line,
                 large: false);
         }
 
         /// <summary>Which object the text should hang from.</summary>
-        /// <param name="speaker">Whoever is talking.</param>
         /// <returns>An empty child above the skeleton's head, or the skeleton itself.</returns>
+        /// <param name="speaker">Whoever is talking.</param>
         /// <remarks>
         /// The position we pass to AddInworldText is thrown away. UpdateWorldTexts
         /// recomputes it every frame, and for anything with a Character on it that
         /// means <c>GetHeadPoint() + 0.3</c> - which lands on top of the name label.
         ///
-        /// The escape is the other branch of that same line: an object *without* a
-        /// Character is drawn at its own transform position instead. So we hang the
+        /// The way out is the other branch of that same line: an object *without* a
+        /// Character is drawn at its own transform position instead. So I hang the
         /// text on an empty child parented above the head. It still follows the
         /// skeleton, because the child moves with it, and we choose the height.
         ///
         /// Parented to the root rather than the head bone, so the text does not bob
         /// with the walk animation. Skeletons only rotate about Y, so a straight-up
         /// local offset stays straight up.
-        ///
-        /// Height 0 gives the skeleton itself back, and with it Valheim's exact
-        /// vanilla placement.
         /// </remarks>
         private static GameObject AnchorFor(Character speaker)
         {
@@ -259,7 +257,7 @@ namespace ChattyBones
                 anchor = existing.gameObject;
             }
 
-            // Re-measured every time so that dragging the slider in ConfigurationManager
+            // Re-measured every time, so typing a new TextHeight in ConfigurationManager
             // moves the text on the next line rather than the next summon.
             float headHeight = speaker.GetHeadPoint().y - speaker.transform.position.y;
             anchor.transform.localPosition = new Vector3(0f, headHeight + extra, 0f);
@@ -268,15 +266,18 @@ namespace ChattyBones
         }
 
         /// <summary>A stable id for this skeleton, for Chat to key its bubble by.</summary>
-        /// <param name="speaker">Whoever is talking.</param>
         /// <returns>The same value every time for the same skeleton.</returns>
+        /// <param name="speaker">Whoever is talking.</param>
         /// <remarks>
-        /// Chat replaces an existing bubble when the sender matches, which is what we
-        /// want per skeleton and emphatically not what we want across the squad.
+        /// Chat replaces an existing bubble when the sender matches. Per skeleton that
+        /// is exactly right - a new line supersedes the old one. Shared across the
+        /// squad it would mean five skeletons taking turns wiping out each other's.
         ///
         /// A ZDOID is a (user, counter) pair and does not fit in a long, so this is a
-        /// mix rather than a packing. Collisions only matter between two skeletons
-        /// alive at the same moment, of which there are a handful.
+        /// mix rather than a packing. 1099511628211 is the FNV-1a prime; nothing
+        /// depends on that beyond it being large and odd. Collisions only matter
+        /// between two skeletons alive at the same moment, of which there are a
+        /// handful.
         /// </remarks>
         private static long SenderIdFor(Character speaker)
         {

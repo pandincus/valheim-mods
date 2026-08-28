@@ -61,8 +61,9 @@ dotnet_diagnostic.IDE0058.severity = none
 # overrides operator == so that a destroyed object compares equal to null, while
 # ?. and ?? use plain reference equality and do not. So "x == null ? null : x.Y"
 # and "x?.Y" are genuinely different for a Character or a GameObject, and the
-# second one happily calls into a destroyed object. dotnet format applies this
-# silently, which is exactly how it would get in.
+# second one happily calls into a destroyed object. IDE0029 and IDE0030 are the
+# same trap wearing ?? instead of ?. dotnet format applies all three silently,
+# which is exactly how they would get in.
 dotnet_diagnostic.IDE0031.severity = none
 dotnet_diagnostic.IDE0029.severity = none
 dotnet_diagnostic.IDE0030.severity = none

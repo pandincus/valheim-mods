@@ -1,8 +1,9 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ChattyBones
 {
-    /// <summary>Console commands for looking at the render path without a fight.</summary>
+    /// <summary>Console commands for exercising the render path without picking a fight.</summary>
     /// <remarks>
     /// Registering from Awake is safe: Terminal.commands is a static dictionary
     /// created once and never cleared, and InitTerminal guards itself with a flag.
@@ -40,9 +41,8 @@ namespace ChattyBones
         /// <summary>Make the nearest skeleton say whatever you typed.</summary>
         /// <param name="args">Everything after the command name becomes the line.</param>
         /// <remarks>
-        /// The whole point of Phase 3: see text over a skull before any of the event
-        /// hooks exist, so that when a line fails to appear later we already know the
-        /// drawing half works.
+        /// Being able to make a skeleton talk on demand means that when a line fails
+        /// to appear later, the drawing half is already ruled out.
         /// </remarks>
         private static void Say(Terminal.ConsoleEventArgs args)
         {
@@ -77,7 +77,7 @@ namespace ChattyBones
             Vector3 me = Player.m_localPlayer.transform.position;
             int found = 0;
 
-            System.Collections.Generic.List<Character> all = Character.GetAllCharacters();
+            List<Character> all = Character.GetAllCharacters();
             for (int i = 0; i < all.Count; i++)
             {
                 if (!Summons.IsSummoned(all[i]))

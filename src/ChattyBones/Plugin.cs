@@ -48,7 +48,7 @@ namespace ChattyBones
             DebugCommands.Register();
 
             // PatchAll finds every [HarmonyPatch] class in this assembly and
-            // applies it. None yet - the event hooks are Phase 4.
+            // applies it. There are none yet.
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
 
