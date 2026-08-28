@@ -6,44 +6,30 @@ namespace ChattyBones.Logic
     /// One thing a skeleton said, in the form other players can be told about.
     /// </summary>
     /// <remarks>
-    /// This exists because of a constraint that only shows up in multiplayer, and
-    /// it is worth writing down properly, because the shape of this struct makes no
-    /// sense otherwise.
+    /// In multiplayer we have to tell other players what our skeletons said, because
+    /// they never find out on their own. Every event we hook resolves only on the
+    /// client owning the skeleton's ZDO: `BaseAI.UpdateAI` returns early when it is
+    /// not the owner, and `ZNetView.InvokeRPC` routes to `m_zdo.GetOwner()` alone,
+    /// which is how both `RPC_Damage` and `RPC_AddStatusEffect` get there.
     ///
-    /// Every event we hook resolves on whichever client owns the skeleton's ZDO and
-    /// nowhere else - BaseAI.UpdateAI returns early when it is not the owner, and
-    /// damage and status effects both route through an RPC that does the same. On
-    /// anybody else's machine the AI is simply not running, so they never learn that
-    /// anything happened. If we want their skeletons to talk too, the owner has to
-    /// tell them.
+    /// We send a line ref rather than a line index, so a listener whose pack is
+    /// bigger than ours still draws from all of it. See LineChooser.LineRefFor.
     ///
-    /// The obvious approach is to send the line that got picked. I tried that on
-    /// paper and it falls apart the moment two players have different line packs:
-    /// line 7 in mine is a different joke to line 7 in yours, or does not exist at
-    /// all. So we send a *lineRef* instead, and each client picks from whatever pack it
-    /// happens to have. Same pack on both sides gives the same line; different packs
-    /// each give something sensible; and nobody has to know anything about anybody
-    /// else's files. That also deletes the whole question of versioning a pack
-    /// across a network, which I was not looking forward to.
+    /// Counter, event and line ref pack into a single int, which is what this struct
+    /// is for. A ZDO field is the cheapest way to reach exactly the clients who can
+    /// see the skeleton: they already replicate to everyone in range, vanilla clients
+    /// ignore keys they do not recognise, and we write no network code. A custom RPC
+    /// would have every unmodded player logging a "not found" warning per quip.
     ///
-    /// The three fields that need to travel pack into a single int, because a ZDO
-    /// field is the cheapest possible way to get a value to exactly the clients who
-    /// can see the skeleton. They already replicate to everyone in range, vanilla
-    /// clients ignore keys they do not recognise, and we write no network code at
-    /// all. A custom RPC would have meant every unmodded player logging a "not
-    /// found" warning for every quip.
-    ///
-    /// <see cref="Subject"/> is the exception and travels in its own field, because
-    /// a prefab hash wants all 32 bits to itself.
+    /// <see cref="Subject"/> travels in its own field - a prefab hash wants all 32
+    /// bits to itself.
     /// </remarks>
     internal readonly struct Utterance
     {
-        /// <summary>How many bits of the packed int each part gets.</summary>
-        /// <remarks>
-        /// Byte-aligned on purpose. It costs a couple of bits we could have spent
-        /// elsewhere, and buys the ability to read a packed value in hex and see
-        /// straight away which part is which, which I have already been grateful for.
-        /// </remarks>
+        // How many bits of the packed int each part gets. Byte-aligned on purpose:
+        // it costs a couple of bits we could have spent elsewhere, and buys being
+        // able to read a packed value in hex and see straight away which part is
+        // which. (A doc comment here would have attached to LineRefBits alone.)
         private const int LineRefBits = 16;
         private const int KindBits = 8;
         private const int CounterBits = 8;
@@ -63,12 +49,12 @@ namespace ChattyBones.Logic
         /// has to differ from the last one they saw, even when the same skeleton says
         /// the same kind of thing about the same target twice running.
         ///
-        /// It runs 1..255 and deliberately skips 0. That way a packed value of
-        /// exactly 0 - which is what a ZDO field reads as when nobody has ever
-        /// written it - cannot be mistaken for a real utterance. Without that we
-        /// would have no way to tell "has not spoken" from "said the first line in
-        /// the pack about a Summoned event", and every skeleton would greet you once
-        /// on every client that came into range.
+        /// It runs 1..255 and then wraps back to 1, never 0 - see
+        /// <see cref="NextCounter"/>. A packed value of exactly 0 is what a ZDO field
+        /// reads as when nobody has written it, so reserving 0 is what lets us tell
+        /// "has not spoken" from "said the first line about a Summoned event".
+        /// Without it every skeleton would greet you again on every client that came
+        /// into range.
         /// </remarks>
         internal int Counter { get; }
 
@@ -153,24 +139,32 @@ namespace ChattyBones.Logic
             Subject = subject;
         }
 
-        /// <summary>Squeeze the counter, event and lineRef into one int.</summary>
+        /// <summary>Squeeze the counter, event and line ref into one int.</summary>
         /// <returns>
-        /// Counter in the top byte, event in the next, lineRef in the bottom two.
+        /// Counter in the top byte, event in the next, line ref in the bottom two.
         /// Never 0 for a validly built utterance, because the counter never is.
+        ///
+        /// Worked example - counter 7, TargetAcquired (event 1), line ref 4242:
+        ///
+        ///     7    &lt;&lt; 24    0x0700_0000
+        ///     1    &lt;&lt; 16    0x0001_0000
+        ///     4242             0x0000_1092
+        ///     OR               0x0701_1092
+        ///
+        /// <see cref="TryUnpack"/> takes it apart again. There are tests walking every
+        /// event, every counter in the full 1..255 cycle, and line refs up to
+        /// <see cref="MaxLineRef"/> back out the far side.
         /// </returns>
         /// <remarks>
-        /// The result is very often negative, because a counter above 127 sets the
-        /// top bit. That is fine - a ZDO int is a signed 32-bit value and round-trips
-        /// negatives happily.
+        /// The result is often negative, because a counter above 127 sets the top bit.
+        /// That is fine - a ZDO int is signed and round-trips negatives happily.
         ///
-        /// <see cref="TryUnpack"/> shifts as unsigned, and I want to be honest about
-        /// why: it is for the reader, not for correctness. I assumed a signed shift
-        /// would smear sign bits down into the event and lineRef, wrote a test for a
-        /// counter of 200 expecting it to fail, and it passed either way - because
-        /// every field is masked after the shift, and the mask throws the smeared
-        /// bits away again. The unsigned cast stays because "shift an unsigned value"
-        /// is obviously right at a glance, whereas the signed version is only right
-        /// once you have worked through what the mask does.
+        /// <see cref="TryUnpack"/> shifts as unsigned for the reader rather than for
+        /// correctness. I assumed a signed shift would smear sign bits down into the
+        /// event and line ref, wrote a test for a counter of 200 expecting it to fail,
+        /// and it passed either way - every field is masked after the shift, and the
+        /// mask discards the smeared bits. The cast stays because "shift an unsigned
+        /// value" is obviously right at a glance.
         /// </remarks>
         internal int Pack()
         {

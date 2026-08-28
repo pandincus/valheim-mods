@@ -49,6 +49,12 @@ namespace ChattyBones.Logic
         /// today means <see cref="ChatterEvent.CompanionHurt"/>. Everywhere else this
         /// is null, so a "{companion}" written into an idle line quietly refuses
         /// rather than producing a sentence with a hole in it.
+        ///
+        /// TODO: supply this on Idle too, so they can rib each other when nothing is
+        /// happening - "Hey {companion}, your insides are showin'!" is a better use
+        /// of them knowing each other's names than only reacting to injuries. That
+        /// means the caller choosing which tokens each event gets, rather than the
+        /// companion events being the only ones that fill this in.
         /// </remarks>
         internal string Companion { get; }
 

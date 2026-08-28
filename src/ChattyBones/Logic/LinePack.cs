@@ -14,12 +14,9 @@ namespace ChattyBones.Logic
     /// skeleton broadcasts a line ref; everyone else folds it against their own
     /// pack. Same pack, same line, with nobody comparing notes.
     ///
-    /// <see cref="Builder"/> is the only way to make one, the same way
-    /// <c>FishPlan.TryPick</c> is the only way to make a FishPlan. A pack in memory
-    /// is therefore always one the builder produced: no empty groups (which
-    /// <see cref="TryPick"/> would divide by), no unsorted personality list (which
-    /// would make a stored personality index mean different things on different
-    /// clients), and no "common" masquerading as a character.
+    /// <see cref="Builder"/> is the only way to make one, so a pack in memory always
+    /// has no empty groups - which <see cref="TryPick"/> would divide by - and a
+    /// personality list in a stable order.
     ///
     /// Not knowing about YAML is also deliberate. Reading the file is somebody
     /// else's job, which keeps this testable without a file on disk and keeps the
@@ -47,7 +44,7 @@ namespace ChattyBones.Logic
 
         /// <summary>Wrap what the builder assembled.</summary>
         /// <param name="byPersonality">Personality to event to lines. Every group non-empty.</param>
-        /// <param name="personalities">The characters, sorted, without the shared fallback.</param>
+        /// <param name="personalities">The personality types, sorted, without the shared fallback.</param>
         /// <remarks>
         /// Private, and reachable only from <see cref="Builder.Build"/>, which is
         /// what lets everything downstream stop checking for empty groups.
@@ -68,11 +65,10 @@ namespace ChattyBones.Logic
         /// would mean different personalities on different clients - or on the same
         /// client after a restart.
         ///
-        /// Read-only for the same reason. Nine lines of comment defending a stable
-        /// order would sit oddly next to a list any caller could Sort.
+        /// Read-only so a caller cannot Sort it out from under us.
         ///
-        /// <see cref="SharedPersonality"/> is excluded, because it is a fallback
-        /// rather than a character. Nobody should be summoned as "common".
+        /// <see cref="SharedPersonality"/> is excluded: it is a fallback rather than
+        /// a personality type, and nothing should be summoned as "common".
         /// </remarks>
         internal IReadOnlyList<string> Personalities { get; }
 
@@ -84,7 +80,7 @@ namespace ChattyBones.Logic
         /// perfectly ordinary situation rather than an error - a pack author is
         /// allowed to decide that nobody comments on being unsummoned.
         /// </returns>
-        /// <param name="personality">Which character is speaking. Null and unknown names are both fine, and fall back.</param>
+        /// <param name="personality">Which personality type is speaking. Null and unknown names are both fine, and fall back.</param>
         /// <param name="kind">What just happened.</param>
         /// <param name="lines">The group, never empty when we return true.</param>
         /// <remarks>
@@ -118,7 +114,7 @@ namespace ChattyBones.Logic
 
         /// <summary>Choose the line a given line ref points at.</summary>
         /// <returns>False when there is nothing to say. See <see cref="TryGetGroup"/>.</returns>
-        /// <param name="personality">Which character is speaking.</param>
+        /// <param name="personality">Which personality type is speaking.</param>
         /// <param name="kind">What just happened.</param>
         /// <param name="lineRef">
         /// Any number at all. It gets folded down to an index, so the caller does not
@@ -146,9 +142,13 @@ namespace ChattyBones.Logic
         }
 
         /// <summary>Look up one personality's lines for one event, with no fallback.</summary>
-        /// <param name="personality">Which character. A name we have never heard of is fine, and finds nothing.</param>
+        /// <param name="personality">Which personality type. An unknown name is fine, and finds nothing.</param>
         /// <param name="kind">What happened.</param>
-        /// <param name="lines">The lines, guaranteed non-empty when we return true.</param>
+        /// <param name="lines">
+        /// The lines, guaranteed non-empty when we return true, and null when false.
+        /// Null rather than an empty list because the bool is the contract - a caller
+        /// that checks it never sees this at all.
+        /// </param>
         /// <returns>True when there is at least one line to choose from.</returns>
         /// <remarks>
         /// The builder drops empty groups, so anything in the dictionary has content.
@@ -185,8 +185,8 @@ namespace ChattyBones.Logic
             /// <summary>Add some lines for one personality reacting to one event.</summary>
             /// <returns>This builder, so calls can be chained.</returns>
             /// <param name="personality">
-            /// The character speaking, or <see cref="SharedPersonality"/> for lines
-            /// anyone may fall back on.
+            /// The personality type speaking, or <see cref="SharedPersonality"/> for
+            /// lines anyone may fall back on.
             /// </param>
             /// <param name="kind">What the lines are a reaction to.</param>
             /// <param name="lines">
