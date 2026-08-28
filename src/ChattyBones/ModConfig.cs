@@ -42,6 +42,7 @@ namespace ChattyBones
         internal static ConfigEntry<float> PanelSeconds;
         internal static ConfigEntry<float> PanelCullDistance;
         internal static ConfigEntry<float> TextHeight;
+        internal static ConfigEntry<string> TextColour;
 
         /// <summary>
         /// Declare every setting. Called once from <see cref="ChattyBonesPlugin.Awake"/>.
@@ -81,6 +82,11 @@ namespace ChattyBones
                 "the name label. 0.3 sits just clear of it; much more and the text starts " +
                 "to look detached from whoever said it. 0 puts it exactly where Valheim " +
                 "puts a player's chat, which lands right on the name.");
+
+            TextColour = cfg.Bind(
+                "Appearance", "TextColour", "",
+                "Colour for skeleton speech, as a hex code like #C8FFC8. Leave empty for " +
+                "Valheim's usual white. Accepts #RGB, #RRGGBB and #RRGGBBAA.");
 
             PanelCullDistance = cfg.Bind(
                 "Appearance", "DialoguePanelCullDistance", 20f,

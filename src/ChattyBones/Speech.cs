@@ -38,6 +38,10 @@ namespace ChattyBones
         private static MethodInfo _addInworldText;
         private static bool _resolved;
 
+        /// <summary>Last colour we validated, so a bad one is only complained about once.</summary>
+        private static string _checkedColour;
+        private static string _colourTag;
+
         /// <summary>Find the private method once, and say in the log what we found.</summary>
         /// <remarks>
         /// Called from <see cref="ChattyBonesPlugin.Awake"/>. The log line matters:
@@ -87,12 +91,72 @@ namespace ChattyBones
                 Resolve();
             }
 
-            if (ModConfig.Bubble.Value == BubbleStyle.FloatingText && TryFloatingText(chat, speaker, line))
+            string coloured = Colourise(line);
+
+            if (ModConfig.Bubble.Value == BubbleStyle.FloatingText && TryFloatingText(chat, speaker, coloured))
             {
                 return;
             }
 
-            ShowPanel(chat, speaker, speakerName, line);
+            ShowPanel(chat, speaker, speakerName, coloured);
+        }
+
+        /// <summary>Wrap the line in a TextMeshPro colour tag, if one is configured.</summary>
+        /// <param name="line">The finished text.</param>
+        /// <returns>The line, possibly wrapped. Unchanged when no colour is set.</returns>
+        /// <remarks>
+        /// Both places we draw into are TextMeshProUGUI fields, so rich text works.
+        /// It reaches them intact because we call AddInworldText directly:
+        /// OnNewChatMessage is the thing that strips angle brackets out of player
+        /// chat, and it strips them precisely because TMP would otherwise render
+        /// them.
+        ///
+        /// A bad hex code would show up in game as literal tag text, so it is checked
+        /// once per distinct value and complained about in the log rather than
+        /// silently drawn.
+        /// </remarks>
+        private static string Colourise(string line)
+        {
+            string wanted = ModConfig.TextColour.Value;
+
+            if (string.IsNullOrWhiteSpace(wanted))
+            {
+                return line;
+            }
+
+            if (wanted != _checkedColour)
+            {
+                _checkedColour = wanted;
+                _colourTag = TryBuildTag(wanted);
+            }
+
+            return _colourTag == null ? line : _colourTag + line + "</color>";
+        }
+
+        /// <summary>Turn a configured hex code into an opening colour tag.</summary>
+        /// <param name="wanted">Whatever the player typed.</param>
+        /// <returns>The opening tag, or null if it was not a hex colour.</returns>
+        private static string TryBuildTag(string wanted)
+        {
+            string hex = wanted.Trim().TrimStart('#');
+            bool lengthOk = hex.Length is 3 or 6 or 8;
+
+            for (int i = 0; lengthOk && i < hex.Length; i++)
+            {
+                if (!Uri.IsHexDigit(hex[i]))
+                {
+                    lengthOk = false;
+                }
+            }
+
+            if (!lengthOk)
+            {
+                ChattyBonesPlugin.Log.LogWarning(
+                    "TextColour '" + wanted + "' is not a hex code like #C8FFC8, so it is being ignored.");
+                return null;
+            }
+
+            return "<color=#" + hex + ">";
         }
 
         /// <summary>Draw the floating chat text, if we can.</summary>
