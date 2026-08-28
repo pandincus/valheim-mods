@@ -52,6 +52,11 @@ namespace ChattyBones
         /// Binding either reads the player's existing value or writes the default, so
         /// the .cfg on disk always ends up complete. Bind order is the order settings
         /// appear in that file, so related ones are bound together.
+        ///
+        /// The numbers carry an AcceptableValueRange, which does two jobs: it stops a
+        /// value that would break the feature quietly - 0 seconds leaves a dialogue
+        /// panel up until the skeleton dies - and it is what makes ConfigurationManager
+        /// draw a slider rather than a text box.
         /// </remarks>
         internal static void Init(ConfigFile cfg)
         {
@@ -70,20 +75,26 @@ namespace ChattyBones
 
             DialoguePanelSeconds = cfg.Bind(
                 "Appearance", "DialoguePanelSeconds", 5f,
-                "How long a DialoguePanel line stays up. Ignored by FloatingText, which " +
-                "uses Valheim's own chat timeout.");
+                new ConfigDescription(
+                    "How long a DialoguePanel line stays up. Ignored by FloatingText, which " +
+                    "uses Valheim's own chat timeout.",
+                    new AcceptableValueRange<float>(1f, 30f)));
 
             DialoguePanelCullDistance = cfg.Bind(
                 "Appearance", "DialoguePanelCullDistance", 20f,
-                "How far away you can be and still see a DialoguePanel line, in metres. " +
-                "Ignored by FloatingText.");
+                new ConfigDescription(
+                    "How far away you can be and still see a DialoguePanel line, in metres. " +
+                    "Ignored by FloatingText.",
+                    new AcceptableValueRange<float>(5f, 100f)));
 
             TextHeight = cfg.Bind(
                 "Appearance", "TextHeight", 0.3f,
-                "Extra height above the skeleton's head, in metres, so the line clears " +
-                "the name label. 0.3 sits just clear of it; by 1.0 the text looks " +
-                "detached from whoever said it. 0 puts it exactly where Valheim puts a " +
-                "player's chat, which lands right on the name.");
+                new ConfigDescription(
+                    "Extra height above the skeleton's head, in metres, so the line clears " +
+                    "the name label. 0.3 sits just clear of it; by 1.0 the text looks " +
+                    "detached from whoever said it. 0 puts it exactly where Valheim puts a " +
+                    "player's chat, which lands right on the name.",
+                    new AcceptableValueRange<float>(0f, 2f)));
 
             TextColour = cfg.Bind(
                 "Appearance", "TextColour", "",

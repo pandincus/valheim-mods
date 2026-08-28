@@ -1,13 +1,31 @@
 using System;
 using System.Reflection;
+using ChattyBones.Logic;
 using HarmonyLib;
 using UnityEngine;
 
 namespace ChattyBones
 {
+    /// <summary>What actually appeared, if anything.</summary>
+    /// <remarks>
+    /// Returned so the debug commands can tell "the line drew" from "the line was
+    /// refused", which is the entire question they exist to answer.
+    /// </remarks>
+    internal enum Drew
+    {
+        /// <summary>Nothing was drawn.</summary>
+        Nothing,
+
+        /// <summary>The floating chat text that follows the head.</summary>
+        FloatingText,
+
+        /// <summary>The trader-style dialogue panel.</summary>
+        DialoguePanel,
+    }
+
     /// <summary>How a line gets drawn over a skeleton's head.</summary>
     /// <remarks>
-    /// Two ways to do this, and we prefer the private one.
+    /// Two ways to do this, and I prefer the private one.
     ///
     /// <c>Chat.AddInworldText</c> draws the floating chat text that follows a
     /// character's head, which is exactly the look we want. It is private, so we
@@ -24,25 +42,21 @@ namespace ChattyBones
     /// </remarks>
     internal static class Speech
     {
-        /// <summary>Mixed into the sender id so ours are unlikely to land on a player's.</summary>
-        /// <remarks>
-        /// Chat keys its bubbles by sender, and a real one is a platform user id. A
-        /// collision would mean a skeleton stealing a player's bubble for a few
-        /// seconds - not serious, but free to avoid.
-        ///
-        /// (The bytes spell CHATTY. That is not doing anything, but it did amuse me.)
-        /// </remarks>
-        private const long SenderSalt = 0x43_48_41_54_54_59L;
-
         /// <summary>Name of the empty child we hang the text from.</summary>
         private const string AnchorName = "ChattyBonesSpeechAnchor";
 
-        private static MethodInfo _addInworldText;
-        private static bool _resolved;
+        private static readonly ColourTagCache Colours = new();
 
-        /// <summary>Last colour we validated, so a bad one is only complained about once.</summary>
-        private static string _checkedColour;
-        private static string _colourTag;
+        private static MethodInfo _addInworldText;
+
+        /// <summary>Set when the invoke has thrown, so we stop trying it.</summary>
+        /// <remarks>
+        /// Deliberately separate from <see cref="_addInworldText"/> being null, which
+        /// means "never found it". Two different reasons to be on the panel, and
+        /// conflating them in one field is how a later "re-resolve on config reload"
+        /// would quietly resurrect a path that was killed on purpose.
+        /// </remarks>
+        private static bool _floatingTextDisabled;
 
         /// <summary>Find the private method once, and warn if it has moved.</summary>
         /// <remarks>
@@ -52,8 +66,6 @@ namespace ChattyBones
         /// </remarks>
         internal static void Resolve()
         {
-            _resolved = true;
-
             _addInworldText = AccessTools.Method(
                 typeof(Chat),
                 "AddInworldText",
@@ -68,155 +80,145 @@ namespace ChattyBones
         }
 
         /// <summary>Make a skeleton say something.</summary>
+        /// <returns>Which of the two drew it, or <see cref="Drew.Nothing"/>.</returns>
         /// <param name="speaker">Whoever is talking.</param>
-        /// <param name="speakerName">Its name, used only by the dialogue panel.</param>
         /// <param name="line">Finished text, tokens already filled in.</param>
         /// <remarks>
-        /// Silently does nothing when there is no Chat yet, which is every frame
-        /// before the world loads.
+        /// This is the one door every caller comes through, which makes it the right
+        /// place for the catch. The event hooks sit inside vanilla damage and status
+        /// handling, and an exception escaping one of those does not stay our problem
+        /// for long.
+        ///
+        /// Nothing drawn is an ordinary answer rather than a failure: there is no Chat
+        /// before the world loads, and the player may simply have switched the mod off.
         /// </remarks>
-        internal static void Say(Character speaker, string speakerName, string line)
+        internal static Drew Say(Character speaker, string line)
         {
-            if (speaker == null || string.IsNullOrEmpty(line))
+            if (!ModConfig.Enabled.Value || speaker == null || string.IsNullOrEmpty(line))
             {
-                return;
+                return Drew.Nothing;
             }
 
             Chat chat = Chat.instance;
             if (chat == null)
             {
-                return;
+                return Drew.Nothing;
             }
 
-            if (!_resolved)
+            try
             {
-                Resolve();
+                string coloured = Colourise(line);
+
+                return ModConfig.Bubble.Value == BubbleStyle.FloatingText && TryFloatingText(chat, speaker, coloured)
+                    ? Drew.FloatingText
+                    : ShowPanel(chat, speaker, coloured);
             }
-
-            string coloured = Colourise(line);
-
-            if (ModConfig.Bubble.Value == BubbleStyle.FloatingText && TryFloatingText(chat, speaker, coloured))
+            catch (Exception e)
             {
-                return;
+                ChattyBonesPlugin.Log.LogWarning("Could not draw a line for a skeleton: " + e);
+                return Drew.Nothing;
             }
-
-            ShowPanel(chat, speaker, speakerName, coloured);
         }
 
-        /// <summary>Wrap the line in a TextMeshPro colour tag, if one is configured.</summary>
-        /// <returns>The line, possibly wrapped. Unchanged when no colour is set.</returns>
+        /// <summary>Wrap the line in a colour tag, if one is configured and valid.</summary>
+        /// <returns>The line, possibly wrapped.</returns>
         /// <param name="line">The finished text.</param>
-        /// <remarks>
-        /// Both places we draw into are TextMeshProUGUI, so rich text works. It
-        /// survives because we call AddInworldText directly and skip
-        /// OnNewChatMessage, which is what strips angle brackets out of player chat.
-        ///
-        /// A bad hex code reaches the screen as literal text - "#GGG" would appear
-        /// over a skeleton's head as &lt;color=#GGG&gt; - so it is checked once per
-        /// distinct value and complained about in the log instead.
-        /// </remarks>
         private static string Colourise(string line)
         {
-            string wanted = ModConfig.TextColour.Value;
+            string configured = ModConfig.TextColour.Value;
 
-            if (string.IsNullOrWhiteSpace(wanted))
+            if (Colours.TryTagFor(configured, out string tag, out bool newlyRejected))
             {
-                return line;
+                return SpeechFormat.Wrap(line, tag);
             }
 
-            if (wanted != _checkedColour)
-            {
-                _checkedColour = wanted;
-                _colourTag = TryBuildTag(wanted);
-            }
-
-            return _colourTag == null ? line : _colourTag + line + "</color>";
-        }
-
-        /// <summary>Turn a configured hex code into an opening colour tag.</summary>
-        /// <returns>The opening tag, or null if it was not a hex colour.</returns>
-        /// <param name="wanted">Whatever the player typed.</param>
-        private static string TryBuildTag(string wanted)
-        {
-            string hex = wanted.Trim().TrimStart('#');
-            bool lengthOk = hex.Length is 3 or 6 or 8;
-
-            for (int i = 0; lengthOk && i < hex.Length; i++)
-            {
-                if (!Uri.IsHexDigit(hex[i]))
-                {
-                    lengthOk = false;
-                }
-            }
-
-            if (!lengthOk)
+            if (newlyRejected)
             {
                 ChattyBonesPlugin.Log.LogWarning(
-                    "TextColour '" + wanted + "' is not a hex code like #C8FFC8, so it is being ignored.");
-                return null;
+                    "TextColour '" + configured + "' is not a hex code like #C8FFC8, so it is being ignored.");
             }
 
-            return "<color=#" + hex + ">";
+            return line;
         }
 
         /// <summary>Draw the floating chat text, if we can.</summary>
-        /// <returns>False if the method is missing or threw, so the caller falls back.</returns>
+        /// <returns>False if the method is missing or has already thrown once.</returns>
         /// <param name="chat">The live Chat instance.</param>
         /// <param name="speaker">Whoever is talking.</param>
         /// <param name="line">Finished text.</param>
         /// <remarks>
         /// Talker.Type.Normal on purpose. Chat only prefixes the speaker's name for
-        /// Shout and Ping, and Shout also uppercases and colours the text yellow -
-        /// so Normal gives a plain white line, which is what a bubble should be. A
-        /// pack that wants the name in the text can use {name}.
+        /// Shout and Ping, and Shout also uppercases and colours the text yellow - so
+        /// Normal gives a plain white line, which is what a bubble should be. A pack
+        /// that wants the name in the text can use {name}.
         ///
-        /// A failure here disables the path rather than retrying every line. If the
-        /// invoke throws once it will throw every time, and the dialogue panel still
-        /// draws something.
+        /// The arguments are built before the try, and that placement is the point.
+        /// Everything in there can fail for reasons local to one skeleton - a creature
+        /// with no mapped head bone has a null m_head, and a speaker destroyed this
+        /// frame makes Transform.Find throw - and none of that means the reflection is
+        /// broken. Inside the try, each would kill the good path for the rest of the
+        /// session. Outside it, they reach <see cref="Say"/>'s catch, cost one line,
+        /// and we carry on.
         /// </remarks>
         private static bool TryFloatingText(Chat chat, Character speaker, string line)
         {
-            if (_addInworldText == null)
+            if (_addInworldText == null || _floatingTextDisabled)
             {
                 return false;
             }
 
+            object[] arguments =
+            [
+                AnchorFor(speaker),
+                SenderIdFor(speaker),
+                speaker.GetHeadPoint(),
+                Talker.Type.Normal,
+                new UserInfo(),
+                line,
+            ];
+
             try
             {
-                _ = _addInworldText.Invoke(
-                    chat,
-                    [AnchorFor(speaker), SenderIdFor(speaker), speaker.GetHeadPoint(), Talker.Type.Normal, new UserInfo(), line]);
-
+                _ = _addInworldText.Invoke(chat, arguments);
                 return true;
             }
             catch (Exception e)
             {
-                ChattyBonesPlugin.Log.LogWarning("Chat.AddInworldText threw, falling back to the dialogue panel from now on: " + e.Message);
-                _addInworldText = null;
+                // Invoke wraps whatever the method threw, and the wrapper's own message
+                // is boilerplate, so unwrap it or the log line explains nothing.
+                _floatingTextDisabled = true;
+                ChattyBonesPlugin.Log.LogWarning(
+                    "Chat.AddInworldText threw, so the dialogue panel takes over from here: " + (e.InnerException ?? e));
+
                 return false;
             }
         }
 
         /// <summary>Draw the dialogue panel instead.</summary>
+        /// <returns>Always <see cref="Drew.DialoguePanel"/>.</returns>
         /// <param name="chat">The live Chat instance.</param>
         /// <param name="speaker">Whoever is talking.</param>
-        /// <param name="speakerName">Shown as the panel's topic.</param>
         /// <param name="line">Finished text.</param>
         /// <remarks>
         /// 1.5m is a guess at skeleton head height. Unlike the floating text this is
         /// placed once and never re-evaluated, so there is nothing to measure it
         /// against.
+        ///
+        /// The name is resolved here rather than passed in, because it costs two ZDO
+        /// reads and a filter pass, and the path everybody actually uses never wants it.
         /// </remarks>
-        private static void ShowPanel(Chat chat, Character speaker, string speakerName, string line)
+        private static Drew ShowPanel(Chat chat, Character speaker, string line)
         {
             chat.SetNpcText(
                 speaker.gameObject,
                 Vector3.up * 1.5f,
                 ModConfig.DialoguePanelCullDistance.Value,
                 ModConfig.DialoguePanelSeconds.Value,
-                speakerName ?? string.Empty,
+                Summons.NameOf(speaker),
                 line,
                 large: false);
+
+            return Drew.DialoguePanel;
         }
 
         /// <summary>Which object the text should hang from.</summary>
@@ -230,7 +232,8 @@ namespace ChattyBones
         /// The way out is the other branch of that same line: an object *without* a
         /// Character is drawn at its own transform position instead. So I hang the
         /// text on an empty child parented above the head. It still follows the
-        /// skeleton, because the child moves with it, and we choose the height.
+        /// skeleton, because the child moves with it, and we choose the height - on
+        /// top of Chat's own 0.3, which it adds either way.
         ///
         /// Parented to the root rather than the head bone, so the text does not bob
         /// with the walk animation. Skeletons only rotate about Y, so a straight-up
@@ -257,8 +260,8 @@ namespace ChattyBones
                 anchor = existing.gameObject;
             }
 
-            // Re-measured every time, so typing a new TextHeight in ConfigurationManager
-            // moves the text on the next line rather than the next summon.
+            // Re-measured every time, so a new TextHeight in ConfigurationManager moves
+            // the text on the next line rather than the next summon.
             float headHeight = speaker.GetHeadPoint().y - speaker.transform.position.y;
             anchor.transform.localPosition = new Vector3(0f, headHeight + extra, 0f);
 
@@ -268,22 +271,11 @@ namespace ChattyBones
         /// <summary>A stable id for this skeleton, for Chat to key its bubble by.</summary>
         /// <returns>The same value every time for the same skeleton.</returns>
         /// <param name="speaker">Whoever is talking.</param>
-        /// <remarks>
-        /// Chat replaces an existing bubble when the sender matches. Per skeleton that
-        /// is exactly right - a new line supersedes the old one. Shared across the
-        /// squad it would mean five skeletons taking turns wiping out each other's.
-        ///
-        /// A ZDOID is a (user, counter) pair and does not fit in a long, so this is a
-        /// mix rather than a packing. 1099511628211 is the FNV-1a prime; nothing
-        /// depends on that beyond it being large and odd. Collisions only matter
-        /// between two skeletons alive at the same moment, of which there are a
-        /// handful.
-        /// </remarks>
         private static long SenderIdFor(Character speaker)
         {
             ZDOID id = speaker.GetZDOID();
 
-            return unchecked((id.UserID * 1099511628211L) ^ id.ID ^ SenderSalt);
+            return SpeechFormat.SenderId(id.UserID, id.ID);
         }
     }
 }

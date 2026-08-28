@@ -55,7 +55,7 @@ dotnet_diagnostic.IDE0058.severity = none
 
 # Everything below is scoped to the mod half, where UnityEngine types live. The
 # Logic/ folders keep the defaults, because nothing in them is a Unity object.
-[src/*/*.cs]
+[src/*/**.cs]
 
 # Off, and this one would introduce a bug rather than noise. UnityEngine.Object
 # overrides operator == so that a destroyed object compares equal to null, while
@@ -67,3 +67,11 @@ dotnet_diagnostic.IDE0058.severity = none
 dotnet_diagnostic.IDE0031.severity = none
 dotnet_diagnostic.IDE0029.severity = none
 dotnet_diagnostic.IDE0030.severity = none
+
+# ...and put them back for the Logic folders, which contain no Unity types at
+# all. Stated positively rather than relying on the glob above to miss them, so
+# that adding src/<Mod>/Patches/ later cannot quietly change what applies where.
+[src/*/Logic/**.cs]
+dotnet_diagnostic.IDE0031.severity = warning
+dotnet_diagnostic.IDE0029.severity = warning
+dotnet_diagnostic.IDE0030.severity = warning

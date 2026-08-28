@@ -42,7 +42,9 @@ namespace ChattyBones
         /// <param name="args">Everything after the command name becomes the line.</param>
         /// <remarks>
         /// Being able to make a skeleton talk on demand means that when a line fails
-        /// to appear later, the drawing half is already ruled out.
+        /// to appear later, the drawing half is already ruled out. Which is also why
+        /// it reports *which* path drew: "nothing appeared" and "the panel appeared
+        /// off-screen" look identical from the chair.
         /// </remarks>
         private static void Say(Terminal.ConsoleEventArgs args)
         {
@@ -52,7 +54,11 @@ namespace ChattyBones
                 return;
             }
 
-            string line = args.Length > 1 ? args.FullLine.Substring(args[0].Length).Trim() : "My bones are itchy.";
+            // ArgsAll is everything after the command token. Length > 1 only promises
+            // a space, not text after it, so a trailing space would otherwise "say" an
+            // empty line and still report it as spoken.
+            string typed = args.ArgsAll == null ? string.Empty : args.ArgsAll.Trim();
+            string line = typed.Length > 0 ? typed : "My bones are itchy.";
 
             if (!Summons.TryFindNearest(Player.m_localPlayer.transform.position, SearchRadius, out Character skeleton))
             {
@@ -60,8 +66,12 @@ namespace ChattyBones
                 return;
             }
 
-            Speech.Say(skeleton, Summons.NameOf(skeleton), line);
-            args.Context.AddString(Summons.NameOf(skeleton) + " says: " + line);
+            string name = Summons.NameOf(skeleton);
+            Drew drew = Speech.Say(skeleton, line);
+
+            args.Context.AddString(drew == Drew.Nothing
+                ? name + " said nothing - check Enabled, and whether the world has finished loading."
+                : name + " says (" + drew + "): " + line);
         }
 
         /// <summary>List nearby summons, so "nothing happened" can be told from "nothing is there".</summary>
@@ -90,7 +100,9 @@ namespace ChattyBones
                     Summons.NameOf(all[i]) + " - " + Mathf.RoundToInt(Vector3.Distance(me, all[i].transform.position)) + "m");
             }
 
-            args.Context.AddString(found + " summoned skeleton(s) loaded.");
+            args.Context.AddString(
+                found + " summoned skeleton(s) loaded. Style: " + ModConfig.Bubble.Value
+                + ", enabled: " + ModConfig.Enabled.Value);
         }
     }
 }

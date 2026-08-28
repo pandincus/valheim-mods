@@ -5,21 +5,40 @@ namespace ChattyBones
 {
     /// <summary>Finds the skeletons this mod cares about.</summary>
     /// <remarks>
-    /// A Dead Raiser skeleton is a tamed creature with a Tameable whose ZDO carries
-    /// the summoner's name in <c>s_follow</c> - which is how SpawnAbility marks one
-    /// when it calls <c>Tameable.Command</c>. No prefab names involved, so it keeps
-    /// working if Iron Gate renames anything. It also matches any other tamed
-    /// follower - a wolf you have told to heel counts - which has not been worth
-    /// excluding yet, since Dead Raiser skeletons are what people are summoning.
+    /// The obvious test is "tamed, and following somebody" - a Tameable whose ZDO
+    /// carries the summoner's name in <c>s_follow</c>, which is how SpawnAbility
+    /// marks one. I used that first and it is wrong twice over.
+    ///
+    /// It matches too much: any tamed follower qualifies, so a wolf you have told to
+    /// heel would start reciting skeleton lines.
+    ///
+    /// And it matches too little, in two ways that both go unnoticed. RPC_Command
+    /// blanks <c>s_follow</c> when you toggle a creature to "stay", so a skeleton
+    /// holding position would go permanently mute. And <c>Tameable.Command</c> is a
+    /// routed RPC, so the field is still empty during Awake - the field is false at
+    /// exactly the moment a skeleton is summoned, and true on every zone reload
+    /// afterwards, which is precisely backwards for a greeting.
+    ///
+    /// So we ask the prefab instead. Unsummon behaviour is what a summon has and a
+    /// tamed animal does not: it wanders too far and vanishes, or you log out and it
+    /// vanishes. That is a fact about the prefab, available synchronously, and
+    /// nothing at runtime can clear it.
     /// </remarks>
     internal static class Summons
     {
         /// <summary>Is this one of ours?</summary>
-        /// <returns>True for a tamed creature that is following somebody.</returns>
-        /// <param name="character">Any creature.</param>
+        /// <returns>True for a creature that was summoned rather than tamed.</returns>
+        /// <param name="character">Any creature. Null is fine.</param>
+        /// <remarks>
+        /// The ZNetView is fetched before anything else is asked, and that order
+        /// matters: <c>Character.IsTamed</c> reaches into <c>m_nview</c> itself, and
+        /// <c>Character.Awake</c> registers the character before assigning it. Since
+        /// component Awake order within a GameObject is undefined, a hook on some
+        /// other component's Awake can reach a Character whose nview is still null.
+        /// </remarks>
         internal static bool IsSummoned(Character character)
         {
-            if (character == null || !character.IsTamed())
+            if (character == null)
             {
                 return false;
             }
@@ -30,8 +49,10 @@ namespace ChattyBones
                 return false;
             }
 
-            return character.GetComponent<Tameable>() != null
-                && !string.IsNullOrEmpty(view.GetZDO().GetString(ZDOVars.s_follow));
+            Tameable tameable = character.GetComponent<Tameable>();
+
+            return tameable != null
+                && (tameable.m_unsummonDistance > 0f || tameable.m_unsummonOnOwnerLogoutSeconds > 0f);
         }
 
         /// <summary>The summoned skeleton nearest a point, if there is one in range.</summary>
@@ -40,8 +61,10 @@ namespace ChattyBones
         /// <param name="maxDistance">How far to look.</param>
         /// <param name="found">The nearest one, or null.</param>
         /// <remarks>
-        /// Walks <c>Character.GetAllCharacters()</c>, which is every loaded creature -
-        /// fine for a console command, and not something to do every frame.
+        /// Walks <c>Character.GetAllCharacters()</c>, which is every loaded creature.
+        /// Fine for a console command and much too slow for anything regular - when
+        /// the skeletons start reacting on their own they should keep a list of
+        /// themselves rather than have us search for them.
         /// </remarks>
         internal static bool TryFindNearest(Vector3 point, float maxDistance, out Character found)
         {
@@ -76,6 +99,10 @@ namespace ChattyBones
         /// the ZDO's tamed-name field and sync to everyone. Tameable.GetHoverName
         /// already does the fallback and the UGC filtering, so we use it rather than
         /// reading the field ourselves.
+        ///
+        /// Not free, mind: two ZDO reads, a filter pass, and a ZDO write when we are
+        /// the owner and the name has no recorded author. Worth calling only when
+        /// something is actually going to show the name.
         /// </remarks>
         internal static string NameOf(Character character)
         {
