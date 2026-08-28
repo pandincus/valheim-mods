@@ -76,10 +76,11 @@ namespace ChattyBones
                 "uses Valheim's own chat timeout.");
 
             TextHeight = cfg.Bind(
-                "Appearance", "TextHeight", 0.7f,
+                "Appearance", "TextHeight", 0.3f,
                 "Extra height above the skeleton's head, in metres, so the line clears " +
-                "the name label. Raise it if they still overlap. 0 puts the text exactly " +
-                "where Valheim would put a player's chat, which sits right on the name.");
+                "the name label. 0.3 sits just clear of it; much more and the text starts " +
+                "to look detached from whoever said it. 0 puts it exactly where Valheim " +
+                "puts a player's chat, which lands right on the name.");
 
             PanelCullDistance = cfg.Bind(
                 "Appearance", "DialoguePanelCullDistance", 20f,
