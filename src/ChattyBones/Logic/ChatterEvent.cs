@@ -1,0 +1,94 @@
+namespace ChattyBones.Logic
+{
+    /// <summary>
+    /// The things a skeleton can react to.
+    /// </summary>
+    /// <remarks>
+    /// One entry per hook we install, plus Idle, which nothing triggers - it is
+    /// just a timer running down with nothing else to say.
+    ///
+    /// This lives in its own file rather than beside the budget, because it is the
+    /// most depended-upon type in the folder - the pack, the tokens, the chooser and
+    /// the utterance all speak in these - and a shared vocabulary filed under one of
+    /// its consumers is a slightly odd place to go looking.
+    ///
+    /// The order here is not the priority order. Priority lives in
+    /// <see cref="ChatterBudget"/>, so that reordering this enum for readability
+    /// cannot quietly change which skeleton gets to speak.
+    /// </remarks>
+    internal enum ChatterEvent
+    {
+        /// <summary>You just raised it with the Dead Raiser.</summary>
+        Summoned,
+
+        /// <summary>It picked something to attack, and is heading over.</summary>
+        TargetAcquired,
+
+        /// <summary>Something hit it hard enough to be worth mentioning.</summary>
+        Hurt,
+
+        /// <summary>It gained a status effect, e.g. you dropped a shield on it.</summary>
+        Buffed,
+
+        /// <summary>It killed something.</summary>
+        /// <remarks>
+        /// Not hooked off the victim's death, which sounds like the obvious place and
+        /// is not. Character.OnDeath is reached from CheckDeath, which sits inside an
+        /// IsOwner check, so a creature's death only fires on whichever client owns
+        /// that creature - in a shared world that is often the host or another player,
+        /// and your skeleton's kill would simply go uncommented.
+        ///
+        /// Instead we watch our own skeleton's target go from something to nothing
+        /// and check whether that something is now dead, which reads replicated state
+        /// and works whoever owns it. Attribution gets a little looser - the thing
+        /// might have died to somebody else's axe - but "the creature my skeleton was
+        /// charging at just died" is arguably the better trigger anyway. It fires
+        /// when the skeleton thinks it won, which is the funnier moment.
+        /// </remarks>
+        Killed,
+
+        /// <summary>It died.</summary>
+        Died,
+
+        /// <summary>It timed out, or you summoned enough others to push it over the cap.</summary>
+        Unsummoned,
+
+        /// <summary>Nothing is happening and it feels the need to fill the silence.</summary>
+        Idle,
+
+        /// <summary>You took a hit worth mentioning.</summary>
+        /// <remarks>
+        /// Damage on a Player resolves on that player's own client, which also owns
+        /// their summons - so your squad reacts to your injuries and nobody else's.
+        /// </remarks>
+        PlayerHurt,
+
+        /// <summary>You hit something very hard.</summary>
+        /// <remarks>
+        /// The attacking client builds the HitData and calls Character.Damage, which
+        /// is what then sends the RPC. So a hook on Damage rather than RPC_Damage
+        /// runs on your machine with the number in hand, and no networking is
+        /// involved at all - which is a nicer position than the kill events are in.
+        /// </remarks>
+        PlayerLandedABigHit,
+
+        /// <summary>You killed something.</summary>
+        /// <remarks>
+        /// Kept separate from <see cref="PlayerLandedABigHit"/> even though a kill is
+        /// the biggest hit there is, because "You got him!" and "Nice swing!" are
+        /// different lines and a pack author should be able to write both. Event
+        /// space is not scarce - see <see cref="Utterance"/>.
+        /// </remarks>
+        PlayerGotAKill,
+
+        /// <summary>Another of your skeletons took a hit.</summary>
+        /// <remarks>
+        /// Both skeletons are yours and owned by the same client, so this needs no
+        /// cleverness to detect. The fun is in <see cref="LineTokens.Companion"/>:
+        /// they already have names, either the one they came with or whatever you
+        /// renamed them to, so a line can be "Ach, {companion}!" rather than
+        /// something vague about a colleague.
+        /// </remarks>
+        CompanionHurt,
+    }
+}
