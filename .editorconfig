@@ -52,3 +52,17 @@ dotnet_diagnostic.IDE0046.severity = none
 # it fires on the places where discarding is exactly the right thing to do, and
 # all it buys is noise.
 dotnet_diagnostic.IDE0058.severity = none
+
+# Everything below is scoped to the mod half, where UnityEngine types live. The
+# Logic/ folders keep the defaults, because nothing in them is a Unity object.
+[src/*/*.cs]
+
+# Off, and this one would introduce a bug rather than noise. UnityEngine.Object
+# overrides operator == so that a destroyed object compares equal to null, while
+# ?. and ?? use plain reference equality and do not. So "x == null ? null : x.Y"
+# and "x?.Y" are genuinely different for a Character or a GameObject, and the
+# second one happily calls into a destroyed object. dotnet format applies this
+# silently, which is exactly how it would get in.
+dotnet_diagnostic.IDE0031.severity = none
+dotnet_diagnostic.IDE0029.severity = none
+dotnet_diagnostic.IDE0030.severity = none

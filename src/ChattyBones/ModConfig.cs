@@ -2,6 +2,16 @@ using BepInEx.Configuration;
 
 namespace ChattyBones
 {
+    /// <summary>How a line is drawn over a skeleton's head.</summary>
+    internal enum BubbleStyle
+    {
+        /// <summary>The chat text that follows the head. What we want.</summary>
+        FloatingText,
+
+        /// <summary>The trader dialogue box. Safe, but sits still and looks like Haldor.</summary>
+        DialoguePanel,
+    }
+
     /// <summary>
     /// Every setting the mod has. BepInEx writes these to
     /// BepInEx/config/pandincus.chattybones.cfg on first run, and
@@ -28,6 +38,9 @@ namespace ChattyBones
     internal static class ModConfig
     {
         internal static ConfigEntry<bool> Enabled;
+        internal static ConfigEntry<BubbleStyle> Bubble;
+        internal static ConfigEntry<float> PanelSeconds;
+        internal static ConfigEntry<float> PanelCullDistance;
 
         /// <summary>
         /// Declare every setting. Called once from <see cref="ChattyBonesPlugin.Awake"/>.
@@ -47,6 +60,24 @@ namespace ChattyBones
                 "General", "Enabled", true,
                 "Master switch. Turn this off and your skeletons shut up completely - no " +
                 "speech, no idle chatter, nothing. Safe to flip while you are playing.");
+
+            Bubble = cfg.Bind(
+                "Appearance", "BubbleStyle", BubbleStyle.FloatingText,
+                "How a line is drawn. FloatingText is the chat text that follows the " +
+                "skeleton's head, and is what you want. DialoguePanel is the box the " +
+                "traders use - it does not follow the skeleton, but it only uses parts " +
+                "of the game we are supposed to touch, so it is there if a Valheim " +
+                "update ever breaks the other one.");
+
+            PanelSeconds = cfg.Bind(
+                "Appearance", "DialoguePanelSeconds", 5f,
+                "How long a DialoguePanel line stays up. Ignored by FloatingText, which " +
+                "uses Valheim's own chat timeout.");
+
+            PanelCullDistance = cfg.Bind(
+                "Appearance", "DialoguePanelCullDistance", 20f,
+                "How far away a DialoguePanel line is still drawn, in metres. Ignored by " +
+                "FloatingText.");
         }
     }
 }
