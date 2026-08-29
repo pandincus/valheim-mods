@@ -157,6 +157,9 @@ namespace ChattyBones
         /// killed to the next one, and an earlier version that only watched for null
         /// missed those kills entirely - roughly one in eight, and precisely in the
         /// crowded fights where the squad has most to say.
+        ///
+        /// Both halves of that have to be asked separately, which is not obvious and is
+        /// explained at the comparison below.
         /// </remarks>
         internal void Sweep(float dt)
         {
@@ -168,7 +171,16 @@ namespace ChattyBones
 
             Character target = _ai.GetTargetCreature();
 
-            if (_hadTarget && target != _lastTarget)
+            // Two questions, and they have to be asked with two different operators.
+            // "Is there a target" wants Unity's ==, which counts a destroyed object as
+            // absent. "Is it the one we were following" wants reference identity,
+            // because Unity's == would call a destroyed target and a missing one the
+            // same thing - which is what silently swallowed every kill that ended a
+            // fight. TargetWatch has the full story and the tests.
+            bool targetPresent = target != null;
+            bool sameTarget = ReferenceEquals(target, _lastTarget);
+
+            if (TargetWatch.LostTarget(_hadTarget, targetPresent, sameTarget))
             {
                 Settle();
             }
@@ -211,11 +223,16 @@ namespace ChattyBones
         /// </remarks>
         private void Settle()
         {
-            bool fresh = Time.time - _lastSawTargetAt <= StaleTargetSeconds;
+            float since = Time.time - _lastSawTargetAt;
 
             _hadTarget = false;
 
-            if (fresh && (_lastTarget == null || _lastTarget.GetHealth() <= 0f))
+            // Ordered so the null check still short-circuits: a destroyed Character
+            // compares equal to null, and asking a destroyed object for its health
+            // throws.
+            bool gone = _lastTarget == null || _lastTarget.GetHealth() <= 0f;
+
+            if (TargetWatch.WorthRemarking(since, gone))
             {
                 Boast();
             }
@@ -232,13 +249,6 @@ namespace ChattyBones
             _lastTargetName = null;
             _lastTargetPrefab = 0;
         }
-
-        /// <summary>How out of date a target sighting can be and still be worth a remark.</summary>
-        /// <remarks>
-        /// Four sweeps. Long enough that an ordinary frame hitch does not lose a kill,
-        /// short enough that a gap in sweeping cannot bank one.
-        /// </remarks>
-        private const float StaleTargetSeconds = 1f;
 
         /// <summary>Mark the kill - by the one who made it, or by somebody standing nearby.</summary>
         /// <remarks>
