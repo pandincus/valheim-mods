@@ -204,7 +204,7 @@ namespace ChattyBones.Tests
                 or ChatterEvent.CompanionHurt
                 or ChatterEvent.PlayerLandedABigHit;
 
-            bool hasStatus = kind is ChatterEvent.Buffed or ChatterEvent.Afflicted;
+            bool hasStatus = kind is ChatterEvent.Buffed or ChatterEvent.Afflicted or ChatterEvent.Weather;
 
             return new LineTokens(
                 target: hasTarget ? "Greydwarf" : null,

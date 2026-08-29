@@ -49,7 +49,7 @@
 #
 # EVENTS
 #
-# Sixteen things a skeleton reacts to, and what each one can tell you.
+# Seventeen things a skeleton reacts to, and what each one can tell you.
 # "hit tokens" means {weapon}, {weapontype} and {damage} together.
 #
 #   Summoned              you raised it                      -
@@ -57,6 +57,7 @@
 #   Hurt                  something hit it                   hit tokens
 #   Buffed                it gained a helpful effect         {status}
 #   Afflicted             it caught fire, poison or worse    {status}
+#   Weather               rain, or water, or the swamp       {status}
 #   Killed                it killed something                {target}
 #   Died                  it died                            -
 #   Unsummoned            it timed out or strayed too far    -
@@ -72,8 +73,12 @@
 # Idle's {companion} is null when a skeleton is out alone, so keep plain idle
 # lines too.
 #
+# Weather is mostly rain, but the same effect comes from wading in, swimming, and
+# simply being in the Swamp - so a line that commits to falling rain will
+# sometimes be wrong. "My bones are wet" travels better than "it is raining".
+#
 # Spelling counts, capitals included: "idle" is not "Idle", and a name that is
-# not exactly one of the sixteen above is reported in the log and skipped.
+# not exactly one of the seventeen above is reported in the log and skipped.
 #
 # An event you leave out entirely is simply never commented on, which is a fine
 # way to switch off the idle chatter.
@@ -205,6 +210,11 @@ lines:
       - "Ah. {status}. Wonderful."
       - "I do not care for this."
       - "{status}! Somebody do something!"
+    Weather:
+      - "Hey, my bones are {status}."
+      - "{status}. Marvellous."
+      - "This is why I stayed buried."
+      - "Does anyone else feel that?"
     Killed:
       - "Down it goes."
       - "That {target} won't get up."
@@ -319,6 +329,8 @@ lines:
 
   # Has done this too many times.
   veteran:
+    Weather:
+      - "Wet again. Naturally."
     Afflicted:
       - "{status}. Naturally."
       - "Add it to the list."

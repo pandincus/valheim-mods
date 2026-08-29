@@ -53,13 +53,24 @@ namespace ChattyBones.Tests
         [InlineData("Wet")]
         [InlineData("Cold")]
         [InlineData("Freezing")]
-        public void TheOnesLeftOutOnPurposeStayOut(string effectName)
+        public void TheWeatherIsNotAnInjury(string effectName)
         {
-            // Wet is acquired constantly - any water at all - and Afflicted outranks
-            // the kill events, so including it meant a skeleton wading into a swamp
-            // talking over its own victories to mention it is damp. Cold and Freezing
-            // are a player's problem; skeletons do not feel them.
+            // The distinction the Weather event exists for. Wet is acquired constantly
+            // - any water at all, rain included - and Afflicted outranks the kill
+            // events, so calling it harmful meant a skeleton wading into a swamp
+            // talking over its own victories to mention it is damp.
             Assert.False(StatusKind.IsHarmful(effectName));
+            Assert.True(StatusKind.IsWeather(effectName));
+        }
+
+        [Theory]
+        [InlineData("Burning")]
+        [InlineData("Shield")]
+        [InlineData("SomeModAddedThis")]
+        [InlineData(null)]
+        public void EverythingElseIsNotTheWeather(string effectName)
+        {
+            Assert.False(StatusKind.IsWeather(effectName));
         }
 
         [Theory]

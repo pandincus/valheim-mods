@@ -269,6 +269,17 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void RemarkingOnTheWeatherNeverTalksOverAnything()
+        {
+            // Wet is applied by any water at all, so this rank is what makes the event
+            // safe to have. It may interrupt an idle mutter and nothing else.
+            Assert.True(CanInterrupt(ChatterEvent.Weather, ChatterEvent.Idle));
+            Assert.False(CanInterrupt(ChatterEvent.Weather, ChatterEvent.Killed));
+            Assert.False(CanInterrupt(ChatterEvent.Weather, ChatterEvent.TargetAcquired));
+            Assert.False(CanInterrupt(ChatterEvent.Weather, ChatterEvent.CompanionSummoned));
+        }
+
+        [Fact]
         public void CatchingFireOutranksTheBlowThatCausedIt()
         {
             // Both land in the same frame - SEMan.AddStatusEffect runs from inside

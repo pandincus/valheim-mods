@@ -140,5 +140,15 @@ namespace ChattyBones.Logic
         /// it. <see cref="StatusKind"/> is what tells the two apart.
         /// </remarks>
         Afflicted,
+
+        /// <summary>The weather has got to it - rain, water, cold.</summary>
+        /// <remarks>
+        /// Wet is the one that matters, and it is why this exists separately from
+        /// <see cref="Afflicted"/>: any water at all applies it, so ranking a remark
+        /// about being damp anywhere near an injury meant a skeleton wading into a
+        /// swamp talking over its own kills. Here it sits just above
+        /// <see cref="Idle"/>, which is the company it belongs in.
+        /// </remarks>
+        Weather,
     }
 }

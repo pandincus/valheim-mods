@@ -19,14 +19,9 @@ namespace ChattyBones.Logic
         /// <summary>The vanilla effects that mean something has gone wrong.</summary>
         /// <remarks>
         /// Taken from the names <c>SEMan</c> hashes, plus Slimed, which is applied
-        /// through a hit rather than by name. Cold and Freezing are absent on purpose:
-        /// skeletons do not feel the cold, and a line about it would only ever fire
-        /// for a player's effects.
-        ///
-        /// Wet is also absent, and that one is a judgement call. It is by far the most
-        /// frequently acquired - any water at all - and Afflicted outranks the kill
-        /// events, so a skeleton wading into a swamp would talk over its own victories
-        /// for the sake of mentioning it is damp.
+        /// through a hit rather than by name. The ambient ones are next door in
+        /// <see cref="IsWeather"/> - they are not injuries and must not be ranked
+        /// like them.
         /// </remarks>
         private static readonly string[] Harmful =
         [
@@ -42,6 +37,34 @@ namespace ChattyBones.Logic
             "Harpooned",
         ];
 
+        /// <summary>The effects that are just the weather being unpleasant.</summary>
+        /// <remarks>
+        /// Practically speaking this is Wet and only Wet: it is applied in
+        /// Character.UpdateWater, so anything can get it, and it is by far the most
+        /// frequently acquired effect in the game - any water at all, rain included.
+        /// Cold and Freezing are applied in Player.cs alone, and our hook only ever
+        /// sees characters carrying a ChatterComponent, so no vanilla skeleton can
+        /// reach them. They are here for the mod that changes that, and cost two
+        /// strings if none ever does.
+        ///
+        /// Which is also why the shipped lines say "{status}" rather than "wet" -
+        /// a line naming one member of a list is wrong the moment the list grows.
+        /// </remarks>
+        private static readonly string[] Ambient =
+        [
+            "Wet",
+            "Cold",
+            "Freezing",
+        ];
+
+        /// <summary>Is this the weather rather than an injury?</summary>
+        /// <returns>True for the ambient effects, which get their own quiet event.</returns>
+        /// <param name="effectName">The effect's asset name, e.g. "Wet".</param>
+        internal static bool IsWeather(string effectName)
+        {
+            return Contains(Ambient, effectName);
+        }
+
         /// <summary>Is this effect a bad thing to have happened?</summary>
         /// <returns>True for the effects that hurt, sting or stick.</returns>
         /// <param name="effectName">The effect's asset name, e.g. "Burning".</param>
@@ -51,14 +74,23 @@ namespace ChattyBones.Logic
         /// </remarks>
         internal static bool IsHarmful(string effectName)
         {
+            return Contains(Harmful, effectName);
+        }
+
+        /// <summary>Exact, case-sensitive membership.</summary>
+        /// <returns>True when the name is in the list.</returns>
+        /// <param name="names">The list to look in.</param>
+        /// <param name="effectName">What to look for. Null and empty are fine, and find nothing.</param>
+        private static bool Contains(string[] names, string effectName)
+        {
             if (string.IsNullOrEmpty(effectName))
             {
                 return false;
             }
 
-            for (int i = 0; i < Harmful.Length; i++)
+            for (int i = 0; i < names.Length; i++)
             {
-                if (Harmful[i] == effectName)
+                if (names[i] == effectName)
                 {
                     return true;
                 }
