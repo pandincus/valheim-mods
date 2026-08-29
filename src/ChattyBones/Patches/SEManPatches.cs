@@ -32,6 +32,20 @@ namespace ChattyBones.Patches
             }
         }
 
+        /// <summary>What to call this effect in a line.</summary>
+        /// <returns>Its localized name, or null when it has not got one.</returns>
+        /// <param name="effect">The effect being added.</param>
+        /// <remarks>
+        /// Null rather than empty, because only null makes LineTokens refuse the line -
+        /// an unnamed effect would otherwise render "Ah. . Wonderful."
+        /// </remarks>
+        private static string Named(StatusEffect effect)
+        {
+            string name = Localization.instance.Localize(effect.m_name);
+
+            return string.IsNullOrEmpty(name) ? null : name;
+        }
+
         /// <summary>Have the skeleton thank you for the shield, or complain about the fire.</summary>
         /// <param name="seman">The status effect manager the effect was added to.</param>
         /// <param name="statusEffect">The effect being added.</param>
@@ -55,11 +69,7 @@ namespace ChattyBones.Patches
                 return;
             }
 
-            // Valheim has no flag for good versus bad - StatusEffect.m_attributes is
-            // about cold resistance and sailing - so the subclass is the signal, and
-            // StatusKind keeps the list. Anything unrecognised arrives as Buffed,
-            // which is the gentler of the two wrong answers.
-            bool harmful = StatusKind.IsHarmful(statusEffect.GetType().Name);
+            bool harmful = StatusKind.IsHarmful(statusEffect.name);
 
             // The effect's name hash is a kind of thing rather than a particular one,
             // so it is a safe subject: two skeletons shielded by the same cast produce
@@ -70,7 +80,7 @@ namespace ChattyBones.Patches
                 statusEffect.NameHash(),
                 targetName: null,
                 companion: null,
-                details: new LineDetails(status: Localization.instance.Localize(statusEffect.m_name)));
+                details: new LineDetails(status: Named(statusEffect)));
         }
     }
 }

@@ -314,13 +314,8 @@ namespace ChattyBones
         /// <returns>Another loaded skeleton, or null when it is on its own.</returns>
         /// <param name="speaker">Whoever is looking for company.</param>
         /// <remarks>
-        /// For the idle lines, so they can rib each other by name rather than
-        /// muttering into the middle distance. Anybody loaded will do - a line naming
-        /// a skeleton standing behind you reads fine, and insisting on one in view
-        /// would mean a distance check per idle tick for no gain.
-        ///
-        /// Random rather than the nearest, so a squad of three does not settle into
-        /// two of them always addressing each other.
+        /// For the idle lines. Random rather than the nearest, so a squad of three
+        /// does not settle into two of them always addressing each other.
         /// </remarks>
         internal static Character AnotherOf(ChatterComponent speaker)
         {
@@ -330,13 +325,23 @@ namespace ChattyBones
                 return null;
             }
 
-            int start = _random.Next(0, squad.Count);
+            // Drawn from the others rather than from everybody, which matters more
+            // than it looks: picking a random start and walking to the first
+            // non-speaker hands the speaker's list neighbour two chances in every
+            // three with a squad of three, and list order is summon order - so it
+            // would be the same neighbour every time.
+            int pick = _random.Next(0, squad.Count - 1);
 
-            for (int offset = 0; offset < squad.Count; offset++)
+            for (int i = 0; i < squad.Count; i++)
             {
-                ChatterComponent other = squad[(start + offset) % squad.Count];
+                ChatterComponent other = squad[i];
 
-                if (!ReferenceEquals(other, speaker) && other.Character != null)
+                if (ReferenceEquals(other, speaker))
+                {
+                    continue;
+                }
+
+                if (pick-- == 0)
                 {
                     return other.Character;
                 }

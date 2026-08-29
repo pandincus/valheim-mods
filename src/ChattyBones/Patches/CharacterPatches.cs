@@ -30,12 +30,39 @@ namespace ChattyBones.Patches
     [HarmonyPatch(typeof(Character), "RPC_Damage")]
     internal static class CharacterDamagedPatch
     {
-        /// <summary>Read the health we are about to lose some of.</summary>
+        /// <summary>Read the health, and the damage, before vanilla gets at either.</summary>
         /// <param name="__instance">Whoever is being hit.</param>
+        /// <param name="hit">The blow, while it is still intact.</param>
         /// <param name="__state">Handed to the postfix by Harmony. An IL local, so it is per call and nesting is safe.</param>
-        private static void Prefix(Character __instance, out float __state)
+        /// <remarks>
+        /// The damage has to be read here rather than in the postfix, and it is not
+        /// obvious why. RPC_Damage lifts the fire, poison and spirit numbers off the
+        /// hit, zeroes those three fields, applies the rest, and then hands the
+        /// originals to AddFireDamage and friends - Character.cs:1985. It never puts
+        /// them back, and HitData is a class, so by the time a postfix looks, a
+        /// surtling fireball is a hit with no damage on it at all.
+        ///
+        /// Frost and lightning survive, being consumed after rather than before. So
+        /// reading in the postfix silently lost three of the eight words {damage} can
+        /// say, and every pure-fire hit reported nothing.
+        /// </remarks>
+        private static void Prefix(Character __instance, HitData hit, out Reading __state)
         {
-            __state = __instance == null ? 0f : __instance.GetHealth();
+            __state = new Reading(
+                __instance == null ? 0f : __instance.GetHealth(),
+                Hits.Of(hit));
+        }
+
+        /// <summary>What the prefix saw, for the postfix to compare against.</summary>
+        /// <param name="health">Health before the blow landed.</param>
+        /// <param name="details">The blow, described while it was still whole.</param>
+        internal readonly struct Reading(float health, LineDetails details)
+        {
+            /// <summary>Health before the blow landed.</summary>
+            internal float Health { get; } = health;
+
+            /// <summary>What the blow was made of.</summary>
+            internal LineDetails Details { get; } = details;
         }
 
         /// <summary>
@@ -44,8 +71,8 @@ namespace ChattyBones.Patches
         /// </summary>
         /// <param name="__instance">Whoever was hit.</param>
         /// <param name="hit">The blow, for working out who threw it.</param>
-        /// <param name="__state">The health reading from the prefix.</param>
-        private static void Postfix(Character __instance, HitData hit, float __state)
+        /// <param name="__state">What the prefix read.</param>
+        private static void Postfix(Character __instance, HitData hit, Reading __state)
         {
             try
             {
@@ -60,8 +87,8 @@ namespace ChattyBones.Patches
         /// <summary>Work out whether this hit is worth saying anything about.</summary>
         /// <param name="victim">Whoever was hit.</param>
         /// <param name="hit">The blow.</param>
-        /// <param name="healthBefore">What the prefix read.</param>
-        private static void React(Character victim, HitData hit, float healthBefore)
+        /// <param name="seen">What the prefix read.</param>
+        private static void React(Character victim, HitData hit, Reading seen)
         {
             if (!ModConfig.Enabled.Value || victim == null)
             {
@@ -69,7 +96,7 @@ namespace ChattyBones.Patches
             }
 
             float max = victim.GetMaxHealth();
-            float lost = healthBefore - victim.GetHealth();
+            float lost = seen.Health - victim.GetHealth();
 
             if (max <= 0f || lost <= 0f)
             {
@@ -91,7 +118,7 @@ namespace ChattyBones.Patches
                         subject: 0,
                         targetName: null,
                         companion: null,
-                        details: Hits.Of(hit));
+                        details: seen.Details);
                 }
 
                 return;
@@ -100,28 +127,26 @@ namespace ChattyBones.Patches
             ChatterComponent ours = victim.GetComponent<ChatterComponent>();
             if (ours != null)
             {
-                TheySufferedIt(victim, ours, hit, lost / max, fatal);
+                TheySufferedIt(victim, ours, seen.Details, lost / max, fatal);
                 return;
             }
 
-            WeDealtIt(victim, hit, lost / max, fatal);
+            WeDealtIt(victim, hit, seen.Details, lost / max, fatal);
         }
 
         /// <summary>One of ours was hurt.</summary>
         /// <param name="victim">The skeleton.</param>
         /// <param name="ours">Its chatter component.</param>
-        /// <param name="hit">The blow, for what it was made of.</param>
+        /// <param name="details">What the blow was made of.</param>
         /// <param name="share">How much of its health went, as a fraction.</param>
         /// <param name="fatal">Whether that was the last of it.</param>
-        private static void TheySufferedIt(Character victim, ChatterComponent ours, HitData hit, float share, bool fatal)
+        private static void TheySufferedIt(Character victim, ChatterComponent ours, LineDetails details, float share, bool fatal)
         {
             // A fatal blow gets last words instead of a complaint about the ribs.
             if (fatal || share < ModConfig.HurtFraction.Value)
             {
                 return;
             }
-
-            LineDetails details = Hits.Of(hit);
 
             if (Chatter.TrySpeak(ours, ChatterEvent.Hurt, subject: 0, targetName: null, companion: null, details: details))
             {
@@ -143,12 +168,13 @@ namespace ChattyBones.Patches
         /// <summary>Something that is not one of ours was hurt - possibly by you.</summary>
         /// <param name="victim">Whatever took the hit.</param>
         /// <param name="hit">The blow, for the attacker.</param>
+        /// <param name="details">What the blow was made of.</param>
         /// <param name="share">How much of its health went, as a fraction.</param>
         /// <param name="fatal">Whether that was the last of it.</param>
         /// <remarks>
         /// The attacker lookup resolves a ZDOID, so it goes last of the cheap tests.
         /// </remarks>
-        private static void WeDealtIt(Character victim, HitData hit, float share, bool fatal)
+        private static void WeDealtIt(Character victim, HitData hit, LineDetails details, float share, bool fatal)
         {
             // A kill is PlayerGotAKill's to talk about, and it has better lines for it.
             if (fatal || hit == null || share < ModConfig.BigHitFraction.Value)
@@ -166,7 +192,7 @@ namespace ChattyBones.Patches
                 Summons.PrefabOf(victim),
                 Summons.CreatureName(victim),
                 companion: null,
-                details: Hits.Of(hit));
+                details: details);
         }
     }
 

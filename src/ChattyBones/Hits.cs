@@ -5,10 +5,8 @@ namespace ChattyBones
 {
     /// <summary>Turns a blow into the words a line can use to describe it.</summary>
     /// <remarks>
-    /// The game half of the <c>{weapon}</c>, <c>{weapontype}</c> and <c>{damage}</c>
-    /// tokens: everything here needs a HitData or a Humanoid, so none of it can live
-    /// under Logic/. The deciding is next door - <see cref="DamageKind"/> picks the
-    /// dominant damage type out of eleven numbers, and is tested against a table.
+    /// Needs a HitData and a Humanoid, so it cannot live under Logic/. The part that
+    /// can is <see cref="DamageKind"/>.
     /// </remarks>
     internal static class Hits
     {
@@ -42,9 +40,8 @@ namespace ChattyBones
         /// <remarks>
         /// The weapon in hand *now*, which is not quite the weapon that landed this
         /// hit - an arrow arrives long after the bow was drawn, a thrown spear leaves
-        /// the hand entirely, and nothing stops a swap mid-swing. Good enough for a
-        /// joke and not for anything else, which is why <see cref="TypeName"/> exists
-        /// beside it and why the pack file says which of the two can lie.
+        /// the hand entirely, and nothing stops a swap mid-swing. <see cref="TypeName"/>
+        /// is the one that cannot be wrong.
         /// </remarks>
         private static string WeaponName(HitData hit)
         {
@@ -61,21 +58,29 @@ namespace ChattyBones
 
             ItemDrop.ItemData weapon = humanoid.GetCurrentWeapon();
 
-            return weapon?.m_shared == null
-                ? null
-                : Localization.instance.Localize(weapon.m_shared.m_name);
+            if (weapon?.m_shared == null)
+            {
+                return null;
+            }
+
+            // Empty rather than null is what an unnamed item gives back, and Localize
+            // passes it straight through. A token has to be null to be refused, or the
+            // line renders with a hole where the weapon should be.
+            string name = Localization.instance.Localize(weapon.m_shared.m_name);
+
+            return string.IsNullOrEmpty(name) ? null : name;
         }
 
         /// <summary>What kind of weapon landed the blow.</summary>
         /// <returns>A lower-case word, or null for skills that are not a weapon.</returns>
         /// <param name="skill">The skill riding on the hit.</param>
         /// <remarks>
-        /// This one cannot be wrong: the skill travels on the HitData itself and is
-        /// even serialized across the network, so it is always the thing that actually
-        /// landed rather than whatever is in somebody's hands afterwards.
+        /// The skill rides on the HitData itself, so this is what actually landed
+        /// rather than whatever is in somebody's hands afterwards. One caveat: a
+        /// creature with no weapon falls back to an attack item whose skill defaults
+        /// to Swords, so it is honest about players and a guess about monsters.
         ///
-        /// Pickaxes and woodcutting are deliberately unnamed. They are tools, and a
-        /// skeleton admiring your axework on a birch is not a line anybody wants.
+        /// Pickaxes and woodcutting are left out - they are tools, not weapons.
         /// </remarks>
         private static string TypeName(Skills.SkillType skill)
         {
@@ -83,14 +88,7 @@ namespace ChattyBones
         }
 
         /// <summary>What to call each weapon skill in a line.</summary>
-        /// <remarks>
-        /// A lookup rather than a switch because SkillType has twenty-seven values -
-        /// cooking and swimming among them - and the style rules want every arm of a
-        /// switch spelled out. Eleven entries and a miss returning null says the same
-        /// thing in a quarter of the space.
-        ///
-        /// Both magic skills answer "staff", which is what the player is holding.
-        /// </remarks>
+        /// <remarks>A miss is null, which is most of the twenty-six.</remarks>
         private static readonly Dictionary<Skills.SkillType, string> WeaponWords = new()
         {
             [Skills.SkillType.Swords] = "sword",

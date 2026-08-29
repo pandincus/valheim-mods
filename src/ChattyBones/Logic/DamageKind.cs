@@ -4,14 +4,13 @@ namespace ChattyBones.Logic
     /// Which kind of damage a hit mostly was, as a word a line can use.
     /// </summary>
     /// <remarks>
-    /// A hit carries eleven separate damage numbers and almost always has more than
-    /// one of them set - a fire sword does slash and fire together. So there is no
-    /// "the" damage type, only a dominant one, and picking it is the whole job.
+    /// A hit almost always has more than one of these set - a fire sword does slash
+    /// and fire together - so there is no "the" damage type, only a dominant one, and
+    /// picking it is the whole job.
     ///
-    /// Chop and pickaxe are left out of the vocabulary rather than named. They are
-    /// tool damage, and a skeleton admiring your pickaxe work while you clear rocks
-    /// is not a line anybody wants - a hit that is mostly either simply has no
-    /// <c>{damage}</c> to offer, and lines wanting one are passed over.
+    /// Chop and pickaxe are not among the arguments: they are tool damage, not weapon
+    /// damage. A hit that was mostly either still answers with whatever weapon damage
+    /// it also did.
     /// </remarks>
     internal static class DamageKind
     {
@@ -30,9 +29,6 @@ namespace ChattyBones.Logic
         /// the elemental ones. That is the right way round for the common case: a
         /// weapon with a fire enchant does most of its work as slash, and "nice slash
         /// hit" beats "nice fire hit" for describing a sword.
-        ///
-        /// Null when every number is zero, which happens more than it looks - a hit
-        /// can be pure stagger, or all its damage can be absorbed before it gets here.
         /// </remarks>
         internal static string Dominant(
             float blunt,

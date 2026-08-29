@@ -6,51 +6,59 @@ namespace ChattyBones.Logic
     /// <remarks>
     /// Valheim has no flag for this. <c>StatusEffect.m_attributes</c> looks like the
     /// answer and is not - its only members are ColdResistance, DoubleImpactDamage,
-    /// SailingPower and TamingBoost, none of which is about harm. What there is
-    /// instead is the subclass, and the vanilla set is small enough to name.
+    /// SailingPower and TamingBoost, none of which is about harm.
     ///
-    /// Taking the type name as a string rather than the type keeps this on the
-    /// Unity-free side of the fence, where the table can be read and tested.
+    /// So the effect's own asset name is the signal, which is what the game itself
+    /// keys on: <c>SEMan.s_statusEffectTared</c> is <c>"Tared".GetStableHashCode()</c>
+    /// and the rest follow the same pattern. Names rather than subclasses, because
+    /// several of the nastiest have no subclass at all - tar, lightning and slime are
+    /// plain StatusEffect or SE_Stats, so a type-name check called them buffs.
     /// </remarks>
     internal static class StatusKind
     {
         /// <summary>The vanilla effects that mean something has gone wrong.</summary>
         /// <remarks>
-        /// Burning covers fire and spirit damage over time; wet and smoke are the two
-        /// that are more nuisance than injury, and are in because a skeleton
-        /// grumbling about being damp is exactly the register this mod wants.
+        /// Taken from the names <c>SEMan</c> hashes, plus Slimed, which is applied
+        /// through a hit rather than by name. Cold and Freezing are absent on purpose:
+        /// skeletons do not feel the cold, and a line about it would only ever fire
+        /// for a player's effects.
+        ///
+        /// Wet is also absent, and that one is a judgement call. It is by far the most
+        /// frequently acquired - any water at all - and Afflicted outranks the kill
+        /// events, so a skeleton wading into a swamp would talk over its own victories
+        /// for the sake of mentioning it is damp.
         /// </remarks>
         private static readonly string[] Harmful =
         [
-            "SE_Burning",
-            "SE_Frost",
-            "SE_Poison",
-            "SE_Wet",
-            "SE_Smoke",
-            "SE_Puke",
-            "SE_Harpooned",
+            "Burning",
+            "Spirit",
+            "Frost",
+            "Poison",
+            "Lightning",
+            "Smoked",
+            "Tared",
+            "Slimed",
+            "Puke",
+            "Harpooned",
         ];
 
         /// <summary>Is this effect a bad thing to have happened?</summary>
-        /// <returns>True for the effects that hurt, sting or annoy.</returns>
-        /// <param name="typeName">The effect's runtime type name, e.g. "SE_Burning".</param>
+        /// <returns>True for the effects that hurt, sting or stick.</returns>
+        /// <param name="effectName">The effect's asset name, e.g. "Burning".</param>
         /// <remarks>
         /// Anything unrecognised comes back false and is treated as a buff, which is
-        /// the safer of the two wrong answers: a modded effect being thanked for is
-        /// merely odd, where a shield being screamed about would be worse. A modded
-        /// effect that really is harmful can still be given lines - it just arrives as
-        /// Buffed, and the pack can say something neutral there.
+        /// the safer of the two wrong answers.
         /// </remarks>
-        internal static bool IsHarmful(string typeName)
+        internal static bool IsHarmful(string effectName)
         {
-            if (string.IsNullOrEmpty(typeName))
+            if (string.IsNullOrEmpty(effectName))
             {
                 return false;
             }
 
             for (int i = 0; i < Harmful.Length; i++)
             {
-                if (Harmful[i] == typeName)
+                if (Harmful[i] == effectName)
                 {
                     return true;
                 }

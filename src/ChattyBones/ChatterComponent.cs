@@ -240,9 +240,7 @@ namespace ChattyBones
             {
                 _untilIdle = NextIdleGap();
 
-                // A companion on Idle is what lets them rib each other by name. Lines
-                // that do not ask for one are unaffected; lines that do are simply
-                // passed over when this skeleton is the only one out.
+                // A companion so the idle lines can rib each other by name.
                 _ = Chatter.TrySpeak(
                     this,
                     ChatterEvent.Idle,

@@ -6,50 +6,68 @@ namespace ChattyBones.Tests
     /// Covers telling a blessing from an affliction.
     /// </summary>
     /// <remarks>
-    /// This table is the whole feature. Valheim has no flag saying whether an effect
-    /// is good or bad - StatusEffect.m_attributes is about cold resistance and
-    /// sailing - so the subclass name is the only signal there is, and getting an
-    /// entry wrong means a skeleton thanking you for setting it on fire.
+    /// This table is the whole feature, and getting an entry wrong means a skeleton
+    /// thanking you for setting it on fire.
     /// </remarks>
     public class StatusKindTests
     {
         [Theory]
-        [InlineData("SE_Burning")]
-        [InlineData("SE_Frost")]
-        [InlineData("SE_Poison")]
-        [InlineData("SE_Wet")]
-        [InlineData("SE_Smoke")]
-        [InlineData("SE_Puke")]
-        [InlineData("SE_Harpooned")]
-        public void TheOnesThatHurtAreRecognized(string typeName)
+        [InlineData("Burning")]
+        [InlineData("Spirit")]
+        [InlineData("Frost")]
+        [InlineData("Poison")]
+        [InlineData("Smoked")]
+        [InlineData("Puke")]
+        [InlineData("Harpooned")]
+        public void TheOnesThatHurtAreRecognized(string effectName)
         {
-            Assert.True(StatusKind.IsHarmful(typeName));
+            Assert.True(StatusKind.IsHarmful(effectName));
         }
 
         [Theory]
-        [InlineData("SE_Shield")]
-        [InlineData("SE_Rested")]
-        [InlineData("SE_Cozy")]
-        [InlineData("SE_Stats")]
-        [InlineData("SE_HealthUpgrade")]
-        [InlineData("SE_Demister")]
-        [InlineData("SE_Finder")]
-        public void TheOnesThatHelpAreNot(string typeName)
+        [InlineData("Tared")]
+        [InlineData("Lightning")]
+        [InlineData("Slimed")]
+        public void TheOnesWithNoSubclassOfTheirOwnAreRecognizedToo(string effectName)
         {
-            // SE_Shield is the one this mod was built around - the Staff of Protection
+            // The reason this keys on the asset name rather than the runtime type.
+            // Tar, lightning and slime are plain StatusEffect or SE_Stats, so a
+            // type-name check called all three of them buffs - and a skeleton wading
+            // into a Plains tar pit said "Ooh, that's the stuff."
+            Assert.True(StatusKind.IsHarmful(effectName));
+        }
+
+        [Theory]
+        [InlineData("Shield")]
+        [InlineData("Rested")]
+        [InlineData("Shelter")]
+        [InlineData("CampFire")]
+        public void TheOnesThatHelpAreNot(string effectName)
+        {
+            // Shield is the one this mod was built around - the Staff of Protection
             // does apply to summons, and "Much obliged" is the reason Buffed exists.
-            Assert.False(StatusKind.IsHarmful(typeName));
+            Assert.False(StatusKind.IsHarmful(effectName));
         }
 
         [Theory]
-        [InlineData("SE_SomeModAddedThis")]
+        [InlineData("Wet")]
+        [InlineData("Cold")]
+        [InlineData("Freezing")]
+        public void TheOnesLeftOutOnPurposeStayOut(string effectName)
+        {
+            // Wet is acquired constantly - any water at all - and Afflicted outranks
+            // the kill events, so including it meant a skeleton wading into a swamp
+            // talking over its own victories to mention it is damp. Cold and Freezing
+            // are a player's problem; skeletons do not feel them.
+            Assert.False(StatusKind.IsHarmful(effectName));
+        }
+
+        [Theory]
+        [InlineData("SomeModAddedThis")]
         [InlineData("")]
         [InlineData(null)]
         public void AnythingUnknownIsTreatedAsABuff(string typeName)
         {
-            // The safer of the two wrong answers. Thanking somebody for a modded
-            // effect we do not recognize is merely odd; screaming about a shield
-            // would be worse, and a modded effect still gets Buffed lines.
             Assert.False(StatusKind.IsHarmful(typeName));
         }
 
@@ -58,9 +76,9 @@ namespace ChattyBones.Tests
         {
             // Guards against a "starts with SE_" or "contains Burn" shortcut creeping
             // in later, which would drag unrelated effects in with it.
-            Assert.False(StatusKind.IsHarmful("SE_Burning_Extra"));
-            Assert.False(StatusKind.IsHarmful("Burning"));
-            Assert.False(StatusKind.IsHarmful("se_burning"));
+            Assert.False(StatusKind.IsHarmful("BurningExtra"));
+            Assert.False(StatusKind.IsHarmful("Burn"));
+            Assert.False(StatusKind.IsHarmful("burning"));
         }
     }
 }

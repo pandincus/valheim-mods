@@ -269,6 +269,26 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void CatchingFireOutranksTheBlowThatCausedIt()
+        {
+            // Both land in the same frame - SEMan.AddStatusEffect runs from inside
+            // RPC_Damage, where the Hurt hook also sits - and the fire is the more
+            // interesting half. Without this the rank is only pinned for uniqueness,
+            // and a later tidy-up could move it either way unnoticed.
+            Assert.True(CanInterrupt(ChatterEvent.Afflicted, ChatterEvent.Hurt));
+        }
+
+        [Fact]
+        public void CatchingFireDoesNotTalkOverSomethingWorse()
+        {
+            // The other side of it. A skeleton on fire must not drown out you being
+            // mauled or a companion going down.
+            Assert.False(CanInterrupt(ChatterEvent.Afflicted, ChatterEvent.PlayerHurt));
+            Assert.False(CanInterrupt(ChatterEvent.Afflicted, ChatterEvent.CompanionDied));
+            Assert.False(CanInterrupt(ChatterEvent.Afflicted, ChatterEvent.Died));
+        }
+
+        [Fact]
         public void HowAFightEndedOutranksNoticingItStarted()
         {
             // One Fact rather than a Theory with InlineData, because ChatterEvent is

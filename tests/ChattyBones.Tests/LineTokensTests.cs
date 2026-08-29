@@ -32,8 +32,6 @@ namespace ChattyBones.Tests
         [Fact]
         public void ALineWantingAWeaponIsPassedOverWhenThereIsNone()
         {
-            // The reason both a flavoured and a plain variant can sit in one group:
-            // events with no hit behind them simply never reach the flavoured line.
             LineTokens tokens = new(target: null, player: "Ragnar", name: "Botvid");
 
             Assert.False(tokens.TryRender("Nice hit with that {weapon}!", out _));

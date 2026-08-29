@@ -21,10 +21,6 @@ namespace ChattyBones.Logic
         /// <param name="weaponType">What kind of weapon it is, e.g. "sword".</param>
         /// <param name="damage">The dominant damage type, e.g. "fire".</param>
         /// <param name="status">A status effect's name, e.g. "Burning".</param>
-        /// <remarks>
-        /// Named arguments at the call site, please - four optional strings in a row
-        /// is exactly the shape that lets two of them swap unnoticed.
-        /// </remarks>
         internal LineDetails(
             string weapon = null,
             string weaponType = null,
@@ -37,22 +33,10 @@ namespace ChattyBones.Logic
             Status = status;
         }
 
-        /// <summary>The weapon's own name, or null when we do not know it.</summary>
-        /// <remarks>
-        /// Read from the attacker's hands at the moment we are asked, which is not
-        /// quite the moment of the hit. An arrow in flight, a thrown spear, or a swap
-        /// mid-swing can all make this name the wrong thing. Harmless for a joke and
-        /// wrong for anything load-bearing - <see cref="WeaponType"/> is the one that
-        /// cannot lie.
-        /// </remarks>
+        /// <summary>The weapon's own name, or null. Can name the wrong one - see Hits.WeaponName.</summary>
         internal string Weapon { get; }
 
-        /// <summary>What kind of weapon it was, or null.</summary>
-        /// <remarks>
-        /// Taken from the skill on the hit itself, which travels with it and is even
-        /// serialized over the network, so unlike <see cref="Weapon"/> this is always
-        /// the thing that actually landed.
-        /// </remarks>
+        /// <summary>What kind of weapon it was, or null. Read off the hit, so always right.</summary>
         internal string WeaponType { get; }
 
         /// <summary>The dominant damage type, or null when nothing stood out.</summary>

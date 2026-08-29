@@ -70,8 +70,7 @@ namespace ChattyBones.Tests
         public void NothingAtAllHasNoName()
         {
             // Commoner than it looks - a hit can be pure stagger, or have everything
-            // absorbed before it reaches us. The line asking for {damage} is then
-            // passed over, which is the whole point of returning null.
+            // absorbed before it reaches us.
             Assert.Null(
                 DamageKind.Dominant(
                     blunt: 0f, slash: 0f, pierce: 0f, fire: 0f,

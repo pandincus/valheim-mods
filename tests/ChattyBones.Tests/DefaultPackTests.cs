@@ -191,8 +191,7 @@ namespace ChattyBones.Tests
                 or ChatterEvent.PlayerLandedABigHit
                 or ChatterEvent.PlayerGotAKill;
 
-            // Idle is in the list, and that is the point of it being there - a
-            // skeleton with nobody to talk to falls back to its plain idle lines.
+            // Idle is in the list on purpose - they rib each other by name.
             bool hasCompanion = kind is ChatterEvent.CompanionHurt
                 or ChatterEvent.CompanionKilled
                 or ChatterEvent.CompanionDied
