@@ -37,18 +37,30 @@ namespace ChattyBones.Logic
             "Harpooned",
         ];
 
+        /// <summary>Which of the three status events an effect belongs to.</summary>
+        /// <returns>Afflicted for an injury, Weather for the ambient ones, Buffed for the rest.</returns>
+        /// <param name="effectName">The effect's asset name, e.g. "Burning".</param>
+        /// <remarks>
+        /// Here rather than at the hook so it can be tested: the branch is the point of
+        /// the two lists, and it lived in the Unity half where nothing could reach it.
+        /// </remarks>
+        internal static ChatterEvent EventFor(string effectName)
+        {
+            if (IsHarmful(effectName))
+            {
+                return ChatterEvent.Afflicted;
+            }
+
+            return IsWeather(effectName) ? ChatterEvent.Weather : ChatterEvent.Buffed;
+        }
+
         /// <summary>The effects that are just the weather being unpleasant.</summary>
         /// <remarks>
         /// Practically speaking this is Wet and only Wet: it is applied in
         /// Character.UpdateWater, so anything can get it, and it is by far the most
         /// frequently acquired effect in the game - any water at all, rain included.
-        /// Cold and Freezing are applied in Player.cs alone, and our hook only ever
-        /// sees characters carrying a ChatterComponent, so no vanilla skeleton can
-        /// reach them. They are here for the mod that changes that, and cost two
-        /// strings if none ever does.
-        ///
-        /// Which is also why the shipped lines say "{status}" rather than "wet" -
-        /// a line naming one member of a list is wrong the moment the list grows.
+        /// Cold and Freezing are Player-only, so no vanilla skeleton reaches them.
+        /// Insurance against a mod that changes that, at a cost of two strings.
         /// </remarks>
         private static readonly string[] Ambient =
         [

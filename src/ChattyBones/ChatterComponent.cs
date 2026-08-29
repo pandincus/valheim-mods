@@ -316,10 +316,7 @@ namespace ChattyBones
         /// </remarks>
         private void Boast()
         {
-            // No hit to read - a kill is noticed by the target disappearing, not by
-            // catching the blow - so the weapon comes from the killer's own hands.
-            // Reliable here in a way it is not for a player: a skeleton is handed one
-            // weapon when it is raised and never swaps.
+            // No blow to read on a kill, so the weapon comes from its own hands.
             LineDetails details = Hits.WieldedBy(Character);
 
             if (Chatter.TrySpeak(this, ChatterEvent.Killed, _lastTargetPrefab, _lastTargetName, companion: null, details: details))

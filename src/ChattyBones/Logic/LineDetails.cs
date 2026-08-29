@@ -36,7 +36,7 @@ namespace ChattyBones.Logic
         /// <summary>The weapon's own name, or null. Can name the wrong one - see Hits.WeaponName.</summary>
         internal string Weapon { get; }
 
-        /// <summary>What kind of weapon it was, or null. Read off the hit, so always right.</summary>
+        /// <summary>What kind of weapon it was, or null. Read off the hit - see Hits.TypeName.</summary>
         internal string WeaponType { get; }
 
         /// <summary>The dominant damage type, or null when nothing stood out.</summary>

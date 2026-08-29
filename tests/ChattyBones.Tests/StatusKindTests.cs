@@ -13,6 +13,45 @@ namespace ChattyBones.Tests
     {
         [Theory]
         [InlineData("Burning")]
+        [InlineData("Tared")]
+        public void AnInjuryBecomesAfflicted(string effectName)
+        {
+            Assert.Equal(ChatterEvent.Afflicted, StatusKind.EventFor(effectName));
+        }
+
+        [Theory]
+        [InlineData("Wet")]
+        [InlineData("Freezing")]
+        public void TheWeatherBecomesWeather(string effectName)
+        {
+            Assert.Equal(ChatterEvent.Weather, StatusKind.EventFor(effectName));
+        }
+
+        [Theory]
+        [InlineData("Shield")]
+        [InlineData("Rested")]
+        [InlineData("SomeModAddedThis")]
+        [InlineData(null)]
+        public void EverythingElseBecomesBuffed(string effectName)
+        {
+            // Buffed is the fallback rather than a category, so an effect nobody has
+            // classified is thanked for rather than screamed about.
+            Assert.Equal(ChatterEvent.Buffed, StatusKind.EventFor(effectName));
+        }
+
+        [Fact]
+        public void HarmBeatsWeatherWhenBothWouldMatch()
+        {
+            // Order matters inside EventFor, and nothing else would notice if the two
+            // checks were swapped - both lists are disjoint today, so this pins the
+            // precedence rather than the data.
+            Assert.True(StatusKind.IsHarmful("Burning"));
+            Assert.False(StatusKind.IsWeather("Burning"));
+            Assert.Equal(ChatterEvent.Afflicted, StatusKind.EventFor("Burning"));
+        }
+
+        [Theory]
+        [InlineData("Burning")]
         [InlineData("Spirit")]
         [InlineData("Frost")]
         [InlineData("Poison")]
@@ -55,10 +94,7 @@ namespace ChattyBones.Tests
         [InlineData("Freezing")]
         public void TheWeatherIsNotAnInjury(string effectName)
         {
-            // The distinction the Weather event exists for. Wet is acquired constantly
-            // - any water at all, rain included - and Afflicted outranks the kill
-            // events, so calling it harmful meant a skeleton wading into a swamp
-            // talking over its own victories to mention it is damp.
+            // Classed harmful, Wet outranked the kill events - see StatusKind.
             Assert.False(StatusKind.IsHarmful(effectName));
             Assert.True(StatusKind.IsWeather(effectName));
         }

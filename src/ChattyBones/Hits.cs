@@ -12,8 +12,13 @@ namespace ChattyBones
     {
         /// <summary>Describe a blow.</summary>
         /// <returns>What we could work out, with nulls for what we could not.</returns>
-        /// <param name="hit">The blow, or null when there was not one.</param>
-        internal static LineDetails Of(HitData hit)
+        /// <param name="hit">The blow, for its attacker and its skill.</param>
+        /// <param name="damage">
+        /// Its numbers, copied before vanilla consumed three of them. Not read off
+        /// <paramref name="hit"/>, which no longer has them - see the prefix in
+        /// CharacterPatches.
+        /// </param>
+        internal static LineDetails Of(HitData hit, HitData.DamageTypes damage)
         {
             if (hit == null)
             {
@@ -24,14 +29,14 @@ namespace ChattyBones
                 weapon: WeaponName(hit),
                 weaponType: TypeName(hit.m_skill),
                 damage: DamageKind.Dominant(
-                    hit.m_damage.m_blunt,
-                    hit.m_damage.m_slash,
-                    hit.m_damage.m_pierce,
-                    hit.m_damage.m_fire,
-                    hit.m_damage.m_frost,
-                    hit.m_damage.m_lightning,
-                    hit.m_damage.m_poison,
-                    hit.m_damage.m_spirit));
+                    damage.m_blunt,
+                    damage.m_slash,
+                    damage.m_pierce,
+                    damage.m_fire,
+                    damage.m_frost,
+                    damage.m_lightning,
+                    damage.m_poison,
+                    damage.m_spirit));
         }
 
         /// <summary>Describe what somebody is holding, when there is no blow to read.</summary>
@@ -66,7 +71,7 @@ namespace ChattyBones
         /// The weapon in hand *now*, which is not quite the weapon that landed this
         /// hit - an arrow arrives long after the bow was drawn, a thrown spear leaves
         /// the hand entirely, and nothing stops a swap mid-swing. <see cref="TypeName"/>
-        /// is the one that cannot be wrong.
+        /// is the more reliable of the two, though not exact either.
         /// </remarks>
         private static string WeaponName(HitData hit)
         {
@@ -90,9 +95,8 @@ namespace ChattyBones
         /// <returns>Something like "Mistwalker", or null when it has not got one.</returns>
         /// <param name="item">The item to name.</param>
         /// <remarks>
-        /// Null rather than empty, which is what an unnamed item gives back and what
-        /// Localize passes straight through. Only null makes LineTokens refuse the
-        /// line; empty renders a hole where the weapon should be.
+        /// Null rather than empty, so LineTokens passes the line over rather than
+        /// rendering a hole - the same reason as SEManPatches.Named.
         /// </remarks>
         private static string NameOf(ItemDrop.ItemData item)
         {
@@ -118,7 +122,7 @@ namespace ChattyBones
         }
 
         /// <summary>What to call each weapon skill in a line.</summary>
-        /// <remarks>A miss is null, which is most of the twenty-six.</remarks>
+
         private static readonly Dictionary<Skills.SkillType, string> WeaponWords = new()
         {
             [Skills.SkillType.Swords] = "sword",

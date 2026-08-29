@@ -146,8 +146,7 @@ namespace ChattyBones.Logic
         /// Wet is the one that matters, and it is why this exists separately from
         /// <see cref="Afflicted"/>: any water at all applies it, so ranking a remark
         /// about being damp anywhere near an injury meant a skeleton wading into a
-        /// swamp talking over its own kills. Here it sits just above
-        /// <see cref="Idle"/>, which is the company it belongs in.
+        /// swamp talking over its own kills.
         /// </remarks>
         Weather,
     }

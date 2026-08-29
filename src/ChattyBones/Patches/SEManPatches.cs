@@ -32,23 +32,6 @@ namespace ChattyBones.Patches
             }
         }
 
-        /// <summary>Which of the three status events this effect belongs to.</summary>
-        /// <returns>Afflicted for an injury, Weather for the ambient ones, Buffed for the rest.</returns>
-        /// <param name="effectName">The effect's asset name.</param>
-        /// <remarks>
-        /// Buffed is the fallback rather than a category, so an effect nobody has
-        /// classified is thanked for. That is the gentlest of the three wrong answers.
-        /// </remarks>
-        private static ChatterEvent Kind(string effectName)
-        {
-            if (StatusKind.IsHarmful(effectName))
-            {
-                return ChatterEvent.Afflicted;
-            }
-
-            return StatusKind.IsWeather(effectName) ? ChatterEvent.Weather : ChatterEvent.Buffed;
-        }
-
         /// <summary>What to call this effect in a line.</summary>
         /// <returns>Its localized name, or null when it has not got one.</returns>
         /// <param name="effect">The effect being added.</param>
@@ -86,7 +69,7 @@ namespace ChattyBones.Patches
                 return;
             }
 
-            ChatterEvent kind = Kind(statusEffect.name);
+            ChatterEvent kind = StatusKind.EventFor(statusEffect.name);
 
             // The effect's name hash is a kind of thing rather than a particular one,
             // so it is a safe subject: two skeletons shielded by the same cast produce

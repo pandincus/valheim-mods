@@ -32,37 +32,47 @@ namespace ChattyBones.Patches
     {
         /// <summary>Read the health, and the damage, before vanilla gets at either.</summary>
         /// <param name="__instance">Whoever is being hit.</param>
-        /// <param name="hit">The blow, while it is still intact.</param>
+        /// <param name="hit">The blow, while its numbers are still all there.</param>
         /// <param name="__state">Handed to the postfix by Harmony. An IL local, so it is per call and nesting is safe.</param>
         /// <remarks>
-        /// The damage has to be read here rather than in the postfix, and it is not
-        /// obvious why. RPC_Damage lifts the fire, poison and spirit numbers off the
-        /// hit, zeroes those three fields, applies the rest, and then hands the
-        /// originals to AddFireDamage and friends - Character.cs:1985. It never puts
-        /// them back, and HitData is a class, so by the time a postfix looks, a
-        /// surtling fireball is a hit with no damage on it at all.
+        /// The damage has to be copied here rather than read in the postfix.
+        /// RPC_Damage lifts the fire, poison and spirit numbers off the hit, zeroes
+        /// those three fields, applies the rest, and hands the originals to
+        /// AddFireDamage and friends - Character.cs:1985. It never puts them back, and
+        /// HitData is a class, so by the time a postfix looks, a surtling fireball is
+        /// a hit with no damage on it at all. Frost and lightning survive, being
+        /// consumed after rather than before.
         ///
-        /// Frost and lightning survive, being consumed after rather than before. So
-        /// reading in the postfix silently lost three of the eight words {damage} can
-        /// say, and every pure-fire hit reported nothing.
+        /// A struct copy and a float read, and deliberately nothing else. A prefix
+        /// that throws does not merely lose a line: Harmony does not wrap a patch
+        /// body, so the exception escapes RPC_Damage and the blow is never applied at
+        /// all - a chat mod quietly making a creature invulnerable. Everything that
+        /// can throw, cost anything, or wants the Enabled switch checked first waits
+        /// for the postfix.
+        ///
+        /// These numbers are the blow as it was thrown, before the victim's
+        /// resistances and armour are applied to it. That is the right sense for
+        /// {damage}: a fire sword is a fire sword whoever it lands on. The share of
+        /// health that decides whether anybody speaks is measured from health, not
+        /// from here.
         /// </remarks>
         private static void Prefix(Character __instance, HitData hit, out Reading __state)
         {
             __state = new Reading(
                 __instance == null ? 0f : __instance.GetHealth(),
-                Hits.Of(hit));
+                hit == null ? default : hit.m_damage);
         }
 
         /// <summary>What the prefix saw, for the postfix to compare against.</summary>
         /// <param name="health">Health before the blow landed.</param>
-        /// <param name="details">The blow, described while it was still whole.</param>
-        internal readonly struct Reading(float health, LineDetails details)
+        /// <param name="damage">The blow's numbers, before vanilla consumed three of them.</param>
+        internal readonly struct Reading(float health, HitData.DamageTypes damage)
         {
             /// <summary>Health before the blow landed.</summary>
             internal float Health { get; } = health;
 
             /// <summary>What the blow was made of.</summary>
-            internal LineDetails Details { get; } = details;
+            internal HitData.DamageTypes Damage { get; } = damage;
         }
 
         /// <summary>
@@ -118,7 +128,7 @@ namespace ChattyBones.Patches
                         subject: 0,
                         targetName: null,
                         companion: null,
-                        details: seen.Details);
+                        details: Hits.Of(hit, seen.Damage));
                 }
 
                 return;
@@ -127,11 +137,11 @@ namespace ChattyBones.Patches
             ChatterComponent ours = victim.GetComponent<ChatterComponent>();
             if (ours != null)
             {
-                TheySufferedIt(victim, ours, seen.Details, lost / max, fatal);
+                TheySufferedIt(victim, ours, Hits.Of(hit, seen.Damage), lost / max, fatal);
                 return;
             }
 
-            WeDealtIt(victim, hit, seen.Details, lost / max, fatal);
+            WeDealtIt(victim, hit, seen.Damage, lost / max, fatal);
         }
 
         /// <summary>One of ours was hurt.</summary>
@@ -168,13 +178,14 @@ namespace ChattyBones.Patches
         /// <summary>Something that is not one of ours was hurt - possibly by you.</summary>
         /// <param name="victim">Whatever took the hit.</param>
         /// <param name="hit">The blow, for the attacker.</param>
-        /// <param name="details">What the blow was made of.</param>
+        /// <param name="damage">Its numbers, as the prefix copied them.</param>
         /// <param name="share">How much of its health went, as a fraction.</param>
         /// <param name="fatal">Whether that was the last of it.</param>
         /// <remarks>
-        /// The attacker lookup resolves a ZDOID, so it goes last of the cheap tests.
+        /// The attacker lookup resolves a ZDOID, so it goes last of the cheap tests -
+        /// and describing the blow, which resolves it again, goes after that.
         /// </remarks>
-        private static void WeDealtIt(Character victim, HitData hit, LineDetails details, float share, bool fatal)
+        private static void WeDealtIt(Character victim, HitData hit, HitData.DamageTypes damage, float share, bool fatal)
         {
             // A kill is PlayerGotAKill's to talk about, and it has better lines for it.
             if (fatal || hit == null || share < ModConfig.BigHitFraction.Value)
@@ -192,7 +203,7 @@ namespace ChattyBones.Patches
                 Summons.PrefabOf(victim),
                 Summons.CreatureName(victim),
                 companion: null,
-                details: details);
+                details: Hits.Of(hit, damage));
         }
     }
 
@@ -251,7 +262,6 @@ namespace ChattyBones.Patches
                 return;
             }
 
-
             HitData last = dead.m_lastHit;
             if (last == null || Player.m_localPlayer == null || last.GetAttacker() != Player.m_localPlayer)
             {
@@ -281,10 +291,8 @@ namespace ChattyBones.Patches
         /// </remarks>
         private static void Mourn(Character fallen, ChatterComponent speaker)
         {
-            // What killed it is still holding the thing it did it with. Not the blow
-            // itself: m_lastHit is read long after RPC_Damage has lifted the fire,
-            // poison and spirit off it, so its damage would be quietly incomplete in
-            // exactly the way the prefix exists to avoid.
+            // The killer's hands, not fallen.m_lastHit: by now RPC_Damage has stripped
+            // the fire, poison and spirit off that hit - see the Prefix remarks above.
             if (!Chatter.TrySpeak(
                 speaker,
                 ChatterEvent.Died,

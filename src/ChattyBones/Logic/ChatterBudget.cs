@@ -346,9 +346,8 @@ namespace ChattyBones.Logic
                 ChatterEvent.Summoned => 20,
                 ChatterEvent.CompanionSummoned => 15,
 
-                // Just above Idle, which is the company it keeps. Being rained on is
-                // small talk, and any water at all applies it - so anywhere higher and
-                // a skeleton crossing a stream talks over whatever else is happening.
+                // Being rained on is small talk, and any water at all applies it - so
+                // anywhere higher and a skeleton crossing a stream talks over a kill.
                 ChatterEvent.Weather => 12,
 
                 ChatterEvent.Idle => 10,

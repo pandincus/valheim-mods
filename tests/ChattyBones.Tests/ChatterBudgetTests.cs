@@ -271,8 +271,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void RemarkingOnTheWeatherNeverTalksOverAnything()
         {
-            // Wet is applied by any water at all, so this rank is what makes the event
-            // safe to have. It may interrupt an idle mutter and nothing else.
+            // Weather may interrupt an idle mutter and nothing else. That is the point.
             Assert.True(CanInterrupt(ChatterEvent.Weather, ChatterEvent.Idle));
             Assert.False(CanInterrupt(ChatterEvent.Weather, ChatterEvent.Killed));
             Assert.False(CanInterrupt(ChatterEvent.Weather, ChatterEvent.TargetAcquired));
@@ -282,10 +281,8 @@ namespace ChattyBones.Tests
         [Fact]
         public void CatchingFireOutranksTheBlowThatCausedIt()
         {
-            // Both land in the same frame - SEMan.AddStatusEffect runs from inside
-            // RPC_Damage, where the Hurt hook also sits - and the fire is the more
-            // interesting half. Without this the rank is only pinned for uniqueness,
-            // and a later tidy-up could move it either way unnoticed.
+            // Uniqueness alone left this rank free to move either way. Why it is above
+            // Hurt is in ChatterBudget.
             Assert.True(CanInterrupt(ChatterEvent.Afflicted, ChatterEvent.Hurt));
         }
 

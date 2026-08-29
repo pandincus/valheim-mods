@@ -57,6 +57,26 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void NoLineGluesAnArticleToAWeaponType()
+        {
+            // "That is what a {weapontype} is for." reads fine until somebody swings
+            // an axe, and "a fists" is worse. No rendering test can catch it: the
+            // fixture below renders {weapontype} as "sword", which is the one word in
+            // the vocabulary under which every such line happens to work - and the
+            // vocabulary itself lives in the Unity half, out of reach.
+            //
+            // This has now been introduced twice, so it gets a rule rather than a fix.
+            foreach (string raw in DefaultPack.Yaml.Split('\n'))
+            {
+                string line = raw.TrimEnd('\r');
+
+                Assert.False(
+                    Regex.IsMatch(line, @"\b[Aa]n? \{weapon(type)?\}"),
+                    "An article glued to a weapon token, which reads as \"a axe\": " + line.Trim());
+            }
+        }
+
+        [Fact]
         public void EveryLineInTheShippedPackIsDoubleQuoted()
         {
             // The pack header makes this the house rule, and it is the only rule that
@@ -171,11 +191,9 @@ namespace ChattyBones.Tests
         [Fact]
         public void ThePackHeadersTokenGridMatchesWhatTheEventsActuallySupply()
         {
-            // The grid in the pack header is the first thing a pack author reads, and
-            // it is a hand-copy of TokensFor - which is itself a hand-copy of fifteen
-            // call sites. Two hops from the truth is one too many, so at least pin the
-            // first: a row that promises a token the event never gets means lines that
-            // silently never fire, and the log says nothing about it.
+            // A row promising a token the event never supplies means lines that
+            // silently never fire, and the log says nothing about it. TokensFor is
+            // itself still a hand-copy of the call sites.
             Dictionary<string, string> rows = [];
 
             foreach (string raw in DefaultPack.Yaml.Split('\n'))
@@ -257,9 +275,8 @@ namespace ChattyBones.Tests
                 or ChatterEvent.CompanionHurt
                 or ChatterEvent.PlayerLandedABigHit;
 
-            // Kills and deaths know only what the killer was holding. There is no
-            // blow to read - a kill is noticed by the target vanishing, and by the
-            // time a body is examined the damage on its last hit is incomplete.
+            // Kills and deaths know only what the killer was holding - see
+            // Hits.WieldedBy.
             bool hasWeaponOnly = kind is ChatterEvent.Killed
                 or ChatterEvent.CompanionKilled
                 or ChatterEvent.Died

@@ -343,7 +343,10 @@ namespace ChattyBones
 
                 if (pick-- == 0)
                 {
-                    return other.Character;
+                    // Null when it is being destroyed this frame - OnDisable has not
+                    // run yet, so it is still in the registry. The caller treats that
+                    // as nobody, which is right.
+                    return other.Character == null ? null : other.Character;
                 }
             }
 
