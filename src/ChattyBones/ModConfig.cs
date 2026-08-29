@@ -2,6 +2,16 @@ using BepInEx.Configuration;
 
 namespace ChattyBones
 {
+    /// <summary>How a line is drawn over a skeleton's head.</summary>
+    internal enum BubbleStyle
+    {
+        /// <summary>The chat text that follows the head. The default.</summary>
+        FloatingText,
+
+        /// <summary>The trader dialogue box. Safe, but sits still.</summary>
+        DialoguePanel,
+    }
+
     /// <summary>
     /// Every setting the mod has. BepInEx writes these to
     /// BepInEx/config/pandincus.chattybones.cfg on first run, and
@@ -28,25 +38,69 @@ namespace ChattyBones
     internal static class ModConfig
     {
         internal static ConfigEntry<bool> Enabled;
+        internal static ConfigEntry<BubbleStyle> Bubble;
+        internal static ConfigEntry<float> DialoguePanelSeconds;
+        internal static ConfigEntry<float> DialoguePanelCullDistance;
+        internal static ConfigEntry<float> TextHeight;
+        internal static ConfigEntry<string> TextColour;
 
         /// <summary>
         /// Declare every setting. Called once from <see cref="ChattyBonesPlugin.Awake"/>.
         /// </summary>
-        /// <param name="cfg">
-        /// The plugin's config file, handed to us by BepInEx. Binding a setting either reads
-        /// the player's existing value or writes the default, so the .cfg on disk always ends
-        /// up complete.
+        /// <param name="cfg">The plugin's config file, handed to us by BepInEx.</param>
+        /// <remarks>
+        /// Binding either reads the player's existing value or writes the default, so
+        /// the .cfg on disk always ends up complete. Bind order is the order settings
+        /// appear in that file, so related ones are bound together.
         ///
-        /// The descriptions below are the player-facing help text: they show up as comments
-        /// in the .cfg and as tooltips in ConfigurationManager (F1). Worth writing for a
-        /// player rather than for us.
-        /// </param>
+        /// The numbers carry an AcceptableValueRange, which does two jobs: it stops a
+        /// value that would break the feature quietly - 0 seconds leaves a dialogue
+        /// panel up until the skeleton dies - and it is what makes ConfigurationManager
+        /// draw a slider rather than a text box.
+        /// </remarks>
         internal static void Init(ConfigFile cfg)
         {
             Enabled = cfg.Bind(
                 "General", "Enabled", true,
                 "Master switch. Turn this off and your skeletons shut up completely - no " +
                 "speech, no idle chatter, nothing. Safe to flip while you are playing.");
+
+            Bubble = cfg.Bind(
+                "Appearance", "BubbleStyle", BubbleStyle.FloatingText,
+                "How a line is drawn. FloatingText is the chat text that follows the " +
+                "skeleton's head, and is the default. DialoguePanel is the box the " +
+                "traders use - it does not follow the skeleton around, but it is built " +
+                "on the parts of the game that mods are meant to use, so it is there if " +
+                "a Valheim update ever breaks the other one.");
+
+            DialoguePanelSeconds = cfg.Bind(
+                "Appearance", "DialoguePanelSeconds", 5f,
+                new ConfigDescription(
+                    "How long a DialoguePanel line stays up. Ignored by FloatingText, which " +
+                    "uses Valheim's own chat timeout.",
+                    new AcceptableValueRange<float>(1f, 30f)));
+
+            DialoguePanelCullDistance = cfg.Bind(
+                "Appearance", "DialoguePanelCullDistance", 20f,
+                new ConfigDescription(
+                    "How far away you can be and still see a DialoguePanel line, in metres. " +
+                    "Ignored by FloatingText.",
+                    new AcceptableValueRange<float>(5f, 100f)));
+
+            TextHeight = cfg.Bind(
+                "Appearance", "TextHeight", 0.3f,
+                new ConfigDescription(
+                    "Extra height above the skeleton's head, in metres, so the line clears " +
+                    "the name label. 0.3 sits just clear of it; by 1.0 the text looks " +
+                    "detached from whoever said it. 0 puts it exactly where Valheim puts a " +
+                    "player's chat, which lands right on the name.",
+                    new AcceptableValueRange<float>(0f, 2f)));
+
+            TextColour = cfg.Bind(
+                "Appearance", "TextColour", "",
+                "Colour for skeleton speech, as a hex code like #C8FFC8. Leave empty for " +
+                "Valheim's usual white. Accepts #RGB, #RRGGBB and #RRGGBBAA. Anything " +
+                "that is not a hex code is ignored, with a note in the log.");
         }
     }
 }

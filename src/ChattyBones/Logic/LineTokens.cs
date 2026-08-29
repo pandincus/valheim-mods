@@ -97,8 +97,8 @@ namespace ChattyBones.Logic
         /// filled at all. A remote client may not have the companion loaded, or may
         /// not know a creature we can name. When that happens it stays quiet while
         /// the owner speaks. A missing remark is a much smaller problem than a
-        /// contradictory one, but it is not nothing, and Phase 6 should expect it
-        /// rather than be surprised by it.
+        /// contradictory one, but it is not nothing, and whatever mirrors these to
+        /// other players should expect it rather than be surprised by it.
         /// </returns>
         /// <param name="template">The raw line from the pack, braces and all.</param>
         /// <param name="rendered">The finished line, or null when we return false.</param>

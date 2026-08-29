@@ -52,3 +52,26 @@ dotnet_diagnostic.IDE0046.severity = none
 # it fires on the places where discarding is exactly the right thing to do, and
 # all it buys is noise.
 dotnet_diagnostic.IDE0058.severity = none
+
+# Everything below is scoped to the mod half, where UnityEngine types live. The
+# Logic/ folders keep the defaults, because nothing in them is a Unity object.
+[src/*/**.cs]
+
+# Off, and this one would introduce a bug rather than noise. UnityEngine.Object
+# overrides operator == so that a destroyed object compares equal to null, while
+# ?. and ?? use plain reference equality and do not. So "x == null ? null : x.Y"
+# and "x?.Y" are genuinely different for a Character or a GameObject, and the
+# second one happily calls into a destroyed object. IDE0029 and IDE0030 are the
+# same trap wearing ?? instead of ?. dotnet format applies all three silently,
+# which is exactly how they would get in.
+dotnet_diagnostic.IDE0031.severity = none
+dotnet_diagnostic.IDE0029.severity = none
+dotnet_diagnostic.IDE0030.severity = none
+
+# ...and put them back for the Logic folders, which contain no Unity types at
+# all. Stated positively rather than relying on the glob above to miss them, so
+# that adding src/<Mod>/Patches/ later cannot quietly change what applies where.
+[src/*/Logic/**.cs]
+dotnet_diagnostic.IDE0031.severity = warning
+dotnet_diagnostic.IDE0029.severity = warning
+dotnet_diagnostic.IDE0030.severity = warning

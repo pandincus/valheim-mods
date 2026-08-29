@@ -44,9 +44,11 @@ namespace ChattyBones
         {
             Log = Logger;
             ModConfig.Init(Config);
+            Speech.Resolve();
+            DebugCommands.Register();
 
             // PatchAll finds every [HarmonyPatch] class in this assembly and
-            // applies it. There are none yet - this is the scaffold.
+            // applies it. There are none yet.
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
 
