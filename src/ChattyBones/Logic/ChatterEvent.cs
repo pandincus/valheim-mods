@@ -90,5 +90,25 @@ namespace ChattyBones.Logic
         /// something vague about a colleague.
         /// </remarks>
         CompanionHurt,
+
+        /// <summary>Another of your skeletons got a kill.</summary>
+        /// <remarks>
+        /// Fired only when the one that actually did it cannot speak, which in
+        /// practice means its own cooldown: the skeleton that announced the target a
+        /// few seconds ago is usually the same one now standing over the body, and it
+        /// is still serving out the <see cref="ChatterSettings.SpeakerCooldownSeconds"/>
+        /// it spent on the announcement.
+        ///
+        /// Kept separate from <see cref="Killed"/> because the line is addressed to
+        /// somebody. "Nice one, {companion}!" is a different sentence from "Down it
+        /// goes", and a squad that congratulates each other by name reads as a group
+        /// of people rather than as several narrators.
+        ///
+        /// Appended rather than slotted in beside CompanionHurt, and that is on
+        /// purpose: the enum's values travel in a packed int, so inserting one here
+        /// would renumber every event after it and two clients on different builds
+        /// would disagree about what they had just been told.
+        /// </remarks>
+        CompanionKilled,
     }
 }

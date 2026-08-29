@@ -46,9 +46,10 @@ namespace ChattyBones.Logic
         /// <summary>Another skeleton this line is about, or null when it is about nobody.</summary>
         /// <remarks>
         /// Only set for the events where one skeleton is reacting to another, which
-        /// today means <see cref="ChatterEvent.CompanionHurt"/>. Everywhere else this
-        /// is null, so a "{companion}" written into an idle line quietly refuses
-        /// rather than producing a sentence with a hole in it.
+        /// means <see cref="ChatterEvent.CompanionHurt"/> and
+        /// <see cref="ChatterEvent.CompanionKilled"/>. Everywhere else this is null,
+        /// so a "{companion}" written into an idle line quietly refuses rather than
+        /// producing a sentence with a hole in it.
         ///
         /// TODO: supply this on Idle too, so they can rib each other when nothing is
         /// happening - "Hey {companion}, your insides are showin'!" is a better use

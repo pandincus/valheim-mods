@@ -166,7 +166,7 @@ namespace ChattyBones
                 // rare and costs at worst one undeserved boast.
                 if (_lastTarget == null || _lastTarget.IsDead())
                 {
-                    _ = Chatter.TrySpeak(this, ChatterEvent.Killed, _lastTargetPrefab, _lastTargetName, companion: null);
+                    Boast();
                 }
 
                 _lastTarget = null;
@@ -180,6 +180,34 @@ namespace ChattyBones
                 _untilIdle = NextIdleGap();
                 _ = Chatter.TrySpeak(this, ChatterEvent.Idle, subject: 0, targetName: null, companion: null);
             }
+        }
+
+        /// <summary>Mark the kill - by the one who made it, or by somebody standing nearby.</summary>
+        /// <remarks>
+        /// The killer gets first refusal and usually has to decline, which is the
+        /// whole reason this is not one line. A skeleton that announced its target a
+        /// few seconds ago is still inside its own
+        /// <see cref="ChatterSettings.SpeakerCooldownSeconds"/>, and it is the same
+        /// skeleton now standing over the body - so left to itself, the kill would
+        /// almost never get mentioned by the one that earned it.
+        ///
+        /// The cooldown is per speaker, so handing it to the squad is what gets past
+        /// it, and <see cref="ChatterEvent.CompanionKilled"/> exists so the line can
+        /// be addressed to the killer by name rather than being a bystander narrating
+        /// somebody else's work.
+        /// </remarks>
+        private void Boast()
+        {
+            if (Chatter.TrySpeak(this, ChatterEvent.Killed, _lastTargetPrefab, _lastTargetName, companion: null))
+            {
+                return;
+            }
+
+            _ = Chatter.SpeakAny(
+                ChatterEvent.CompanionKilled,
+                _lastTargetPrefab,
+                _lastTargetName,
+                companion: Character);
         }
 
         /// <summary>Take everything we will want about a target while it still exists.</summary>

@@ -179,9 +179,13 @@ namespace ChattyBones.Logic
         /// <param name="kind">The event to rank.</param>
         /// <remarks>
         /// The gaps are wide so there is room to slot something in later without
-        /// renumbering everything. No two events may share a rank - barging in needs
-        /// a strictly higher number, so a tie silently means neither can ever
-        /// interrupt the other. There is a test for that.
+        /// renumbering everything. That did not survive first contact - promoting the
+        /// three outcome events above TargetAcquired needed more room than the gaps
+        /// had, so the whole thing was renumbered at once. Harmless, since only the
+        /// ordering is ever read, but it is the reason the numbers look freshly
+        /// spaced. No two events may share a rank - barging in needs a strictly
+        /// higher number, so a tie silently means neither can ever interrupt the
+        /// other. There is a test for that.
         ///
         /// I have left this hard-coded rather than exposing it in the config. It is
         /// hard to describe to a player in a way they could act on, and getting it
@@ -194,20 +198,29 @@ namespace ChattyBones.Logic
         {
             return kind switch
             {
-                ChatterEvent.Died => 100,
-                ChatterEvent.Unsummoned => 90,
+                ChatterEvent.Died => 130,
+                ChatterEvent.Unsummoned => 120,
 
                 // Above the skeleton's own injuries on purpose. If you are being
                 // chewed on and a skeleton is too, the one worth hearing about is you.
-                ChatterEvent.PlayerHurt => 80,
+                ChatterEvent.PlayerHurt => 110,
 
-                ChatterEvent.Hurt => 70,
-                ChatterEvent.CompanionHurt => 60,
+                ChatterEvent.Hurt => 100,
+                ChatterEvent.CompanionHurt => 90,
+
+                // Outcomes above intentions. These three sat below TargetAcquired at
+                // first, which sounds harmless and is not: a fight is usually over
+                // inside MinGapSeconds, so the kill could not preempt the announcement
+                // that preceded it and was dropped outright, while the next target
+                // acquisition sailed through at the higher rank. The result in the
+                // Black Forest was three "there's a greydwarf" and never a result.
+                ChatterEvent.PlayerGotAKill => 80,
+                ChatterEvent.Killed => 70,
+                ChatterEvent.CompanionKilled => 60,
+
                 ChatterEvent.TargetAcquired => 50,
-                ChatterEvent.Buffed => 40,
-                ChatterEvent.PlayerGotAKill => 35,
-                ChatterEvent.Killed => 30,
-                ChatterEvent.PlayerLandedABigHit => 25,
+                ChatterEvent.PlayerLandedABigHit => 40,
+                ChatterEvent.Buffed => 30,
                 ChatterEvent.Summoned => 20,
                 ChatterEvent.Idle => 10,
 

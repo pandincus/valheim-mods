@@ -98,17 +98,22 @@ namespace ChattyBones.Tests
         ///
         /// Target is only there when the event is about a creature, which rules out the
         /// ones that are about the skeleton itself or about you. Companion is narrower
-        /// still - today only CompanionHurt passes one, though supplying it on Idle so
-        /// they can rib each other is the best content idea anyone has had for this mod.
+        /// still - the two events where one skeleton is reacting to another - though
+        /// supplying it on Idle so they can rib each other is the best content idea
+        /// anyone has had for this mod.
+        ///
+        /// CompanionKilled gets both, and is the only event that does: the line can
+        /// name the killer and what it killed in the same breath.
         /// </remarks>
         private static LineTokens TokensFor(ChatterEvent kind)
         {
             bool hasTarget = kind is ChatterEvent.TargetAcquired
                 or ChatterEvent.Killed
+                or ChatterEvent.CompanionKilled
                 or ChatterEvent.PlayerLandedABigHit
                 or ChatterEvent.PlayerGotAKill;
 
-            bool hasCompanion = kind is ChatterEvent.CompanionHurt;
+            bool hasCompanion = kind is ChatterEvent.CompanionHurt or ChatterEvent.CompanionKilled;
 
             return new LineTokens(
                 target: hasTarget ? "Greydwarf" : null,

@@ -55,7 +55,8 @@ namespace ChattyBones.Logic
                 .Add(C, ChatterEvent.PlayerHurt, "{player}! Watch it!", "They got you!", "Careful, {player}.")
                 .Add(C, ChatterEvent.PlayerLandedABigHit, "Ooooh.", "Did you see that?", "Lovely swing, {player}.")
                 .Add(C, ChatterEvent.PlayerGotAKill, "Got him!", "Nice one, {player}.")
-                .Add(C, ChatterEvent.CompanionHurt, "{companion}!", "They're on {companion}!", "Hang on, {companion}!");
+                .Add(C, ChatterEvent.CompanionHurt, "{companion}!", "They're on {companion}!", "Hang on, {companion}!")
+                .Add(C, ChatterEvent.CompanionKilled, "Nice one, {companion}!", "{companion} got the {target}.", "Show-off.");
         }
 
         /// <summary>Would rather be somewhere else.</summary>

@@ -260,6 +260,45 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void HowAFightEndedOutranksNoticingItStarted()
+        {
+            // One Fact rather than a Theory with InlineData, because ChatterEvent is
+            // internal and xUnit needs the test method public - a public method cannot
+            // take an internal parameter.
+            ChatterEvent[] outcomes =
+            [
+                ChatterEvent.PlayerGotAKill,
+                ChatterEvent.Killed,
+                ChatterEvent.CompanionKilled,
+            ];
+
+            foreach (ChatterEvent outcome in outcomes)
+            {
+                AnOutcomeBeatsAnAnnouncement(outcome);
+            }
+        }
+
+        /// <summary>Both directions of one outcome against TargetAcquired.</summary>
+        /// <param name="outcome">The result event that should win.</param>
+        private static void AnOutcomeBeatsAnAnnouncement(ChatterEvent outcome)
+        {
+            // This is a fix pinned in place, not a preference. TargetAcquired used to
+            // outrank all three of these, and because a fight is usually over inside
+            // MinGapSeconds, the kill could not preempt the announcement that preceded
+            // it - so it was dropped outright while the next target announcement went
+            // through at the higher rank. Watching a squad in the Black Forest gave
+            // three "there's a greydwarf" and never once a result.
+            Assert.True(
+                CanInterrupt(outcome, ChatterEvent.TargetAcquired),
+                outcome + " should have been able to cut in on TargetAcquired");
+
+            // And not the other way round, or we have simply moved the problem.
+            Assert.False(
+                CanInterrupt(ChatterEvent.TargetAcquired, outcome),
+                "TargetAcquired should not have cut in on " + outcome);
+        }
+
+        [Fact]
         public void NoTwoEventsShareARank()
         {
             // Ties are invisible and awkward: barging in needs a *strictly* higher

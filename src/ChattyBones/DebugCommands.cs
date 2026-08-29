@@ -97,12 +97,37 @@ namespace ChattyBones
 
                 found++;
                 args.Context.AddString(
-                    Summons.NameOf(all[i]) + " - " + Mathf.RoundToInt(Vector3.Distance(me, all[i].transform.position)) + "m");
+                    Summons.NameOf(all[i])
+                    + " - " + Mathf.RoundToInt(Vector3.Distance(me, all[i].transform.position)) + "m"
+                    + " - " + PersonalityOf(all[i]));
             }
 
             args.Context.AddString(
                 found + " summoned skeleton(s) loaded. Style: " + ModConfig.Bubble.Value
                 + ", enabled: " + ModConfig.Enabled.Value);
+        }
+
+        /// <summary>Which personality a skeleton is playing.</summary>
+        /// <returns>The personality name, or a reason we cannot say.</returns>
+        /// <param name="character">One of ours.</param>
+        /// <remarks>
+        /// Otherwise the only way to know is to wait for it to say something
+        /// characteristic, which is slow when you are trying to check that a squad
+        /// came out varied rather than all the same.
+        ///
+        /// Reading this assigns one if the skeleton has not got there yet, which is a
+        /// side effect worth knowing about in a command that otherwise only looks. It
+        /// is the same assignment its first line would have made a moment later, so
+        /// nothing is changed except when - and on a skeleton somebody else owns we
+        /// have no business assigning anything, so that answers "unassigned" instead.
+        /// </remarks>
+        private static string PersonalityOf(Character character)
+        {
+            ChatterComponent chatter = character.GetComponent<ChatterComponent>();
+
+            return chatter == null
+                ? "no chatter component"
+                : chatter.Personality ?? "unassigned";
         }
     }
 }
