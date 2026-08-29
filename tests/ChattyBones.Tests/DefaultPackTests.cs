@@ -56,6 +56,33 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void EveryLineInTheShippedPackIsDoubleQuoted()
+        {
+            // The pack header makes this the house rule, and it is the only rule that
+            // catches the mistakes YAML *accepts*: an unquoted "You are # 1" is stored
+            // as "You are" and nothing complains. Parsing cleanly is not enough here.
+            string[] lines = DefaultPack.Yaml.Split('\n');
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i].TrimEnd('\r');
+                string trimmed = line.TrimStart();
+
+                if (!trimmed.StartsWith("- ", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                string dialogue = trimmed[2..].Trim();
+
+                Assert.True(
+                    dialogue.StartsWith("\"", StringComparison.Ordinal)
+                    && dialogue.EndsWith("\"", StringComparison.Ordinal),
+                    "Line " + (i + 1) + " of the shipped pack is not double-quoted: " + trimmed);
+            }
+        }
+
+        [Fact]
         public void EveryEventHasSomethingToSay()
         {
             // The shared group is the backstop - a personality is allowed to have

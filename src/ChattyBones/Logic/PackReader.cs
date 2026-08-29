@@ -10,32 +10,19 @@ namespace ChattyBones.Logic
     /// Turns the text of a pack file into a <see cref="LinePack"/>.
     /// </summary>
     /// <remarks>
-    /// Whitespace-sensitive files that people edit by hand go wrong, so the whole
-    /// design here is about going wrong usefully. Nothing throws, and every complaint
-    /// carries the line it is about - which is the one thing that makes a YAML error
-    /// actionable instead of infuriating.
+    /// Nothing throws, and a mistake costs only itself: an unknown event name costs
+    /// that event, a bad hex code costs that colour. Only a file with no lines at all
+    /// comes back false. The exception is getting the document to parse - a duplicate
+    /// key takes the whole pack, and that is YamlDotNet's call rather than ours.
     ///
-    /// Once the document parses, a mistake costs only itself: an unknown event name
-    /// costs that event, a bad hex code costs that colour, and the rest of the file
-    /// is still a working pack. Only a file that yields no lines at all comes back
-    /// false, on the reasoning that a squad missing two idle lines is much better
-    /// than a silent one.
-    ///
-    /// Getting the document to parse at all is where that stops being true, and it
-    /// is not ours to soften: YamlDotNet reads the whole file before handing us
-    /// anything, so a duplicate key or a broken indent takes the pack with it. Those
-    /// at least come with a position, and the caller keeps whatever pack it already
-    /// had.
-    ///
-    /// I read the document as nodes rather than deserialising into classes. It costs
-    /// a page of walking, and it buys the position of every entry - so "line 84:
-    /// 'Kiled' is not an event" is sayable, where a deserialiser would have given us
-    /// a missing property and no idea where.
+    /// Read as nodes rather than deserialised into classes: it costs a page of
+    /// walking and buys node.Start.Line, so "line 84: 'Kiled' is not an event" is
+    /// sayable.
     /// </remarks>
     internal static class PackReader
     {
         /// <summary>The palette entry every event uses unless it names another.</summary>
-        internal const string DefaultColourName = "normal";
+        private const string DefaultColourName = "normal";
 
         /// <summary>Read a pack file.</summary>
         /// <returns>
@@ -66,7 +53,7 @@ namespace ChattyBones.Logic
 
                 if (stream.Documents.Count == 0)
                 {
-                    found.Add("The pack file is empty.");
+                    found.Add("the pack file is empty.");
                     return false;
                 }
 
@@ -82,34 +69,25 @@ namespace ChattyBones.Logic
 
                 root = stream.Documents[0].RootNode as YamlMappingNode;
             }
-            catch (YamlException e)
-            {
-                // The marks are on the exception but not in its message, which reads
-                // "While parsing a block mapping, did not find expected key." on its
-                // own - true, and useless without somewhere to look.
-                found.Add("line " + e.Start.Line + ": " + e.Message);
-                SuggestQuoting(yaml, found);
-                return false;
-            }
             catch (Exception e)
             {
-                // YamlStream.Load does not confine itself to YamlException. Leave a
-                // mapping key off and keep its colon - "  :" on a line of its own,
-                // which is exactly what deleting a personality name leaves behind -
-                // and YamlNode.ParseNode throws a bare ArgumentException instead.
-                //
-                // Anything escaping this method reaches Plugin.Awake, which is before
-                // Harmony has patched anything, so one stray colon would leave the
-                // whole mod loaded and inert for the session.
-                found.Add("the pack could not be read: " + e.Message
-                    + " A key with nothing before its colon will do this.");
-                SuggestQuoting(yaml, found);
+                // Not just YamlException. Leave a mapping key off but keep its colon -
+                // "  :" alone on a line, which is what deleting a personality name
+                // leaves behind - and YamlNode.ParseNode throws a bare
+                // ArgumentException. Escaping here reaches Plugin.Awake before Harmony
+                // has patched anything, so one stray colon left the whole mod inert.
+                found.Add(e is YamlException y
+                    ? "line " + y.Start.Line + ": " + y.Message
+                    : "the pack could not be read: " + e.Message
+                        + " A key with nothing before its colon will do this.");
+
+                Suggest(yaml, found);
                 return false;
             }
 
             if (root == null)
             {
-                found.Add("The pack should be a list of sections, starting with 'lines:'.");
+                found.Add("the pack should be a list of sections, starting with 'lines:'.");
                 return false;
             }
 
@@ -140,7 +118,7 @@ namespace ChattyBones.Logic
 
             if (built.IsEmpty)
             {
-                found.Add("The pack has no lines in it, so nobody would have anything to say.");
+                found.Add("the pack has no lines in it, so nobody would have anything to say.");
                 return false;
             }
 
@@ -173,6 +151,17 @@ namespace ChattyBones.Logic
                 }
 
                 string who = NameOf(personality.Key);
+
+                // Fails silently otherwise: "Common" is accepted as an ordinary
+                // personality, and every event that was relying on the shared group
+                // for its lines simply goes quiet.
+                if (who != LinePack.SharedPersonality
+                    && string.Equals(who, LinePack.SharedPersonality, StringComparison.OrdinalIgnoreCase))
+                {
+                    problems.Add(At(personality.Key) + "'" + who + "' is being read as an ordinary personality. "
+                        + "The shared group everyone falls back on is spelled '" + LinePack.SharedPersonality
+                        + "', in lower case.");
+                }
 
                 if (personality.Value is not YamlMappingNode byEvent)
                 {
@@ -331,22 +320,19 @@ namespace ChattyBones.Logic
             }
         }
 
-        /// <summary>Point at the mistake that breaks a pack more often than any other.</summary>
+        /// <summary>Add a hint about the mistakes that break a pack most often.</summary>
         /// <param name="yaml">The file we could not read.</param>
         /// <param name="problems">Where to add the hint, if there is one to give.</param>
         /// <remarks>
-        /// Writing <c>- {player}! Watch it!</c> is the single most natural way to open
-        /// a line and one of the fastest ways to break the file, because YAML reads a
-        /// leading brace as the start of an object. The parser's own message is about
-        /// block mappings and expected keys, which is accurate and no help at all to
-        /// somebody writing jokes for a skeleton.
-        ///
-        /// Only reached when the document has already failed, so a wrong guess costs a
-        /// line of log on a file that was broken anyway. That is what lets it be a
-        /// blunt scan rather than a careful one - it does not have to be sure, only
-        /// useful.
+        /// Only reached once the document has already failed, so a wrong guess costs
+        /// one log line on a file that was broken anyway. That is what lets it be a
+        /// blunt scan - but only up to a point, because the hint is appended after the
+        /// parser's own complaint and therefore reads as the more specific diagnosis.
+        /// So each check below only fires on something that is a mistake in every
+        /// context, and legal-but-unusual openers like a comment or a block scalar are
+        /// deliberately not flagged.
         /// </remarks>
-        private static void SuggestQuoting(string yaml, List<string> problems)
+        private static void Suggest(string yaml, List<string> problems)
         {
             if (string.IsNullOrEmpty(yaml))
             {
@@ -355,35 +341,72 @@ namespace ChattyBones.Logic
 
             string[] lines = yaml.Split('\n');
 
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (TryRiskyOpener(lines[i], out char opener))
-                {
-                    problems.Add("line " + (i + 1) + ": this line starts with '" + opener
-                        + "', which YAML reads as the start of something rather than as words. "
-                        + "Wrap the line in \"double quotes\" and it will be read as text.");
+            // One hint of each kind. The first is almost always the cause, and a wall
+            // of near-identical suggestions is its own kind of unhelpful.
+            bool saidQuote = false;
+            bool saidTab = false;
 
-                    // One is enough. The first is almost always the cause, and a wall of
-                    // near-identical hints is its own kind of unhelpful.
-                    return;
+            for (int i = 0; i < lines.Length && !(saidQuote && saidTab); i++)
+            {
+                string line = lines[i];
+
+                if (!saidTab && IndentedWithATab(line))
+                {
+                    // YamlDotNet reports a tab at the line the enclosing mapping opened
+                    // on, which for a pack is line 1 wherever the tab actually is.
+                    problems.Add("line " + (i + 1) + ": this line is indented with a tab. "
+                        + "YAML only accepts spaces, and the position it reports for this is not the tab's.");
+
+                    saidTab = true;
+                }
+
+                if (!saidQuote && TryDialogueMistake(line, out string advice))
+                {
+                    problems.Add("line " + (i + 1) + ": " + advice);
+                    saidQuote = true;
                 }
             }
         }
 
-        /// <summary>Does this line hand a piece of dialogue to YAML as syntax?</summary>
-        /// <returns>True when the line is a list item opening with a character YAML treats specially.</returns>
+        /// <summary>Is this line indented with a tab?</summary>
+        /// <returns>True when the leading whitespace contains one.</returns>
         /// <param name="line">One raw line of the file.</param>
-        /// <param name="opener">The offending character, when we return true.</param>
-        /// <remarks>
-        /// A leading double quote is the one opener that is fine, because that is the
-        /// fix. Everything listed here means something to YAML in that position:
-        /// braces and brackets open collections, an apostrophe opens a quoted string,
-        /// a star is a reference and an ampersand names one, angle and pipe open
-        /// multi-line blocks, and a hash is a comment.
-        /// </remarks>
-        private static bool TryRiskyOpener(string line, out char opener)
+        private static bool IndentedWithATab(string line)
         {
-            opener = default;
+            for (int i = 0; i < line.Length; i++)
+            {
+                if (line[i] == '\t')
+                {
+                    return true;
+                }
+
+                if (line[i] != ' ')
+                {
+                    return false;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Does this line hand a piece of dialogue to YAML as syntax?</summary>
+        /// <returns>True when there is something specific to say about it.</returns>
+        /// <param name="line">One raw line of the file.</param>
+        /// <param name="advice">What to tell the player, when we return true.</param>
+        /// <remarks>
+        /// Kept to the characters that cannot be anything but a mistake in a line of
+        /// dialogue. A leading <c>#</c>, <c>&amp;</c>, <c>&gt;</c> or <c>|</c> is left
+        /// alone even though each can break a file, because each is also legal - and
+        /// commenting a line out mid-edit is exactly what somebody is doing at the
+        /// moment their file breaks for an unrelated reason. Telling them to quote
+        /// their comment would be worse than saying nothing.
+        ///
+        /// A closed single-quoted line is skipped for the same reason. An unclosed one
+        /// - <c>'Tis but a scratch!</c> - is not, and is the case worth catching.
+        /// </remarks>
+        private static bool TryDialogueMistake(string line, out string advice)
+        {
+            advice = null;
 
             int i = 0;
             while (i < line.Length && (line[i] == ' ' || line[i] == '\t'))
@@ -397,7 +420,7 @@ namespace ChattyBones.Logic
             }
 
             i++;
-            while (i < line.Length && line[i] == ' ')
+            while (i < line.Length && (line[i] == ' ' || line[i] == '\t'))
             {
                 i++;
             }
@@ -407,9 +430,43 @@ namespace ChattyBones.Logic
                 return false;
             }
 
-            opener = line[i];
+            // Index arithmetic rather than Substring and a [^1] index. The style rules
+            // rewrite both into forms that want System.Index, which the net10 test
+            // project has and net472 does not - and both projects compile this file.
+            int last = line.Length - 1;
+            while (last > i && (line[last] == '\r' || line[last] == ' '))
+            {
+                last--;
+            }
 
-            return opener is '{' or '[' or '\'' or '*' or '&' or '>' or '|' or '%' or '@' or '`' or '#';
+            char opener = line[i];
+
+            // Inside double quotes a backslash starts an escape, so the one style the
+            // pack tells everybody to use is also the only one where a backslash bites:
+            // "\o/" refuses the file, and "\_" quietly becomes a non-breaking space.
+            if (opener == '"' && line.IndexOf('\\', i) >= 0)
+            {
+                advice = "a backslash inside \"double quotes\" starts an escape rather than "
+                    + "being a backslash. Write it twice, or leave the line unquoted.";
+
+                return true;
+            }
+
+            if (opener == '\'' && last > i && line[last] == '\'')
+            {
+                return false;
+            }
+
+            if (opener is not ('{' or '[' or '\'' or '*' or '%' or '@' or '`'))
+            {
+                return false;
+            }
+
+            advice = "this line starts with '" + opener
+                + "', which YAML reads as the start of something rather than as words. "
+                + "Wrap the line in \"double quotes\" and it will be read as text.";
+
+            return true;
         }
 
         /// <summary>Match a name in the file against one of our events.</summary>

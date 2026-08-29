@@ -83,10 +83,7 @@ namespace ChattyBones
         /// <returns>Which of the two drew it, or <see cref="Drew.Nothing"/>.</returns>
         /// <param name="speaker">Whoever is talking.</param>
         /// <param name="line">Finished text, tokens already filled in.</param>
-        /// <param name="packTag">
-        /// The colour the pack asked for this event, or null. Overridden by the
-        /// player's own TextColour when they have set one.
-        /// </param>
+        /// <param name="packTag">The colour the pack asked for this event, or null.</param>
         /// <remarks>
         /// This is the one door every caller comes through, which makes it the right
         /// place for the catch. The event hooks sit inside vanilla damage and status
@@ -129,11 +126,9 @@ namespace ChattyBones
         /// <param name="line">The finished text.</param>
         /// <param name="packTag">What the pack wants for this event, or null.</param>
         /// <remarks>
-        /// The config wins over the pack, and only in that direction. A palette is a
-        /// statement about a pack - "these death lines are red" - so it is the right
-        /// default; TextColour is the escape hatch for somebody who wants one colour
-        /// and no argument, and an escape hatch that loses to the thing it is escaping
-        /// from would be no use.
+        /// The config wins over the pack. A palette is a statement about a pack, so it
+        /// is the right default; TextColour is the escape hatch for somebody who wants
+        /// one colour and no argument.
         /// </remarks>
         private static string Colourise(string line, string packTag)
         {

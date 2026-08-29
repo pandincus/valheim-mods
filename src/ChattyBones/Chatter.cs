@@ -54,18 +54,14 @@ namespace ChattyBones
         /// <summary>The personalities a skeleton can be assigned, in a stable order.</summary>
         internal static IReadOnlyList<string> Personalities => _pack.Personalities;
 
-        /// <summary>Which pack is in force, counting up from zero.</summary>
-        /// <remarks>
-        /// What <see cref="ChatterComponent.Personality"/> compares against to know its
+        /// <summary>
+        /// Which pack is in force, counting up from zero. What
+        /// <see cref="ChatterComponent.Personality"/> compares against to know its
         /// cached answer has gone stale.
-        /// </remarks>
+        /// </summary>
         internal static int PackGeneration { get; private set; }
 
-        /// <summary>Take up an edited pack file.</summary>
-        /// <remarks>
-        /// A pack that would not parse comes back null - see
-        /// <see cref="PackFile.Reload"/> - and we keep the one we have.
-        /// </remarks>
+        /// <summary>Take up an edited pack file, keeping the current one if it will not parse.</summary>
         private static void ReloadPack()
         {
             LinePack reloaded = PackFile.Reload();
@@ -113,7 +109,7 @@ namespace ChattyBones
         /// <param name="kind">What happened.</param>
         /// <param name="subject">
         /// A prefab hash for whatever the remark is about, or 0 when it is not about
-        /// anything. Never an instance id - see <see cref="ChatterBudget.CanClaim(long, ChatterEvent, int, float)"/>.
+        /// anything. Never an instance id - see <see cref="ChatterBudget.CanClaim"/>.
         /// </param>
         /// <param name="targetName">
         /// Already localised, and resolved by the caller rather than in here. Killed
@@ -130,7 +126,7 @@ namespace ChattyBones
         /// Three ways to come back false, and all three are ordinary: the budget said
         /// no, the pack had nothing sayable, or the world is not in a state to draw.
         /// Nothing is queued for later in any of those cases, deliberately - see
-        /// <see cref="ChatterBudget.CanClaim(long, ChatterEvent, int, float)"/>.
+        /// <see cref="ChatterBudget.CanClaim"/>.
         ///
         /// The order below is the whole point of the method. Asking books nothing, so
         /// a caller that asked on behalf of two skeletons before resolving either
@@ -174,7 +170,7 @@ namespace ChattyBones
 
             if (!_budget.CanClaim(speakerId, kind, subject, now, out ChatterRefusal why))
             {
-                Trace(speaker, kind, "turned down by " + why);
+                Trace(speaker, kind, why);
                 return false;
             }
 
@@ -213,15 +209,28 @@ namespace ChattyBones
         /// <summary>Write down what became of one attempt to speak, when the player asked us to.</summary>
         /// <param name="speaker">Which skeleton was trying.</param>
         /// <param name="kind">What it was reacting to.</param>
+        /// <param name="why">Which check turned it down.</param>
+        /// <remarks>
+        /// Its own overload because refusal is the common case by design, and the
+        /// squad is asked once per skeleton - so building the message at the call site
+        /// would allocate all fight for a log nobody has switched on.
+        /// </remarks>
+        internal static void Trace(ChatterComponent speaker, ChatterEvent kind, ChatterRefusal why)
+        {
+            if (ModConfig.LogChatter.Value)
+            {
+                Trace(speaker, kind, "turned down by " + why);
+            }
+        }
+
+        /// <summary>Write down what became of one attempt to speak, when the player asked us to.</summary>
+        /// <param name="speaker">Which skeleton was trying.</param>
+        /// <param name="kind">What it was reacting to.</param>
         /// <param name="what">The outcome, in words.</param>
         /// <remarks>
-        /// Not as noisy as it looks. This runs once per event rather than once per
-        /// sweep - a skeleton raises TargetAcquired when it picks something up, not
-        /// four times a second while it holds it - so a busy fight is a handful of
-        /// lines a second rather than a flood.
-        ///
-        /// The name lookup costs two ZDO reads and a filter pass, so it sits behind
-        /// the check rather than being built and thrown away on the usual path.
+        /// Less noisy than it looks: this runs once per event, not once per sweep, so
+        /// a busy fight is a handful of lines a second. The name lookup costs two ZDO
+        /// reads and a filter pass, which is why it sits behind the check.
         /// </remarks>
         internal static void Trace(ChatterComponent speaker, ChatterEvent kind, string what)
         {

@@ -102,33 +102,31 @@
 # Indentation is meaningful - use spaces, never tabs, and keep the amounts the
 # same as you see here.
 #
-# The other thing to copy is the "double quotes" around every line below. That
-# is not decoration, and it is the one habit that will save you trouble: inside
-# double quotes anything at all is just text. Without them, YAML reads several
-# perfectly ordinary ways of opening a line as syntax, and the whole file stops
-# loading:
-#
-#   - "{player}! Watch it!"        without quotes, { starts an object
-#   - "'Tis but a scratch!"        without quotes, ' starts a quoted string
-#   - "*rattles bones*"            without quotes, * starts a reference
-#   - "Listen up: here's the plan" without quotes, a colon makes it a setting
-#   - "You're # 1!"                without quotes, everything from # is dropped
-#
-# So: keep the quotes and stop thinking about it. If you would rather not, the
-# rule is that a line starting with a letter or a number, and containing no
-# colon-space and no space-hash, is fine as it is - which is most of them, right
-# up until the one that is not.
-#
-# Two more, which quoting does not help with:
+# These two break the whole file, and quoting does not help with either:
 #
 #   - do not use --- to separate sections. It starts a second document and
 #     everything after it is ignored. A comment line is what you want
 #   - the same name twice in the same place - two "cowardly" blocks, or two
-#     "Idle" under one personality - is refused, and takes the whole file with
-#     it. The log says which line
+#     "Idle" under one personality - is refused, and takes the file with it
 #
-# Whenever something does not load, the log names the line. That is much faster
-# than staring at the file.
+# The other thing to copy is the "double quotes" around every line below. Not
+# decoration: without them YAML reads several perfectly ordinary ways of opening
+# a line as syntax, and three of these five fail loudly while two quietly change
+# what your skeleton says.
+#
+#   - "{player}! Watch it!"        unquoted, { starts an object
+#   - "'Tis but a scratch!"        unquoted, ' starts a quoted string
+#   - "*rattles bones*"            unquoted, * starts a reference
+#   - "Listen up: here's the plan" unquoted, a colon makes it a setting
+#   - "You're # 1!"                unquoted, everything from # is dropped
+#
+# So: keep the quotes and stop thinking about it.
+#
+# One exception, and it is the only one. Inside double quotes a backslash starts
+# an escape rather than being a backslash, so write it twice:
+#
+#   - "\\o/"                       one backslash refuses the file
+#   - "shrug: ¯\\_(o_o)_/¯"        one backslash silently eats a character
 
 # Colour is by event rather than by personality. Who is speaking is already
 # clear from the name plate and from the words; what is worth knowing at a

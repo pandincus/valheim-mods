@@ -271,10 +271,8 @@ namespace ChattyBones
 
             if (ModConfig.LogChatter.Value)
             {
-                ChattyBonesPlugin.Log.LogInfo(
-                    "[chatter] " + (Summons.NameOf(Character) ?? "?") + " lost its target after "
-                    + since.ToString("0.00") + "s - dead or gone: " + gone
-                    + (worth ? " -> gloating" : " -> dropped"));
+                Chatter.Trace(this, ChatterEvent.Killed, "lost its target after " + since.ToString("0.00")
+                    + "s, dead or gone: " + gone + (worth ? " -> gloating" : " -> dropped"));
             }
 
             if (worth)

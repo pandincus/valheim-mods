@@ -86,11 +86,9 @@ namespace ChattyBones.Logic
 
         /// <summary>Is there nothing in here at all?</summary>
         /// <remarks>
-        /// Not the same question as having no personalities. A pack that puts
-        /// everything under <see cref="SharedPersonality"/> has none and is perfectly
-        /// usable - every skeleton simply falls back and they all sound alike. This is
-        /// the check for a pack that would leave the whole squad mute, which is what
-        /// <see cref="PackReader"/> refuses to hand back.
+        /// Not the same question as having no personalities - a pack of nothing but
+        /// <see cref="SharedPersonality"/> lines has none and works fine. This asks
+        /// whether the squad would be mute.
         /// </remarks>
         internal bool IsEmpty => _byPersonality.Count == 0;
 

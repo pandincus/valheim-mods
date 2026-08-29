@@ -2,13 +2,7 @@ using System.Collections.Generic;
 
 namespace ChattyBones.Logic
 {
-    /// <summary>Why a claim was turned down.</summary>
-    /// <remarks>
-    /// Only ever read by the debug log. The budget refuses far more often than it
-    /// agrees, by design, and every refusal looks identical from outside - the squad
-    /// simply goes quiet. That makes "why is nobody talking" undiagnosable without
-    /// something like this.
-    /// </remarks>
+    /// <summary>Why a claim was turned down. Only ever read by the debug log.</summary>
     internal enum ChatterRefusal
     {
         /// <summary>Not refused at all.</summary>
@@ -36,7 +30,7 @@ namespace ChattyBones.Logic
     ///
     /// We decide *whether* someone speaks; <see cref="LineChooser"/> decides *what*.
     ///
-    /// Asking and booking are separate calls - see <see cref="CanClaim(long, ChatterEvent, int, float)"/>.
+    /// Asking and booking are separate calls - see <see cref="CanClaim"/>.
     ///
     /// There is no clock and no game state in here; the caller passes the time in,
     /// so a test can cover an afternoon of chatter in microseconds.
@@ -147,18 +141,7 @@ namespace ChattyBones.Logic
         /// over the squad, so the wrong shape is also the obvious one: ask, then
         /// <see cref="Commit"/> or give up, then move on.
         /// </remarks>
-        internal bool CanClaim(long speakerId, ChatterEvent kind, int subject, float now)
-        {
-            return CanClaim(speakerId, kind, subject, now, out _);
-        }
-
-        /// <summary>As <see cref="CanClaim(long, ChatterEvent, int, float)"/>, and say why not.</summary>
-        /// <returns>True if it may talk.</returns>
-        /// <param name="speakerId">Which skeleton is asking.</param>
-        /// <param name="kind">What just happened.</param>
-        /// <param name="subject">A prefab hash, or 0.</param>
-        /// <param name="now">The game clock.</param>
-        /// <param name="why">Which check turned it down, or None when it did not.</param>
+        /// <param name="why">Which check turned it down, or None when it did not. For the debug log.</param>
         internal bool CanClaim(long speakerId, ChatterEvent kind, int subject, float now, out ChatterRefusal why)
         {
             ChatterSettings settings = Settings;
@@ -215,10 +198,10 @@ namespace ChattyBones.Logic
         /// <param name="speakerId">Who spoke.</param>
         /// <param name="kind">What about.</param>
         /// <param name="subject">What it concerned, or 0.</param>
-        /// <param name="now">The same time you passed to <see cref="CanClaim(long, ChatterEvent, int, float)"/>.</param>
+        /// <param name="now">The same time you passed to <see cref="CanClaim"/>.</param>
         /// <remarks>
         /// Call this only after a line has actually been produced and said. Calling it
-        /// without <see cref="CanClaim(long, ChatterEvent, int, float)"/> having returned true is not checked for and
+        /// without <see cref="CanClaim"/> having returned true is not checked for and
         /// will simply push the windows out, which is the caller getting what it asked
         /// for rather than something to guard against.
         /// </remarks>

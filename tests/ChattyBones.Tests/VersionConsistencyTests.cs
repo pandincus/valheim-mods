@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using ChattyBones.Logic;
 using System.Text.RegularExpressions;
 
 namespace ChattyBones.Tests
@@ -62,6 +63,25 @@ namespace ChattyBones.Tests
                 @"PackageReference\s+Include=""YamlDotNet""\s+Version=""(\d+\.\d+)\.\d+""");
 
             Assert.Equal(manifest, tests);
+        }
+
+        [Fact]
+        public void BothProjectsEmbedThePackUnderTheNameDefaultPackLooksFor()
+        {
+            // Getting this wrong is a total, silent failure: MSBuild names the resource
+            // after the assembly, DefaultPack cannot find it, Chatter.Init throws, and
+            // Awake's catch reports it as a missing YamlDotNet. Nothing else would fail.
+            string mod = Path.Combine(RepoRoot(), "src", "ChattyBones");
+
+            string src = Extract(
+                Path.Combine(mod, "ChattyBones.csproj"),
+                @"ChattyBones\.lines\.yaml"" LogicalName=""([^""]+)""");
+            string tests = Extract(
+                Path.Combine(RepoRoot(), "tests", "ChattyBones.Tests", "ChattyBones.Tests.csproj"),
+                @"ChattyBones\.lines\.yaml"" LogicalName=""([^""]+)""");
+
+            Assert.Equal(DefaultPack.ResourceName, src);
+            Assert.Equal(DefaultPack.ResourceName, tests);
         }
 
         /// <summary>Pull the first capture group out of a file, or fail saying which file.</summary>

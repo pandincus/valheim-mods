@@ -305,6 +305,99 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void ATabIsPointedAtByLineEvenThoughYamlDotNetCannot()
+        {
+            // YamlDotNet reports a tab at the line the enclosing mapping opened on,
+            // which for any real pack is line 1 wherever the tab actually is. The pack
+            // header tells people to use spaces, so this is a mistake we invite.
+            const string yaml = "lines:\n  common:\n    Idle:\n\t  - \"Hmm.\"\n";
+
+            Assert.False(PackReader.TryRead(yaml, out _, out IReadOnlyList<string> problems));
+            Assert.Contains(problems, p => p.Contains("line 4") && p.Contains("tab"));
+        }
+
+        [Theory]
+        [InlineData("# - \"an old line\"")]
+        [InlineData("&anchor \"fine\"")]
+        [InlineData("'perfectly fine'")]
+        public void NoQuotingHintForAnOpenerThatIsPerfectlyLegal(string dialogue)
+        {
+            // The hint is appended after the parser's own complaint, so it reads as the
+            // more specific diagnosis. Blaming a line that was never wrong - especially
+            // a commented-out one, which is what somebody is doing at the moment their
+            // file breaks for an unrelated reason - is worse than saying nothing.
+            string yaml = "lines:\n  common:\n    Idle:\n      - " + dialogue
+                + "\n    Idle:\n      - \"Hmm.\"\n";
+
+            Assert.False(PackReader.TryRead(yaml, out _, out IReadOnlyList<string> problems));
+            Assert.DoesNotContain(problems, p => p.Contains("double quotes"));
+        }
+
+        [Fact]
+        public void ABackslashInsideDoubleQuotesIsCalledOut()
+        {
+            // The pack tells everybody to quote every line, and this is the one thing
+            // that makes quoting worse rather than better - so the advice has to come
+            // with its own exception attached.
+            const string yaml = "lines:\n  common:\n    Idle:\n      - \"\\o/\"\n";
+
+            Assert.False(PackReader.TryRead(yaml, out _, out IReadOnlyList<string> problems));
+            Assert.Contains(problems, p => p.Contains("line 4") && p.Contains("backslash"));
+        }
+
+        [Fact]
+        public void OnlyTheFirstRiskyLineIsPointedAt()
+        {
+            // "- {a}" would not do: a bare brace pair is a valid flow mapping and the
+            // document parses, so the hint never runs. It takes a brace followed by
+            // prose to actually break the file.
+            const string yaml = "lines:\n  common:\n    Idle:\n      - {player}! Watch it!\n"
+                + "      - {player}! Behind you!\n      - {player}! Again!\n";
+
+            Assert.False(PackReader.TryRead(yaml, out _, out IReadOnlyList<string> problems));
+            _ = Assert.Single(problems, p => p.Contains("double quotes"));
+        }
+
+        [Fact]
+        public void CommonInTheWrongCaseIsPointedOut()
+        {
+            // Parses perfectly and is almost always a mistake: "Common" becomes a fifth
+            // personality and everything relying on the shared fallback goes quiet,
+            // with nothing else in the log to explain it.
+            const string yaml = """
+                lines:
+                  Common:
+                    Idle:
+                      - "Hmm."
+                """;
+
+            Assert.True(PackReader.TryRead(yaml, out LinePack pack, out IReadOnlyList<string> problems));
+            Assert.Contains("lower case", Assert.Single(problems));
+
+            // Reported, not silently corrected - we do not get to rename their groups.
+            Assert.Equal(["Common"], pack.Personalities);
+        }
+
+        [Fact]
+        public void AWrongShapeIsReportedAtItsFirstLineNotItsLast()
+        {
+            // At() uses node.Start, and every other fixture here complains about a
+            // single-line scalar where start and end are the same. This one spans two,
+            // so it is the only test that can tell the difference.
+            const string yaml = """
+                lines:
+                  cowardly:
+                    - "Can we go home?"
+                    - "It is very open out here."
+                """;
+
+            // Refused overall, because dropping the only personality leaves no lines -
+            // so the position of the first complaint is what is being pinned here.
+            Assert.False(PackReader.TryRead(yaml, out _, out IReadOnlyList<string> problems));
+            Assert.Contains("line 3", problems[0]);
+        }
+
+        [Fact]
         public void AnEmptyFileIsRefused()
         {
             Assert.False(PackReader.TryRead("", out LinePack pack, out IReadOnlyList<string> problems));

@@ -8,16 +8,13 @@ namespace ChattyBones.Logic
     /// The pack the mod ships with, baked into the DLL.
     /// </summary>
     /// <remarks>
-    /// This is the same text three times over: it is what gets parsed when the
-    /// player has no pack of their own, it is what gets written to the config folder
-    /// on first run, and it is what the reference copy alongside is refreshed from.
-    /// Keeping one copy of it means the file a player opens is exactly the pack they
-    /// are hearing, rather than a description of it that has drifted.
+    /// The same text three times over - parsed when the player has no pack, written
+    /// to the config folder on first run, and refreshed into the reference copy - so
+    /// the file a player opens is exactly the pack they are hearing.
     ///
-    /// It is an embedded resource rather than a string in this file so that it stays
-    /// a real .yaml on disk while it is being edited - indentation you can see, and
-    /// an editor that will tell you when you have broken it. Its logical name is
-    /// pinned in both csproj files; the src one says why.
+    /// An embedded resource rather than a string here, so it stays a real .yaml while
+    /// being edited. Its logical name is pinned in both csproj files; the src one
+    /// says why.
     /// </remarks>
     internal static class DefaultPack
     {
@@ -28,11 +25,8 @@ namespace ChattyBones.Logic
         internal static string Yaml { get; } = ReadResource();
 
         /// <summary>Parse the built-in pack.</summary>
-        /// <returns>A pack with four personalities and a shared fallback.</returns>
-        /// <remarks>
-        /// Parsed on each call. It happens once at startup and a dozen times in the
-        /// tests, so nothing is paying for it.
-        /// </remarks>
+        /// <returns>The shipped pack, parsed.</returns>
+        /// <remarks>Parsed on each call; it happens once at startup.</remarks>
         internal static LinePack Build()
         {
             if (!PackReader.TryRead(Yaml, out LinePack pack, out IReadOnlyList<string> problems))

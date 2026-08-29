@@ -6,18 +6,9 @@ namespace ChattyBones.Logic
     /// What colour each kind of event is drawn in.
     /// </summary>
     /// <remarks>
-    /// Keyed on the event rather than on who is speaking. Which skeleton said
-    /// something is already clear from the name plate and from the words; what is
-    /// worth knowing at a glance is whether it was bad news. A death cry in red
-    /// reads as "something went wrong" before you have read a syllable of it.
-    ///
-    /// Part of the pack rather than the config, because a palette is a statement
-    /// about a pack - "this one's death lines are red" belongs with the death lines.
-    /// A TextColour set in the config still overrides the lot; Speech.Colourise has
-    /// why that way round.
-    ///
-    /// Colours are turned into TextMeshPro tags here, once, rather than every time
-    /// somebody speaks.
+    /// Keyed on the event, not on the speaker - the pack header says why, in the
+    /// words a pack author needs. Hex codes become TextMeshPro tags here, once,
+    /// rather than on every line spoken.
     /// </remarks>
     internal sealed class Palette
     {
@@ -28,10 +19,9 @@ namespace ChattyBones.Logic
         /// <param name="fallbackHex">The colour for events not named below, or null for the game's own.</param>
         /// <param name="byEvent">Per-event colours, or null for none.</param>
         /// <remarks>
-        /// Anything that is not a hex code is dropped rather than rejected, and that
-        /// event simply falls back. A pack author does hear about it - the reader
-        /// checks the same values first and says which line the bad one is on - so
-        /// this is the second half of a belt and braces rather than a silent failure.
+        /// Anything that is not a hex code is dropped and that event falls back. The
+        /// reader has already checked the same values and named the line, so nothing
+        /// is lost silently.
         /// </remarks>
         internal Palette(string fallbackHex, IReadOnlyDictionary<ChatterEvent, string> byEvent)
         {

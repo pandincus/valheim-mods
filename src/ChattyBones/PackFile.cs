@@ -11,12 +11,9 @@ namespace ChattyBones
     /// noticing when it changes.
     /// </summary>
     /// <remarks>
-    /// Two files land next to each other. <see cref="FileName"/> is the player's,
-    /// written once if it is not there and never touched again. Beside it sits a
-    /// copy of what the mod shipped with, rewritten every launch, so that "what did
-    /// the original say?" and "what is new in this version?" are answerable without
-    /// unpacking the DLL - and so that a pack edited into a corner can be started
-    /// over from a file that is definitely right.
+    /// Two files. <see cref="FileName"/> is the player's, written once if absent and
+    /// never touched again; beside it a copy of what shipped, rewritten every launch,
+    /// so a pack edited into a corner can always be compared against one that works.
     /// </remarks>
     internal static class PackFile
     {
@@ -28,11 +25,9 @@ namespace ChattyBones
 
         /// <summary>How long to wait after a change before reading the file.</summary>
         /// <remarks>
-        /// Editors do not save a file once. A typical save writes a temporary file,
-        /// deletes the original and renames, which is three or four events in quick
-        /// succession - and reading after the first one gets a half-written file at
-        /// best. Waiting for the flurry to stop is both simpler and more reliable than
-        /// trying to interpret which event means "finished".
+        /// A typical editor save writes a temp file, deletes the original and renames -
+        /// three or four events in quick succession, and reading after the first gets
+        /// half a file. Wait for the flurry to stop instead.
         /// </remarks>
         private const float SettleSeconds = 0.5f;
 
@@ -55,11 +50,6 @@ namespace ChattyBones
 
         /// <summary>Put the files in place, read the pack, and start watching it.</summary>
         /// <returns>The player's pack, or the built-in one if theirs could not be read.</returns>
-        /// <remarks>
-        /// Never comes back empty-handed. A pack that will not parse is a thing to
-        /// complain about in the log and carry on from, not a reason to have the whole
-        /// squad stand there silently while the player wonders what they broke.
-        /// </remarks>
         internal static LinePack Load()
         {
             WriteFilesIfNeeded();
@@ -83,11 +73,6 @@ namespace ChattyBones
         /// <returns>True on the one frame a reload is due.</returns>
         /// <param name="dt">Seconds since the last frame.</param>
         /// <remarks>
-        /// The watcher raises its events on a thread of its own, and touching Unity
-        /// from there is a crash rather than a bug you get to read about. So it sets a
-        /// flag and nothing else; the countdown and the reload both happen here, on
-        /// the frame loop that calls this.
-        ///
         /// A second change during the countdown restarts it, which is what makes the
         /// wait cover a whole save rather than the first event of one.
         /// </remarks>
@@ -112,11 +97,8 @@ namespace ChattyBones
         /// <summary>Read the pack again after the file changed.</summary>
         /// <returns>The new pack, or null to carry on with the one already loaded.</returns>
         /// <remarks>
-        /// Keeping the pack already in use is the point of returning null rather than
-        /// falling back to the built-in one. You are mid-edit, you have just saved
-        /// something with the indentation wrong, and the kind thing to do is leave the
-        /// skeletons saying what they said a minute ago while the log tells you which
-        /// line to look at.
+        /// Null rather than the built-in pack: you are mid-edit, and the kind thing is
+        /// to leave the skeletons saying what they said a minute ago.
         /// </remarks>
         internal static LinePack Reload()
         {
@@ -153,11 +135,9 @@ namespace ChattyBones
             }
             catch (Exception e)
             {
-                // Deliberately does not say what happens next, because at this point
-                // we do not know. Either write can throw, and a reference copy that
-                // could not be refreshed - somebody marked it read-only to stop it
-                // being overwritten, which the file itself rather invites - leaves the
-                // player's own pack loading perfectly on the next line.
+                // Says nothing about what happens next, because either write can throw
+                // and a failed reference copy still leaves the player's own pack
+                // loading fine on the next line.
                 ChattyBonesPlugin.Log.LogWarning(
                     "Could not write to " + Paths.ConfigPath + ": " + e.Message);
             }
@@ -171,9 +151,7 @@ namespace ChattyBones
 
             if (!File.Exists(Location))
             {
-                // Only reachable when writing it failed, which has already been
-                // complained about. Saying so a second time in different words would
-                // read like two separate things had gone wrong.
+                // Writing it has already been complained about in its own words.
                 return null;
             }
 
@@ -193,9 +171,7 @@ namespace ChattyBones
 
             Report(problems);
 
-            // What a failure costs depends on who asked, so the callers say so rather
-            // than this one guessing. At startup it means the built-in lines; on a
-            // reload it means the pack already in use.
+            // What a failure costs depends on who asked, so the callers say so.
             return pack;
         }
 
@@ -219,10 +195,8 @@ namespace ChattyBones
 
         /// <summary>Watch the player's pack for edits.</summary>
         /// <remarks>
-        /// Wrapped because a watcher is one of the few things here that can fail for
-        /// reasons entirely outside the game - a config folder on a network share, or
-        /// a machine that has run out of them. Losing hot-reload is a small loss;
-        /// failing to load over it would not be.
+        /// Wrapped because a watcher can fail for reasons outside the game entirely -
+        /// a config folder on a network share, or a machine out of watch handles.
         /// </remarks>
         private static void StartWatching()
         {
