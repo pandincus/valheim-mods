@@ -132,5 +132,18 @@ namespace ChattyBones.Logic
         /// event - so you get one exchange rather than three people talking at once.
         /// </remarks>
         CompanionSummoned,
+
+        /// <summary>Something unpleasant has taken hold of it - fire, poison, frost.</summary>
+        /// <remarks>
+        /// The other half of <see cref="Buffed"/>, and a correction to it: that event
+        /// fired for every status effect, so a burning skeleton used to thank you for
+        /// it. Valheim has no flag separating a blessing from an affliction, so
+        /// <see cref="StatusKind"/> keeps a list of the vanilla ones that hurt.
+        ///
+        /// Kept apart from Buffed rather than given a token, because the two want
+        /// different colours and very different ranks. Being on fire should interrupt
+        /// an idle mutter; being handed a shield should not.
+        /// </remarks>
+        Afflicted,
     }
 }

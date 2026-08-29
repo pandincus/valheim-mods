@@ -7,12 +7,15 @@ namespace ChattyBones.Logic
     /// </summary>
     /// <remarks>
     /// A pack author writes "Get lost, {target}!" and we turn that into "Get lost,
-    /// Greydwarf!" at the moment it is said. Four tokens, all optional:
+    /// Greydwarf!" at the moment it is said. Eight tokens, all optional - four for
+    /// the people involved, four for the event itself:
     ///
     /// - {target} is whatever the skeleton is reacting to, already localized
     /// - {player} is you, whoever summoned it
     /// - {name} is the skeleton's own name
     /// - {companion} is another of your skeletons, for lines about each other
+    /// - {weapon}, {weapontype}, {damage} and {status} describe what happened, and
+    ///   live on <see cref="LineDetails"/>
     ///
     /// Every client fills these in for itself rather than being sent the words. For
     /// {target} that means a German player reads "Grauzwerg" while you read
@@ -57,18 +60,28 @@ namespace ChattyBones.Logic
         /// <param name="player">Player name, or null.</param>
         /// <param name="name">The skeleton's name, or null.</param>
         /// <param name="companion">Another skeleton's name, or null.</param>
+        /// <param name="details">What is known about the event itself. Usually nothing.</param>
         /// <remarks>
         /// Four strings in a row is easy to get subtly wrong, and swapping two of
         /// them produces a line that reads almost right. Worth using named arguments
         /// at the call site - the tests all do.
         /// </remarks>
-        internal LineTokens(string target, string player, string name, string companion = null)
+        internal LineTokens(
+            string target,
+            string player,
+            string name,
+            string companion = null,
+            LineDetails details = default)
         {
             Target = target;
             Player = player;
             Name = name;
             Companion = companion;
+            Details = details;
         }
+
+        /// <summary>What is known about the event itself, rather than about who is in it.</summary>
+        internal LineDetails Details { get; }
 
         /// <summary>Fill a template in, if we have everything it asks for.</summary>
         /// <returns>
@@ -171,7 +184,8 @@ namespace ChattyBones.Logic
         /// </remarks>
         private static bool IsKnown(string token)
         {
-            return token is "target" or "player" or "name" or "companion";
+            return token is "target" or "player" or "name" or "companion"
+                or "weapon" or "weapontype" or "damage" or "status";
         }
 
         /// <summary>The value for a known token, or null when we do not have one.</summary>
@@ -185,6 +199,10 @@ namespace ChattyBones.Logic
                 "player" => Player,
                 "name" => Name,
                 "companion" => Companion,
+                "weapon" => Details.Weapon,
+                "weapontype" => Details.WeaponType,
+                "damage" => Details.Damage,
+                "status" => Details.Status,
                 _ => null,
             };
         }

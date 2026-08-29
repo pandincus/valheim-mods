@@ -49,49 +49,76 @@
 #
 # TOKENS
 #
-# Four things a line can drop into itself:
+# Eight things a line can drop into itself. Four are about the people involved:
 #
-#   {name}       the skeleton speaking
-#   {player}     you
-#   {target}     the creature it is reacting to
-#   {companion}  another of your skeletons
+#   {name}        the skeleton speaking
+#   {player}      you
+#   {target}      the creature it is reacting to
+#   {companion}   another of your skeletons
 #
-# {name} and {player} are always available. The other two are not, and that is
-# useful rather than a limitation: a line asking for something we do not know is
-# quietly passed over and a different one is chosen instead. So you can write
+# ...and four describe what actually happened:
 #
-#   - Get lost, {target}!
-#   - Get lost!
+#   {weapon}      the weapon by name, e.g. "Mistwalker"
+#   {weapontype}  what kind it is, e.g. "sword"
+#   {damage}      the main damage type: blunt, slash, pierce, fire, frost,
+#                 lightning, poison or spirit
+#   {status}      a status effect by name, e.g. "Burning"
 #
-# side by side, and the first is used when we know what it is shouting at.
+# {name} and {player} are always available. The rest are not, and that is useful
+# rather than a limitation: a line asking for something we do not know is quietly
+# passed over and a different one is chosen instead. So you can write
 #
-# Which events supply which tokens is listed below. A typo like {targat} is left
-# alone rather than guessed at, so you will see it floating over a skeleton's
-# head and know immediately what happened. Tokens are case sensitive.
+#   - "Get lost, {target}!"
+#   - "Get lost!"
+#
+# side by side, and the first is used when we know what it is shouting at. Write
+# a plain version of any line that uses a token, or it will simply never be said.
+#
+#
+# ONE TOKEN CAN LIE, AND IT IS WORTH KNOWING WHICH
+#
+# {weapontype} is read off the blow itself, so it is always the thing that
+# actually landed. {weapon} is read from the attacker's hands at the moment we
+# ask, which is very slightly later - so an arrow that is still in the air, a
+# spear that has been thrown, or a weapon swapped mid-swing can all leave it
+# naming the wrong thing.
+#
+# In practice it is right nearly always and wrong in a way that is funny rather
+# than broken. But if a line would read badly for being wrong, use {weapontype}.
+#
+# Everything else is exact. A typo like {targat} is left alone rather than
+# guessed at, so you will see it floating over a skeleton's head and know
+# immediately what happened. Tokens are case sensitive and always lower case.
 #
 #
 # EVENTS
 #
-# Fifteen things a skeleton reacts to. The token columns say what is available.
+# Sixteen things a skeleton reacts to, and what each one can tell you.
+# "hit tokens" means {weapon}, {weapontype} and {damage} together.
 #
-#   Summoned              you raised it                        -
-#   TargetAcquired        it picked something to attack        {target}
-#   Hurt                  something hit it                     -
-#   Buffed                it gained a status effect            -
-#   Killed                it killed something                  {target}
-#   Died                  it died                              -
-#   Unsummoned            it timed out or strayed too far      -
-#   Idle                  nothing is happening                 -
-#   PlayerHurt            you took a hit                       -
-#   PlayerLandedABigHit   you hit something hard               {target}
-#   PlayerGotAKill        you killed something                 {target}
-#   CompanionHurt         another skeleton took a hit          {companion}
-#   CompanionKilled       another skeleton got a kill          {companion} {target}
-#   CompanionDied         another skeleton died                {companion}
-#   CompanionSummoned     another skeleton was just raised     {companion}
+#   Summoned              you raised it                      -
+#   TargetAcquired        it picked something to attack      {target}
+#   Hurt                  something hit it                   hit tokens
+#   Buffed                it gained a helpful effect         {status}
+#   Afflicted             it caught fire, poison or worse    {status}
+#   Killed                it killed something                {target}
+#   Died                  it died                            -
+#   Unsummoned            it timed out or strayed too far    -
+#   Idle                  nothing is happening               {companion}
+#   PlayerHurt            you took a hit                     hit tokens
+#   PlayerLandedABigHit   you hit something hard             {target}, hit tokens
+#   PlayerGotAKill        you killed something               {target}
+#   CompanionHurt         another skeleton took a hit        {companion}, hit tokens
+#   CompanionKilled       another skeleton got a kill        {companion} {target}
+#   CompanionDied         another skeleton died              {companion}
+#   CompanionSummoned     another skeleton was just raised   {companion}
+#
+# Idle gets a {companion} so they can rib each other by name rather than muttering
+# into the middle distance. It is null when a skeleton is out on its own, so keep
+# some plain idle lines too.
 #
 # Spelling counts, capitals included: "idle" is not "Idle", and a name that is
-# not exactly one of the fifteen above is reported in the log and skipped.
+# not exactly one of the sixteen above is reported in the log and skipped.
 #
 # An event you leave out entirely is simply never commented on, which is a fine
 # way to switch off the idle chatter.
@@ -173,9 +200,17 @@ lines:
       - "Ow."
       - "That was a rib!"
       - "Still standing."
+      - "Right in the {damage}."
+      - "Who brought a {weapontype}?"
     Buffed:
       - "Ooh, that's the stuff."
       - "Much obliged."
+      - "{status}? Don't mind if I do."
+    Afflicted:
+      - "Ow. Ow. Ow."
+      - "Ah. {status}. Wonderful."
+      - "I do not care for this."
+      - "{status}! Somebody do something!"
     Killed:
       - "Down it goes."
       - "That {target} won't get up."
@@ -192,6 +227,8 @@ lines:
       - "Anyone else cold?"
       - "I miss having skin."
       - "Hmm."
+      - "{companion}, your insides are showing."
+      - "Do you ever think about it, {companion}? Being alive?"
     PlayerHurt:
       - "{player}! Watch it!"
       - "They got you!"
@@ -200,6 +237,8 @@ lines:
       - "Ooooh."
       - "Did you see that?"
       - "Lovely swing, {player}."
+      - "Nice {damage} hit with that {weapon}!"
+      - "That is what a {weapontype} is for."
     PlayerGotAKill:
       - "Got him!"
       - "Nice one, {player}."
@@ -241,9 +280,15 @@ lines:
     CompanionDied:
       - "We're all going to die out here."
       - "That could have been me!"
+    Afflicted:
+      - "{status}! {status}! It's {status}!"
+      - "I knew this would happen."
 
   # Convinced of its own legend.
   boastful:
+    Afflicted:
+      - "A little {status} never troubled a legend."
+      - "I have had worse."
     Summoned:
       - "The legend returns!"
       - "You chose well, {player}."
@@ -280,6 +325,9 @@ lines:
 
   # Has done this too many times.
   veteran:
+    Afflicted:
+      - "{status}. Naturally."
+      - "Add it to the list."
     Summoned:
       - "Again? Fine."
       - "Third time this week."

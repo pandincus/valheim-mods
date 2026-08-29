@@ -86,7 +86,12 @@ namespace ChattyBones.Patches
             {
                 if (victim == Player.m_localPlayer && lost / max >= ModConfig.HurtFraction.Value)
                 {
-                    _ = Chatter.SpeakAny(ChatterEvent.PlayerHurt, subject: 0, targetName: null, companion: null);
+                    _ = Chatter.SpeakAny(
+                        ChatterEvent.PlayerHurt,
+                        subject: 0,
+                        targetName: null,
+                        companion: null,
+                        details: Hits.Of(hit));
                 }
 
                 return;
@@ -95,7 +100,7 @@ namespace ChattyBones.Patches
             ChatterComponent ours = victim.GetComponent<ChatterComponent>();
             if (ours != null)
             {
-                TheySufferedIt(victim, ours, lost / max, fatal);
+                TheySufferedIt(victim, ours, hit, lost / max, fatal);
                 return;
             }
 
@@ -105,9 +110,10 @@ namespace ChattyBones.Patches
         /// <summary>One of ours was hurt.</summary>
         /// <param name="victim">The skeleton.</param>
         /// <param name="ours">Its chatter component.</param>
+        /// <param name="hit">The blow, for what it was made of.</param>
         /// <param name="share">How much of its health went, as a fraction.</param>
         /// <param name="fatal">Whether that was the last of it.</param>
-        private static void TheySufferedIt(Character victim, ChatterComponent ours, float share, bool fatal)
+        private static void TheySufferedIt(Character victim, ChatterComponent ours, HitData hit, float share, bool fatal)
         {
             // A fatal blow gets last words instead of a complaint about the ribs.
             if (fatal || share < ModConfig.HurtFraction.Value)
@@ -115,7 +121,9 @@ namespace ChattyBones.Patches
                 return;
             }
 
-            if (Chatter.TrySpeak(ours, ChatterEvent.Hurt, subject: 0, targetName: null, companion: null))
+            LineDetails details = Hits.Of(hit);
+
+            if (Chatter.TrySpeak(ours, ChatterEvent.Hurt, subject: 0, targetName: null, companion: null, details: details))
             {
                 return;
             }
@@ -128,7 +136,8 @@ namespace ChattyBones.Patches
                 ChatterEvent.CompanionHurt,
                 Summons.PrefabOf(victim),
                 targetName: null,
-                companion: victim);
+                companion: victim,
+                details: details);
         }
 
         /// <summary>Something that is not one of ours was hurt - possibly by you.</summary>
@@ -156,7 +165,8 @@ namespace ChattyBones.Patches
                 ChatterEvent.PlayerLandedABigHit,
                 Summons.PrefabOf(victim),
                 Summons.CreatureName(victim),
-                companion: null);
+                companion: null,
+                details: Hits.Of(hit));
         }
     }
 

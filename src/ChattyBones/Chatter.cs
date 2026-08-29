@@ -122,6 +122,7 @@ namespace ChattyBones
         /// The companion's name, already resolved, for when it is not around to be
         /// asked any more. Wins over <paramref name="companion"/> when supplied.
         /// </param>
+        /// <param name="details">What is known about the event itself. Usually nothing.</param>
         /// <remarks>
         /// Three ways to come back false, and all three are ordinary: the budget said
         /// no, the pack had nothing sayable, or the world is not in a state to draw.
@@ -143,7 +144,8 @@ namespace ChattyBones
             int subject,
             string targetName,
             Character companion,
-            string companionName = null)
+            string companionName = null,
+            LineDetails details = default)
         {
             if (!ModConfig.Enabled.Value || speaker == null || _budget == null)
             {
@@ -184,7 +186,8 @@ namespace ChattyBones
                 target: targetName,
                 player: Player.m_localPlayer == null ? null : Player.m_localPlayer.GetPlayerName(),
                 name: Summons.NameOf(character),
-                companion: companionName ?? (companion == null ? null : Summons.NameOf(companion)));
+                companion: companionName ?? (companion == null ? null : Summons.NameOf(companion)),
+                details: details);
 
             if (!_chooser.TryChoose(_pack, speaker.Personality, kind, tokens, _random, out int lineRef, out string line))
             {
@@ -251,6 +254,7 @@ namespace ChattyBones
         /// <param name="targetName">Already localized, or null.</param>
         /// <param name="companion">The skeleton the remark is about. Never the speaker - it is excluded by reference.</param>
         /// <param name="companionName">Its name, already resolved, when it may no longer exist to be asked.</param>
+        /// <param name="details">What is known about the event itself. Usually nothing.</param>
         /// <remarks>
         /// Used by the events that happen to you or to the world rather than to one
         /// particular skeleton - you took a hit, you landed one, somebody's colleague
@@ -271,7 +275,8 @@ namespace ChattyBones
             int subject,
             string targetName,
             Character companion,
-            string companionName = null)
+            string companionName = null,
+            LineDetails details = default)
         {
             List<ChatterComponent> squad = ChatterComponent.All;
             int count = squad.Count;
@@ -293,7 +298,7 @@ namespace ChattyBones
                     continue;
                 }
 
-                if (TrySpeak(speaker, kind, subject, targetName, companion, companionName))
+                if (TrySpeak(speaker, kind, subject, targetName, companion, companionName, details))
                 {
                     return true;
                 }
@@ -304,6 +309,41 @@ namespace ChattyBones
 
         /// <summary>Rotates so the same skeleton is not always asked first. Wraps harmlessly.</summary>
         private static int _nextSpeaker;
+
+        /// <summary>Find somebody for a skeleton to talk about, or to.</summary>
+        /// <returns>Another loaded skeleton, or null when it is on its own.</returns>
+        /// <param name="speaker">Whoever is looking for company.</param>
+        /// <remarks>
+        /// For the idle lines, so they can rib each other by name rather than
+        /// muttering into the middle distance. Anybody loaded will do - a line naming
+        /// a skeleton standing behind you reads fine, and insisting on one in view
+        /// would mean a distance check per idle tick for no gain.
+        ///
+        /// Random rather than the nearest, so a squad of three does not settle into
+        /// two of them always addressing each other.
+        /// </remarks>
+        internal static Character AnotherOf(ChatterComponent speaker)
+        {
+            List<ChatterComponent> squad = ChatterComponent.All;
+            if (squad.Count < 2)
+            {
+                return null;
+            }
+
+            int start = _random.Next(0, squad.Count);
+
+            for (int offset = 0; offset < squad.Count; offset++)
+            {
+                ChatterComponent other = squad[(start + offset) % squad.Count];
+
+                if (!ReferenceEquals(other, speaker) && other.Character != null)
+                {
+                    return other.Character;
+                }
+            }
+
+            return null;
+        }
 
         /// <summary>Look at what the squad is doing, and let one of them comment.</summary>
         /// <param name="dt">Seconds since the last frame.</param>

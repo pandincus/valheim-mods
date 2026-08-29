@@ -191,16 +191,32 @@ namespace ChattyBones.Tests
                 or ChatterEvent.PlayerLandedABigHit
                 or ChatterEvent.PlayerGotAKill;
 
+            // Idle is in the list, and that is the point of it being there - a
+            // skeleton with nobody to talk to falls back to its plain idle lines.
             bool hasCompanion = kind is ChatterEvent.CompanionHurt
                 or ChatterEvent.CompanionKilled
                 or ChatterEvent.CompanionDied
-                or ChatterEvent.CompanionSummoned;
+                or ChatterEvent.CompanionSummoned
+                or ChatterEvent.Idle;
+
+            // The events that come from a HitData, and so can describe the blow.
+            bool hasHit = kind is ChatterEvent.Hurt
+                or ChatterEvent.PlayerHurt
+                or ChatterEvent.CompanionHurt
+                or ChatterEvent.PlayerLandedABigHit;
+
+            bool hasStatus = kind is ChatterEvent.Buffed or ChatterEvent.Afflicted;
 
             return new LineTokens(
                 target: hasTarget ? "Greydwarf" : null,
                 player: "Ragnar",
                 name: "Botvid",
-                companion: hasCompanion ? "Gunnar" : null);
+                companion: hasCompanion ? "Gunnar" : null,
+                details: new LineDetails(
+                    weapon: hasHit ? "Mistwalker" : null,
+                    weaponType: hasHit ? "sword" : null,
+                    damage: hasHit ? "slash" : null,
+                    status: hasStatus ? "Burning" : null));
         }
     }
 }

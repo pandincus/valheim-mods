@@ -324,6 +324,12 @@ namespace ChattyBones.Logic
                 // the same reason Hurt is.
                 ChatterEvent.CompanionDied => 105,
 
+                // Above Hurt, and that is the interesting one. Catching fire arrives
+                // in the middle of taking repeated damage, so ranking it below Hurt
+                // would mean the fire is never the thing mentioned - and it fires once
+                // per effect, where Hurt fires on every blow.
+                ChatterEvent.Afflicted => 102,
+
                 ChatterEvent.Hurt => 100,
                 ChatterEvent.CompanionHurt => 90,
 

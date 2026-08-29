@@ -13,6 +13,50 @@ namespace ChattyBones.Tests
     /// </remarks>
     public class LineTokensTests
     {
+        [Fact]
+        public void TheEventTokensRenderLikeAnyOther()
+        {
+            LineTokens tokens = new(
+                target: null,
+                player: "Ragnar",
+                name: "Botvid",
+                details: new LineDetails(
+                    weapon: "Mistwalker", weaponType: "sword", damage: "slash", status: "Burning"));
+
+            Assert.True(tokens.TryRender(
+                "Nice {damage} hit with that {weapon}, {player} - {weapontype} work. {status}!", out string line));
+
+            Assert.Equal("Nice slash hit with that Mistwalker, Ragnar - sword work. Burning!", line);
+        }
+
+        [Fact]
+        public void ALineWantingAWeaponIsPassedOverWhenThereIsNone()
+        {
+            // The reason both a flavoured and a plain variant can sit in one group:
+            // events with no hit behind them simply never reach the flavoured line.
+            LineTokens tokens = new(target: null, player: "Ragnar", name: "Botvid");
+
+            Assert.False(tokens.TryRender("Nice hit with that {weapon}!", out _));
+            Assert.True(tokens.TryRender("Nice hit!", out _));
+        }
+
+        [Fact]
+        public void PartialDetailsRefuseOnlyWhatIsMissing()
+        {
+            // A hit always knows its damage type but may not know the weapon - an
+            // arrow in flight, say. The {damage} line should still be sayable.
+            LineTokens tokens = new(
+                target: null,
+                player: "Ragnar",
+                name: "Botvid",
+                details: new LineDetails(damage: "pierce"));
+
+            Assert.True(tokens.TryRender("Right in the {damage}.", out string line));
+            Assert.Equal("Right in the pierce.", line);
+
+            Assert.False(tokens.TryRender("That {weapon} of yours.", out _));
+        }
+
         private static LineTokens Full()
         {
             return new LineTokens(target: "Greydwarf", player: "Ragnar", name: "Rattles", companion: "Bjorn");
