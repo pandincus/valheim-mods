@@ -18,7 +18,7 @@ namespace ChattyBones.Patches
     ///
     /// It is also the only honest number. Between the attacker calling Damage and the
     /// health being written, RPC_Damage applies a stagger crit, a backstab bonus,
-    /// resistances, armour and the difficulty scaling - so the value on the HitData is
+    /// resistances, armor and the difficulty scaling - so the value on the HitData is
     /// not what lands. Reading it early meant a blow that tested as non-fatal killed
     /// anyway, and the squad admired the swing instead of the kill.
     ///

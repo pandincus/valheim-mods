@@ -32,7 +32,7 @@ namespace FishQualityBonus.Tests
         public void KeepsTheMostGenerousValueWhenRecipesDisagree()
         {
             // Hypothetical in vanilla - FishRaw is the only recipe we read from, and
-            // it lists each fish once. This pins the behaviour for the case where a
+            // it lists each fish once. This pins the behavior for the case where a
             // mod adds a second single-ingredient fish recipe with a different tier.
             Dictionary<string, int> table = BonusRules.BuildSpeciesTable(
             [

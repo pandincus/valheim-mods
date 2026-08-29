@@ -112,7 +112,7 @@ namespace ChattyBones
         /// anything. Never an instance id - see <see cref="ChatterBudget.CanClaim"/>.
         /// </param>
         /// <param name="targetName">
-        /// Already localised, and resolved by the caller rather than in here. Killed
+        /// Already localized, and resolved by the caller rather than in here. Killed
         /// is why: by the time a skeleton gets to gloat, the thing it killed has often
         /// been destroyed and replaced with a ragdoll, so the name has to be taken
         /// while there is still something to take it from.
@@ -248,7 +248,7 @@ namespace ChattyBones
         /// <returns>True if one of them spoke.</returns>
         /// <param name="kind">What happened.</param>
         /// <param name="subject">A prefab hash, or 0.</param>
-        /// <param name="targetName">Already localised, or null.</param>
+        /// <param name="targetName">Already localized, or null.</param>
         /// <param name="companion">The skeleton the remark is about. Never the speaker - it is excluded by reference.</param>
         /// <param name="companionName">Its name, already resolved, when it may no longer exist to be asked.</param>
         /// <remarks>

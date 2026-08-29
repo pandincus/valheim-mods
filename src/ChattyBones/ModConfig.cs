@@ -87,14 +87,14 @@ namespace ChattyBones
             DialoguePanelCullDistance = cfg.Bind(
                 "Appearance", "DialoguePanelCullDistance", 20f,
                 new ConfigDescription(
-                    "How far away you can be and still see a DialoguePanel line, in metres. " +
+                    "How far away you can be and still see a DialoguePanel line, in meters. " +
                     "Ignored by FloatingText.",
                     new AcceptableValueRange<float>(5f, 100f)));
 
             TextHeight = cfg.Bind(
                 "Appearance", "TextHeight", 0.3f,
                 new ConfigDescription(
-                    "Extra height above the skeleton's head, in metres, so the line clears " +
+                    "Extra height above the skeleton's head, in meters, so the line clears " +
                     "the name label. 0.3 sits just clear of it; by 1.0 the text looks " +
                     "detached from whoever said it. 0 puts it exactly where Valheim puts a " +
                     "player's chat, which lands right on the name.",

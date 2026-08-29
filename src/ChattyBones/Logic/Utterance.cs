@@ -18,7 +18,7 @@ namespace ChattyBones.Logic
     /// Counter, event and line ref pack into a single int, which is what this struct
     /// is for. A ZDO field is the cheapest way to reach exactly the clients who can
     /// see the skeleton: they already replicate to everyone in range, vanilla clients
-    /// ignore keys they do not recognise, and we write no network code. A custom RPC
+    /// ignore keys they do not recognize, and we write no network code. A custom RPC
     /// would have every unmodded player logging a "not found" warning per quip.
     ///
     /// <see cref="Subject"/> travels in its own field - a prefab hash wants all 32
@@ -75,7 +75,7 @@ namespace ChattyBones.Logic
         /// </summary>
         /// <remarks>
         /// A creature's prefab hash, so the receiving client can look up its own
-        /// localised name rather than us shipping the text across. Whoever is
+        /// localized name rather than us shipping the text across. Whoever is
         /// reading gets "Greydwarf" or "Grauzwerg" according to their own settings,
         /// which is a nice side effect of sending the hash rather than the word.
         ///
@@ -183,7 +183,7 @@ namespace ChattyBones.Logic
         /// 1. The value is 0, meaning nobody has ever written to this field. Much
         ///    the most common case - it is what every skeleton looks like until the
         ///    first time it opens its mouth.
-        /// 2. The event byte is not one we recognise. That means a client running a
+        /// 2. The event byte is not one we recognize. That means a client running a
         ///    newer version of this mod is telling us about an event that did not
         ///    exist when our copy was built.
         /// </returns>

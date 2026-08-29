@@ -198,7 +198,7 @@ namespace FishQualityBonus
         ///
         /// We copy vanilla's rule for the non-fish requirements rather than summing those
         /// too. Keeping the change to fish is the whole point, and any modded ingredient
-        /// with real quality tiers keeps whatever behaviour its own author expects.
+        /// with real quality tiers keeps whatever behavior its own author expects.
         /// </remarks>
         internal static bool CanCraftMixed(Inventory inventory, Recipe recipe,
                                            int qualityLevel, int multiplier)
@@ -317,7 +317,7 @@ namespace FishQualityBonus
             facts.HasOutput = true;
             facts.RequireOnlyOneIngredient = recipe.m_requireOnlyOneIngredient;
             // IsEquipable is the game code's own check, and it
-            // covers weapons, armour, tools, shields, torches and trinkets.
+            // covers weapons, armor, tools, shields, torches and trinkets.
             facts.OutputIsEquipment = recipe.m_item.m_itemData.IsEquipable();
             facts.IsMead = IsMeadRecipe(recipe);
             facts.MeadsIncluded = ModConfig.IncludeMeadRecipes.Value;

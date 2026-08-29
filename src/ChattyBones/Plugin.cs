@@ -93,7 +93,7 @@ namespace ChattyBones
         /// <remarks>
         /// One sweep for the whole squad rather than an Update on each skeleton. The
         /// budget's rule is that a claim must be resolved before the next one is made,
-        /// and that is easy to honour in a loop we control and awkward in a set of
+        /// and that is easy to honor in a loop we control and awkward in a set of
         /// components Unity calls in an order of its own choosing.
         ///
         /// <see cref="Chatter.Tick"/> is a decrement and a comparison on most frames;

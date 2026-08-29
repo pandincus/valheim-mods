@@ -9,7 +9,7 @@ namespace ChattyBones.Logic
     /// A pack author writes "Get lost, {target}!" and we turn that into "Get lost,
     /// Greydwarf!" at the moment it is said. Four tokens, all optional:
     ///
-    /// - {target} is whatever the skeleton is reacting to, already localised
+    /// - {target} is whatever the skeleton is reacting to, already localized
     /// - {player} is you, whoever summoned it
     /// - {name} is the skeleton's own name
     /// - {companion} is another of your skeletons, for lines about each other
@@ -53,7 +53,7 @@ namespace ChattyBones.Logic
         internal string Companion { get; }
 
         /// <summary>Gather up whatever we know at the moment of speaking.</summary>
-        /// <param name="target">Localised creature name, or null.</param>
+        /// <param name="target">Localized creature name, or null.</param>
         /// <param name="player">Player name, or null.</param>
         /// <param name="name">The skeleton's name, or null.</param>
         /// <param name="companion">Another skeleton's name, or null.</param>

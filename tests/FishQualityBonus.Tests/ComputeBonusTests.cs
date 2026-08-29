@@ -95,7 +95,7 @@ namespace FishQualityBonus.Tests
         [InlineData(1, 4)]
         [InlineData(3, 12)]
         [InlineData(10, 40)]
-        public void HonoursThePerLevelMultiplier(int perQualityLevel, int expected)
+        public void HonorsThePerLevelMultiplier(int perQualityLevel, int expected)
         {
             Assert.Equal(expected, OneFish(5, recipeAmount: 1, perQualityLevel, speciesExtra: 0));
         }

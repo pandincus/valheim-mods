@@ -19,7 +19,7 @@ namespace ChattyBones
     /// exactly the moment a skeleton is summoned, and true on every zone reload
     /// afterwards, which is precisely backwards for a greeting.
     ///
-    /// So we ask the prefab instead. Unsummon behaviour is what a summon has and a
+    /// So we ask the prefab instead. Unsummon behavior is what a summon has and a
     /// tamed animal does not: it wanders too far and vanishes, or you log out and it
     /// vanishes. That is a fact about the prefab, available synchronously, and
     /// nothing at runtime can clear it.
@@ -143,10 +143,10 @@ namespace ChattyBones
         }
 
         /// <summary>What to call a creature inside a line.</summary>
-        /// <returns>Its localised name, or null when it has not got one.</returns>
+        /// <returns>Its localized name, or null when it has not got one.</returns>
         /// <param name="character">Any creature. Null is fine.</param>
         /// <remarks>
-        /// Localised on the machine that is going to read it, which is the point of
+        /// Localized on the machine that is going to read it, which is the point of
         /// sending prefab hashes between clients rather than words: a German player
         /// reads "Grauzwerg" where you read "Greydwarf", from the same broadcast.
         ///

@@ -163,7 +163,7 @@ namespace ChattyBones.Tests
             Assert.Equal(2, Utterance.NextCounter(1));
             Assert.Equal(255, Utterance.NextCounter(254));
 
-            // The wrap skips 0, because 0 is how we recognise a field nobody has
+            // The wrap skips 0, because 0 is how we recognize a field nobody has
             // written to. Coming back around to 1 is fine - anyone who saw the last
             // 1 has seen 254 utterances since.
             Assert.Equal(1, Utterance.NextCounter(255));

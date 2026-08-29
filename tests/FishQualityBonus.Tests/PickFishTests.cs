@@ -129,7 +129,7 @@ namespace FishQualityBonus.Tests
             [Fact]
             public void SkipsTiersThatCannotCoverTheWholeCraft()
             {
-                // Pre-0.2.0 behaviour, kept so the setting really does restore it:
+                // Pre-0.2.0 behavior, kept so the setting really does restore it:
                 // the lone quality-1 fish is passed over and two quality-4 are spent.
                 int[] counts = [0, 1, 0, 0, 3, 0];
 

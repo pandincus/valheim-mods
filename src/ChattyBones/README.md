@@ -71,8 +71,8 @@ hear the same skeletons say the same things.
 | `SpeakerCooldownSeconds` | `8` | How long one skeleton waits before speaking again. |
 | `SquadEchoWindowSeconds` | `6` | How long one remark about a thing stops the others repeating it. |
 | `IdleSeconds` | `45` | Roughly how often a skeleton with nothing to do says something anyway. |
-| `HurtFraction` | `0.15` | How big a hit has to be before it is worth mentioning, as a share of the victim's health. Lower it if you are well armoured for where you are. |
-| `TextHeight` | `0.3` | How far above the head the line sits, in metres. |
+| `HurtFraction` | `0.15` | How big a hit has to be before it is worth mentioning, as a share of the victim's health. Lower it if you are well armored for where you are. |
+| `TextHeight` | `0.3` | How far above the head the line sits, in meters. |
 | `TextColor` | *(empty)* | One color for everything, as a hex code like `#C8FFC8`. Empty — the default — lets the pack color by event instead. |
 
 There are a few more; ConfigurationManager lists them all with descriptions.

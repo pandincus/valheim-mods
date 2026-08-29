@@ -11,7 +11,7 @@ namespace ChattyBones.Patches
     /// looking at and nothing without one ever is.
     ///
     /// The check is <see cref="Summons.IsSummoned"/>, which asks the prefab about
-    /// unsummon behaviour rather than reading s_follow. See the remarks there.
+    /// unsummon behavior rather than reading s_follow. See the remarks there.
     /// </remarks>
     [HarmonyPatch(typeof(Tameable), "Awake")]
     internal static class TameableAwakePatch

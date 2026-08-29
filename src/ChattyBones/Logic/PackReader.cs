@@ -15,7 +15,7 @@ namespace ChattyBones.Logic
     /// comes back false. The exception is getting the document to parse - a duplicate
     /// key takes the whole pack, and that is YamlDotNet's call rather than ours.
     ///
-    /// Read as nodes rather than deserialised into classes: it costs a page of
+    /// Read as nodes rather than deserialized into classes: it costs a page of
     /// walking and buys node.Start.Line, so "line 84: 'Kiled' is not an event" is
     /// sayable.
     /// </remarks>

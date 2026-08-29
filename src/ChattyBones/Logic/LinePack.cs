@@ -112,7 +112,7 @@ namespace ChattyBones.Logic
         /// Falling back to <see cref="SharedPersonality"/> is per event, not per
         /// personality. A cowardly skeleton with its own idle lines but no death
         /// lines uses its own idle lines and the shared death ones, which is the
-        /// behaviour you would want when filling a pack in gradually.
+        /// behavior you would want when filling a pack in gradually.
         /// </remarks>
         internal bool TryGetGroup(string personality, ChatterEvent kind, out IReadOnlyList<string> lines)
         {

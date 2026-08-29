@@ -108,7 +108,7 @@ editable in-game with ConfigurationManager (F1). Changes apply immediately.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `General.Enabled` | `true` | Master switch; `false` restores vanilla behaviour entirely. |
+| `General.Enabled` | `true` | Master switch; `false` restores vanilla behavior entirely. |
 | `Bonus.BonusPerQualityLevel` | `3` | Whole-number multiplier, 1-10. At `3` a 1-item recipe yields 1/4/7/10/13 for quality 1/2/3/4/5 — matching the game's own Fish (raw) tuning. At `1`, 1/2/3/4/5. |
 | `Bonus.FishToSpend` | `SmallestFirst` | `SmallestFirst` spends the lowest-quality fish first,  `LargestFirst` always spends your best fish first. |
 | `Bonus.AllowMixedQualities` | `true` | Let a craft use several sizes of the same fish at once, which vanilla refuses, and the output is based on their average qualities. `false` keeps vanilla's matching-sizes rule. Applies to the same recipes the bonus does. |

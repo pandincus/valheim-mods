@@ -39,7 +39,7 @@ Initial release.
   instead of whichever one you happened to pick up first.
 - The crafting panel shows the real total before you craft.
 - Everything is configurable, including a master switch that restores vanilla
-  behaviour completely.
+  behavior completely.
 
 In vanilla this affects Fish 'n' Bread and three mead bases:
 MeadBaseBugRepellent, MeadBaseStrength and MeadBaseSwimmer.

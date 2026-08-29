@@ -457,7 +457,7 @@ namespace ChattyBones.Tests
             // in either direction. You would only notice by wondering why a death cry
             // went missing, months later.
             //
-            // Reached entirely through behaviour rather than by reflecting on the
+            // Reached entirely through behavior rather than by reflecting on the
             // private table, so it keeps working if the ranks are ever moved into
             // config.
             ChatterEvent[] all = (ChatterEvent[])System.Enum.GetValues(typeof(ChatterEvent));
@@ -583,7 +583,7 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void RaisingACooldownMidSessionIsHonouredForSkeletonsThatAlreadySpoke()
+        public void RaisingACooldownMidSessionIsHonoredForSkeletonsThatAlreadySpoke()
         {
             // This is the test that a pruning pass would fail, which is one of two
             // reasons there no longer is one. Dropping entries against the window as
@@ -607,7 +607,7 @@ namespace ChattyBones.Tests
             // live settings and bought a few kilobytes.
             //
             // This is a regression guard for that decision rather than a test of
-            // behaviour: if somebody adds pruning back, it should be a deliberate act
+            // behavior: if somebody adds pruning back, it should be a deliberate act
             // that fails here first.
             ChatterBudget budget = Budget();
 

@@ -95,7 +95,7 @@ namespace ChattyBones.Tests
         /// <summary>Stands in for a UnityEngine.Object, equality quirk and all.</summary>
         /// <remarks>
         /// The test project cannot reference UnityEngine - that is the whole point of
-        /// the Logic/ boundary - so the behaviour is reproduced here instead. This
+        /// the Logic/ boundary - so the behavior is reproduced here instead. This
         /// mirrors what UnityEngine.Object actually does: a destroyed object compares
         /// equal to null, while the reference itself is still very much there.
         /// </remarks>
