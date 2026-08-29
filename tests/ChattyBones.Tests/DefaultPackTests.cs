@@ -115,7 +115,8 @@ namespace ChattyBones.Tests
 
             bool hasCompanion = kind is ChatterEvent.CompanionHurt
                 or ChatterEvent.CompanionKilled
-                or ChatterEvent.CompanionDied;
+                or ChatterEvent.CompanionDied
+                or ChatterEvent.CompanionSummoned;
 
             return new LineTokens(
                 target: hasTarget ? "Greydwarf" : null,

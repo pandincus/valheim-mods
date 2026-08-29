@@ -173,8 +173,16 @@ namespace ChattyBones
                 "Chatter", "BigHitFraction", 0.35f,
                 new ConfigDescription(
                     "How hard you have to hit something before the squad is impressed, as a " +
-                    "share of the victim's maximum health. Kills are handled separately, so " +
-                    "this is about the swing that did not quite finish the job.",
+                    "share of THAT CREATURE'S maximum health - not of the damage you usually " +
+                    "do. Kills are handled separately, so this is only about a swing that did " +
+                    "not quite finish the job.\n" +
+                    "Being a share of the victim's health has an awkward consequence worth " +
+                    "knowing before you tune it: the tougher the enemy, the harder it is to " +
+                    "impress anybody. A hit that takes half a greydwarf usually kills it " +
+                    "outright and is counted as a kill instead, while the same hit is a small " +
+                    "fraction of a troll and says nothing at all. So if you never hear these, " +
+                    "lower it - and expect the lines to come from mid-sized enemies rather " +
+                    "than from your best swings.",
                     new AcceptableValueRange<float>(0.01f, 1f)));
         }
     }

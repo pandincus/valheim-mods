@@ -120,9 +120,22 @@ namespace ChattyBones
                 return;
             }
 
-            if (_ai.GetTimeSinceSpawned().TotalSeconds <= ModConfig.SummonGreetingSeconds.Value)
+            if (_ai.GetTimeSinceSpawned().TotalSeconds > ModConfig.SummonGreetingSeconds.Value)
             {
-                _ = Chatter.TrySpeak(this, ChatterEvent.Summoned, subject: 0, targetName: null, companion: null);
+                return;
+            }
+
+            if (Chatter.TrySpeak(this, ChatterEvent.Summoned, subject: 0, targetName: null, companion: null))
+            {
+                // Only if it actually introduced itself, so a squad raised in one breath
+                // gets one exchange rather than a welcome each. The reference is how
+                // SpeakAny knows not to have the newcomer welcome itself; no resolved
+                // name is needed, because unlike a death the subject is still standing.
+                _ = Chatter.SpeakAny(
+                    ChatterEvent.CompanionSummoned,
+                    subject: 0,
+                    targetName: null,
+                    companion: Character);
             }
         }
 

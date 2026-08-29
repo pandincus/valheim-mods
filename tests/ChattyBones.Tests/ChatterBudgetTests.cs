@@ -432,6 +432,21 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void ASquadRaisedTogetherGivesOneWelcomeBetweenThem()
+        {
+            // Three skeletons arriving in the same breath each run Start and each try
+            // to introduce themselves. The second and third are refused because a
+            // greeting cannot barge in on a greeting - same event, same rank, and
+            // barging in wants strictly higher. So the answer machinery is not what
+            // holds this down; the tie is.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.Summoned, NoSubject, 0f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.CompanionSummoned, NoSubject, 0f));
+
+            Assert.False(Speak(budget, Carol, ChatterEvent.Summoned, NoSubject, 0.1f));
+        }
+
+        [Fact]
         public void NoTwoEventsShareARank()
         {
             // Ties are invisible and awkward: barging in needs a *strictly* higher

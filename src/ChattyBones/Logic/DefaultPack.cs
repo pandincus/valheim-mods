@@ -55,7 +55,8 @@ namespace ChattyBones.Logic
                 .Add(C, ChatterEvent.PlayerGotAKill, "Got him!", "Nice one, {player}.")
                 .Add(C, ChatterEvent.CompanionHurt, "{companion}!", "They're on {companion}!", "Hang on, {companion}!")
                 .Add(C, ChatterEvent.CompanionKilled, "Leave some for me, {companion}.", "{companion} got the {target}.", "Show-off.")
-                .Add(C, ChatterEvent.CompanionDied, "Oh no, {companion}!", "{companion}! Get up!", "They got {companion}.");
+                .Add(C, ChatterEvent.CompanionDied, "Oh no, {companion}!", "{companion}! Get up!", "They got {companion}.")
+                .Add(C, ChatterEvent.CompanionSummoned, "Welcome to the party, {companion}.", "Look who's up.", "Budge up, {companion}.");
         }
 
         /// <summary>Would rather be somewhere else.</summary>
@@ -100,7 +101,8 @@ namespace ChattyBones.Logic
                 .Add(Vet, ChatterEvent.TargetAcquired, "Another {target}. Marvellous.", "Seen one, seen 'em all.")
                 .Add(Vet, ChatterEvent.Hurt, "Yep. That'll bruise.", "Been worse.")
                 .Add(Vet, ChatterEvent.Killed, "That's that, then.", "Anticlimactic.")
-                .Add(Vet, ChatterEvent.Idle, "I've stood in worse fields.", "Wake me when it's interesting.");
+                .Add(Vet, ChatterEvent.Idle, "I've stood in worse fields.", "Wake me when it's interesting.")
+                .Add(Vet, ChatterEvent.CompanionSummoned, "Another one. Marvellous.", "Don't get comfortable, {companion}.");
         }
 
         // Short names because they appear on every line above, and the strings

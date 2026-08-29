@@ -243,6 +243,9 @@ namespace ChattyBones.Logic
         /// should be a skeleton that has been quiet, not the one that has been
         /// narrating all fight.
         ///
+        /// Both entries are moments where one skeleton is the subject and the rest have
+        /// something to say about it: somebody dying, and somebody arriving.
+        ///
         /// CompanionHurt and CompanionKilled are deliberately not here. They *cover*
         /// for a subject that could not speak rather than replying to one that did, so
         /// nothing was said and there is no gap to skip - that is done at the call
@@ -251,12 +254,17 @@ namespace ChattyBones.Logic
         /// </remarks>
         private static ChatterEvent? Answers(ChatterEvent kind)
         {
-            // A plain if rather than a switch expression: a switch over one interesting
-            // case and thirteen nulls trips IDE0072, which wants every event spelled
+            // Plain ifs rather than a switch expression: a switch over two interesting
+            // cases and thirteen nulls trips IDE0072, which wants every event spelled
             // out to be satisfied.
             if (kind == ChatterEvent.CompanionDied)
             {
                 return ChatterEvent.Died;
+            }
+
+            if (kind == ChatterEvent.CompanionSummoned)
+            {
+                return ChatterEvent.Summoned;
             }
 
             return null;
@@ -320,6 +328,7 @@ namespace ChattyBones.Logic
                 ChatterEvent.PlayerLandedABigHit => 40,
                 ChatterEvent.Buffed => 30,
                 ChatterEvent.Summoned => 20,
+                ChatterEvent.CompanionSummoned => 15,
                 ChatterEvent.Idle => 10,
 
                 // Practically speaking we never land here, because the enum is ours

@@ -120,5 +120,17 @@ namespace ChattyBones.Logic
         /// rather than two remarks.
         /// </remarks>
         CompanionDied,
+
+        /// <summary>Somebody new has just been raised.</summary>
+        /// <remarks>
+        /// The other side of <see cref="Summoned"/>, and the cheerful one: the newcomer
+        /// introduces itself and the squad welcomes it, in the same breath.
+        ///
+        /// Only the first arrival of a batch gets a welcome. Raise three at once and
+        /// the second and third are refused, because barging in wants a strictly
+        /// higher rank than the greeting already in progress and they are all the same
+        /// event - so you get one exchange rather than three people talking at once.
+        /// </remarks>
+        CompanionSummoned,
     }
 }
