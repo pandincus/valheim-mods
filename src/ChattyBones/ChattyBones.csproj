@@ -64,6 +64,35 @@
       <HintPath>$(BepInExCore)\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- Reads the line pack. Declared in manifest.json so Thunderstore installs it
+         alongside us, which is why this is Private=false like the rest: shipping our
+         own copy would put two YamlDotNet.dll in the plugins folder, and BepInEx
+         picking one of them is the same coin toss the deploy target warns about
+         below. Note the two version numbers differ - the Thunderstore package is
+         16.3.1 and the library inside it is 16.3.0, which is what the test project
+         pins. -->
+    <Reference Include="YamlDotNet">
+      <HintPath>$(BepInExPlugins)\ValheimModding-YamlDotNet\YamlDotNet.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Every other reference above points into the game folder or BepInEx core, both
+       of which are there by definition if Valheim runs at all. This one points at
+       another Thunderstore package, which may simply not be installed - and without
+       the guard that arrives as one unexplained MSB3245 followed by eight CS0246s in
+       PackReader.cs, which reads like the source is broken. -->
+  <Target Name="CheckYamlDotNet" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(BepInExPlugins)\ValheimModding-YamlDotNet\YamlDotNet.dll')"
+           Text="ChattyBones reads its line pack with YamlDotNet, which is not installed. Install the ValheimModding-YamlDotNet package into $(BepInExPlugins) - Thunderstore Mod Manager will do it - and build again." />
+  </Target>
+
+  <!-- The pack we ship. LogicalName is pinned rather than left to MSBuild, which
+       would name it after this assembly - and the test project compiles the same
+       Logic/ sources into an assembly with a different name, so DefaultPack would
+       look for a resource that is not there. Both csproj files spell it the same. -->
+  <ItemGroup>
+    <EmbeddedResource Include="ChattyBones.lines.yaml" LogicalName="ChattyBones.lines.yaml" />
   </ItemGroup>
 
   <Target Name="DeployToBepInEx" AfterTargets="Build"

@@ -42,7 +42,7 @@ namespace ChattyBones
         /// <summary>Build the pack and the budget. Called once from Awake.</summary>
         internal static void Init()
         {
-            _pack = DefaultPack.Build();
+            _pack = PackFile.Load();
             _chooser = new LineChooser();
             _budget = new ChatterBudget(SettingsFromConfig());
             _random = new System.Random();
@@ -53,6 +53,34 @@ namespace ChattyBones
 
         /// <summary>The personalities a skeleton can be assigned, in a stable order.</summary>
         internal static IReadOnlyList<string> Personalities => _pack.Personalities;
+
+        /// <summary>Which pack is in force, counting up from zero.</summary>
+        /// <remarks>
+        /// What <see cref="ChatterComponent.Personality"/> compares against to know its
+        /// cached answer has gone stale.
+        /// </remarks>
+        internal static int PackGeneration { get; private set; }
+
+        /// <summary>Take up an edited pack file.</summary>
+        /// <remarks>
+        /// A pack that would not parse comes back null - see
+        /// <see cref="PackFile.Reload"/> - and we keep the one we have.
+        /// </remarks>
+        private static void ReloadPack()
+        {
+            LinePack reloaded = PackFile.Reload();
+
+            if (reloaded == null)
+            {
+                return;
+            }
+
+            _pack = reloaded;
+            PackGeneration++;
+
+            ChattyBonesPlugin.Log.LogInfo(
+                "Line pack reloaded with " + _pack.Personalities.Count + " personalities.");
+        }
 
         /// <summary>Read the current config into a fresh settings object.</summary>
         /// <returns>Settings matching what the player has set right now.</returns>
@@ -85,7 +113,7 @@ namespace ChattyBones
         /// <param name="kind">What happened.</param>
         /// <param name="subject">
         /// A prefab hash for whatever the remark is about, or 0 when it is not about
-        /// anything. Never an instance id - see <see cref="ChatterBudget.CanClaim"/>.
+        /// anything. Never an instance id - see <see cref="ChatterBudget.CanClaim(long, ChatterEvent, int, float)"/>.
         /// </param>
         /// <param name="targetName">
         /// Already localised, and resolved by the caller rather than in here. Killed
@@ -102,7 +130,7 @@ namespace ChattyBones
         /// Three ways to come back false, and all three are ordinary: the budget said
         /// no, the pack had nothing sayable, or the world is not in a state to draw.
         /// Nothing is queued for later in any of those cases, deliberately - see
-        /// <see cref="ChatterBudget.CanClaim"/>.
+        /// <see cref="ChatterBudget.CanClaim(long, ChatterEvent, int, float)"/>.
         ///
         /// The order below is the whole point of the method. Asking books nothing, so
         /// a caller that asked on behalf of two skeletons before resolving either
@@ -144,8 +172,9 @@ namespace ChattyBones
             long speakerId = speaker.SpeakerId;
             float now = Time.time;
 
-            if (!_budget.CanClaim(speakerId, kind, subject, now))
+            if (!_budget.CanClaim(speakerId, kind, subject, now, out ChatterRefusal why))
             {
+                Trace(speaker, kind, "turned down by " + why);
                 return false;
             }
 
@@ -163,18 +192,47 @@ namespace ChattyBones
 
             if (!_chooser.TryChoose(_pack, speaker.Personality, kind, tokens, _random, out int lineRef, out string line))
             {
+                Trace(speaker, kind, "nothing it could say as " + (speaker.Personality ?? "no personality yet"));
                 return false;
             }
 
-            if (Speech.Say(character, line) == Drew.Nothing)
+            if (Speech.Say(character, line, _pack.Colours.TagFor(kind)) == Drew.Nothing)
             {
+                Trace(speaker, kind, "had \"" + line + "\" but nothing was drawn");
                 return false;
             }
 
             _budget.Commit(speakerId, kind, subject, now);
             speaker.OnSpoke(kind, lineRef, subject);
 
+            Trace(speaker, kind, "said \"" + line + "\"");
+
             return true;
+        }
+
+        /// <summary>Write down what became of one attempt to speak, when the player asked us to.</summary>
+        /// <param name="speaker">Which skeleton was trying.</param>
+        /// <param name="kind">What it was reacting to.</param>
+        /// <param name="what">The outcome, in words.</param>
+        /// <remarks>
+        /// Not as noisy as it looks. This runs once per event rather than once per
+        /// sweep - a skeleton raises TargetAcquired when it picks something up, not
+        /// four times a second while it holds it - so a busy fight is a handful of
+        /// lines a second rather than a flood.
+        ///
+        /// The name lookup costs two ZDO reads and a filter pass, so it sits behind
+        /// the check rather than being built and thrown away on the usual path.
+        /// </remarks>
+        internal static void Trace(ChatterComponent speaker, ChatterEvent kind, string what)
+        {
+            if (!ModConfig.LogChatter.Value)
+            {
+                return;
+            }
+
+            string name = speaker.Character == null ? "?" : Summons.NameOf(speaker.Character) ?? "?";
+
+            ChattyBonesPlugin.Log.LogInfo("[chatter] " + name + " / " + kind + ": " + what);
         }
 
         /// <summary>Let whichever skeleton is willing react to something that happened nearby.</summary>
@@ -251,6 +309,15 @@ namespace ChattyBones
         /// </remarks>
         internal static void Tick(float dt)
         {
+            // Ahead of the Enabled check, and it has to be: the countdown behind
+            // ShouldReload runs on the dt we pass it, so skipping the call while the
+            // mod is switched off would leave a pending edit frozen mid-settle and
+            // apply it at some arbitrary later moment.
+            if (PackFile.ShouldReload(dt))
+            {
+                ReloadPack();
+            }
+
             if (!ModConfig.Enabled.Value)
             {
                 return;

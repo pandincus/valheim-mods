@@ -4,6 +4,7 @@
   "website_url": "https://github.com/pandincus/valheim-mods/tree/main/src/ChattyBones",
   "description": "Your Dead Raiser skeletons talk. They call out targets, yelp when hit, thank you for a shield, and grumble to themselves when nothing is happening. Each one gets a personality when you summon it. Lines are yours to rewrite.",
   "dependencies": [
-    "denikson-BepInExPack_Valheim-5.4.2333"
+    "denikson-BepInExPack_Valheim-5.4.2333",
+    "ValheimModding-YamlDotNet-16.3.1"
   ]
 }

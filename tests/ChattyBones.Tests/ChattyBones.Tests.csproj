@@ -33,10 +33,20 @@
   -->
   <ItemGroup>
     <Compile Include="../../src/ChattyBones/Logic/**/*.cs" LinkBase="Logic" />
+    <!-- The real shipped pack rather than a fixture, which is the point: it is covered
+         by the same tests as the code that reads it. Same LogicalName as the src
+         csproj, which explains why it is pinned. -->
+    <EmbeddedResource Include="../../src/ChattyBones/ChattyBones.lines.yaml" LogicalName="ChattyBones.lines.yaml" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <!-- 16.3.0, not 16.3.1. The Thunderstore package manifest.json depends on is
+         ValheimModding-YamlDotNet-16.3.1, and the library inside that package is
+         16.3.0 - its own description says so. Matching the package version here
+         looks obviously right and would test against a different library to the one
+         the game loads. -->
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />

@@ -21,11 +21,12 @@ namespace ChattyBones
     /// These descriptions are visible to players using the config manager.
     /// </summary>
     /// <remarks>
-    /// Settings live here; the skeletons' lines do not. A BepInEx .cfg value cannot
-    /// contain a newline, so a pack kept in here would have to be minified onto one
-    /// line - and a pack is something players swap whole, which wants to be a file
-    /// you can hand somebody rather than a section of your own config. It is a
-    /// built-in list for now; NOTES-ChattyBones.md has where it is going.
+    /// Settings live here; the skeletons' lines do not. Those are in
+    /// ChattyBones.lines.yaml next to this file - see <see cref="PackFile"/>. A
+    /// BepInEx .cfg value cannot contain a newline, so a pack kept in here would have
+    /// to be minified onto one line, and a pack is something players swap whole,
+    /// which wants to be a file you can hand somebody rather than a section of your
+    /// own config.
     /// </remarks>
     internal static class ModConfig
     {
@@ -44,6 +45,8 @@ namespace ChattyBones
         internal static ConfigEntry<float> SummonGreetingSeconds;
         internal static ConfigEntry<float> HurtFraction;
         internal static ConfigEntry<float> BigHitFraction;
+
+        internal static ConfigEntry<bool> LogChatter;
 
         /// <summary>
         /// Declare every setting. Called once from <see cref="ChattyBonesPlugin.Awake"/>.
@@ -99,9 +102,12 @@ namespace ChattyBones
 
             TextColour = cfg.Bind(
                 "Appearance", "TextColour", "",
-                "Colour for skeleton speech, as a hex code like #C8FFC8. Leave empty for " +
-                "Valheim's usual white. Accepts #RGB, #RRGGBB and #RRGGBBAA. Anything " +
-                "that is not a hex code is ignored, with a note in the log.");
+                "One colour for everything the skeletons say, as a hex code like #C8FFC8. " +
+                "Leave it empty - which is the default - and the line pack decides " +
+                "instead, which is usually what you want: packs colour by event, so a " +
+                "death cry reads as bad news before you have read a word of it. Set this " +
+                "to override the pack entirely. Accepts #RGB, #RRGGBB and #RRGGBBAA, and " +
+                "anything that is not a hex code is ignored with a note in the log.");
 
             MinGapSeconds = cfg.Bind(
                 "Chatter", "MinGapSeconds", 2.5f,
@@ -176,6 +182,16 @@ namespace ChattyBones
                     "lower it - and expect the lines to come from mid-sized enemies rather " +
                     "than from your best swings.",
                     new AcceptableValueRange<float>(0.01f, 1f)));
+
+            LogChatter = cfg.Bind(
+                "Debug", "LogChatter", false,
+                "Write a line to BepInEx/LogOutput.log every time a skeleton was about to say " +
+                "something, and what came of it - said, or turned down and by which check. " +
+                "Also records every time one loses sight of its target, with how stale that " +
+                "sighting was, which is what decides whether the kill gets mentioned at all.\n" +
+                "For working out why the squad is quieter than you expect. A refusal looks " +
+                "exactly like silence from outside, so without this there is nothing to go " +
+                "on. Off by default, and it is a lot of log.");
         }
     }
 }

@@ -1,0 +1,302 @@
+# ChattyBones - the line pack
+#
+# This is everything your skeletons can say. Edit it, save it, and the change
+# takes effect straight away - there is no need to restart the game or even to
+# leave the world. If you break something, the skeletons keep using the last
+# version that worked and the reason, with a line number, is written to the log
+# at BepInEx/LogOutput.log. That file is the first place to look whenever an edit
+# does not do what you expected.
+#
+# The copy next to this one, ChattyBones.lines.default.yaml, is rewritten every
+# time the game starts. Yours is never touched once it exists, so that file is
+# where to look when you want to see what the mod shipped with. Do not edit it;
+# edit this one.
+#
+#
+# WRITING LINES
+#
+# Lines are grouped by personality and then by what just happened:
+#
+#   lines:
+#     cowardly:
+#       Summoned:
+#         - Do I have to?
+#
+# A skeleton is given one of the personalities below when you summon it, and
+# keeps it for as long as it exists. When its own personality has nothing to say
+# about something, it falls back to "common" - so you can write the lines you
+# had a good idea for and let the rest fall through. That fallback is per event,
+# not per personality: a cowardly skeleton with its own idle lines but no death
+# lines uses its own idle lines and the shared death ones.
+#
+# Write more lines per group than feels necessary. Nobody says the same line
+# twice in a row, but that memory is only one line deep, so a group of three
+# audibly cycles. A dozen is where it stops sounding like a loop.
+#
+# The personalities are whatever you name here. Four come with the mod, and you
+# can rename them, delete them or add your own. One thing to know before you do:
+# a skeleton stores its personality as a position in the list of them *sorted
+# alphabetically*, not in the order you wrote them. So renaming one, or adding or
+# removing one, reshuffles which personality your existing skeletons have. New
+# summons are unaffected, and nothing breaks - they just change character.
+#
+# "common" is not a personality. Nothing is ever summoned as one, and it does
+# not count towards that list. Put everything there and every skeleton sounds
+# the same, which is a perfectly reasonable pack to want. Spell it in lower case:
+# "Common" is read as an ordinary personality named Common, and everything that
+# was relying on the fallback goes quiet without a word of complaint.
+#
+#
+# TOKENS
+#
+# Four things a line can drop into itself:
+#
+#   {name}       the skeleton speaking
+#   {player}     you
+#   {target}     the creature it is reacting to
+#   {companion}  another of your skeletons
+#
+# {name} and {player} are always available. The other two are not, and that is
+# useful rather than a limitation: a line asking for something we do not know is
+# quietly passed over and a different one is chosen instead. So you can write
+#
+#   - Get lost, {target}!
+#   - Get lost!
+#
+# side by side, and the first is used when we know what it is shouting at.
+#
+# Which events supply which tokens is listed below. A typo like {targat} is left
+# alone rather than guessed at, so you will see it floating over a skeleton's
+# head and know immediately what happened. Tokens are case sensitive.
+#
+#
+# EVENTS
+#
+# Fifteen things a skeleton reacts to. The token columns say what is available.
+#
+#   Summoned              you raised it                        -
+#   TargetAcquired        it picked something to attack        {target}
+#   Hurt                  something hit it                     -
+#   Buffed                it gained a status effect            -
+#   Killed                it killed something                  {target}
+#   Died                  it died                              -
+#   Unsummoned            it timed out or strayed too far      -
+#   Idle                  nothing is happening                 -
+#   PlayerHurt            you took a hit                       -
+#   PlayerLandedABigHit   you hit something hard               {target}
+#   PlayerGotAKill        you killed something                 {target}
+#   CompanionHurt         another skeleton took a hit          {companion}
+#   CompanionKilled       another skeleton got a kill          {companion} {target}
+#   CompanionDied         another skeleton died                {companion}
+#   CompanionSummoned     another skeleton was just raised     {companion}
+#
+# Spelling counts, capitals included: "idle" is not "Idle", and a name that is
+# not exactly one of the fifteen above is reported in the log and skipped.
+#
+# An event you leave out entirely is simply never commented on, which is a fine
+# way to switch off the idle chatter.
+#
+#
+# YAML, BRIEFLY
+#
+# Indentation is meaningful - use spaces, never tabs, and keep the amounts the
+# same as you see here.
+#
+# The other thing to copy is the "double quotes" around every line below. That
+# is not decoration, and it is the one habit that will save you trouble: inside
+# double quotes anything at all is just text. Without them, YAML reads several
+# perfectly ordinary ways of opening a line as syntax, and the whole file stops
+# loading:
+#
+#   - "{player}! Watch it!"        without quotes, { starts an object
+#   - "'Tis but a scratch!"        without quotes, ' starts a quoted string
+#   - "*rattles bones*"            without quotes, * starts a reference
+#   - "Listen up: here's the plan" without quotes, a colon makes it a setting
+#   - "You're # 1!"                without quotes, everything from # is dropped
+#
+# So: keep the quotes and stop thinking about it. If you would rather not, the
+# rule is that a line starting with a letter or a number, and containing no
+# colon-space and no space-hash, is fine as it is - which is most of them, right
+# up until the one that is not.
+#
+# Two more, which quoting does not help with:
+#
+#   - do not use --- to separate sections. It starts a second document and
+#     everything after it is ignored. A comment line is what you want
+#   - the same name twice in the same place - two "cowardly" blocks, or two
+#     "Idle" under one personality - is refused, and takes the whole file with
+#     it. The log says which line
+#
+# Whenever something does not load, the log names the line. That is much faster
+# than staring at the file.
+
+# Colour is by event rather than by personality. Who is speaking is already
+# clear from the name plate and from the words; what is worth knowing at a
+# glance is whether something has gone wrong. A death cry in red reads as bad
+# news before you have read a syllable of it.
+#
+# Keep this short. Twelve colours on screen is the same unreadable wall that
+# having five skeletons talk at once would be, and pale, washed-out shades are
+# the ones that stay readable over grass, snow and lava alike.
+colours:
+
+  # Name as many or as few as you like. "normal" is the one every event uses
+  # unless it is listed under events: below. Leave it out for Valheim's white.
+  palette:
+    normal: "#E8E4DC"
+    alarm: "#F0A9A0"
+    triumph: "#EFD79A"
+
+  # Which events depart from normal.
+  events:
+    Died: alarm
+    Hurt: alarm
+    PlayerHurt: alarm
+    CompanionHurt: alarm
+    CompanionDied: alarm
+    Killed: triumph
+    PlayerGotAKill: triumph
+    CompanionKilled: triumph
+
+lines:
+
+  # Lines anybody falls back on. Every event has something here, so a skeleton
+  # is never stuck for words no matter which personality it drew.
+  common:
+    Summoned:
+      - "Up we get."
+      - "Who disturbs me? Oh. You."
+      - "Right then, {player}."
+    TargetAcquired:
+      - "That {target} is mine."
+      - "Oi! {target}!"
+      - "Here we go."
+    Hurt:
+      - "Ow."
+      - "That was a rib!"
+      - "Still standing."
+    Buffed:
+      - "Ooh, that's the stuff."
+      - "Much obliged."
+    Killed:
+      - "Down it goes."
+      - "That {target} won't get up."
+      - "Next."
+    Died:
+      - "Bugger."
+      - "Tell my mum."
+      - "Back to the dirt."
+    Unsummoned:
+      - "Off I go, then."
+      - "See you, {player}."
+    Idle:
+      - "Nice weather for it."
+      - "Anyone else cold?"
+      - "I miss having skin."
+      - "Hmm."
+    PlayerHurt:
+      - "{player}! Watch it!"
+      - "They got you!"
+      - "Careful, {player}."
+    PlayerLandedABigHit:
+      - "Ooooh."
+      - "Did you see that?"
+      - "Lovely swing, {player}."
+    PlayerGotAKill:
+      - "Got him!"
+      - "Nice one, {player}."
+    CompanionHurt:
+      - "{companion}!"
+      - "They're on {companion}!"
+      - "Hang on, {companion}!"
+    CompanionKilled:
+      - "Leave some for me, {companion}."
+      - "{companion} got the {target}."
+      - "Show-off."
+    CompanionDied:
+      - "Oh no, {companion}!"
+      - "{companion}! Get up!"
+      - "They got {companion}."
+    CompanionSummoned:
+      - "Welcome to the party, {companion}."
+      - "Look who's up."
+      - "Budge up, {companion}."
+
+  # Would rather be somewhere else.
+  cowardly:
+    Summoned:
+      - "Do I have to?"
+      - "I was having a lovely rest."
+    TargetAcquired:
+      - "Is that a {target}? I'd rather not."
+      - "You first, {player}."
+    Hurt:
+      - "Aaargh!"
+      - "I'm hit! I'm hit!"
+      - "This is exactly what I meant."
+    Killed:
+      - "Did I do that?"
+      - "It was mostly {player}, honestly."
+    Idle:
+      - "Can we go home?"
+      - "It's very open out here."
+    CompanionDied:
+      - "We're all going to die out here."
+      - "That could have been me!"
+
+  # Convinced of its own legend.
+  boastful:
+    Summoned:
+      - "The legend returns!"
+      - "You chose well, {player}."
+    TargetAcquired:
+      - "Watch this, {player}."
+      - "That {target} picked the wrong day."
+    Hurt:
+      - "A scratch!"
+      - "I meant to do that."
+    Killed:
+      - "As foretold!"
+      - "Another {target} for the ballad."
+    Idle:
+      - "They'll sing about me, you know."
+      - "Ask me about the ballad."
+
+  # Takes the job seriously.
+  dutiful:
+    Summoned:
+      - "Reporting for duty."
+      - "Orders, {player}?"
+    TargetAcquired:
+      - "Engaging the {target}."
+      - "Target sighted."
+    Hurt:
+      - "Wound sustained. Continuing."
+      - "Still fit to fight."
+    Killed:
+      - "Target down."
+      - "{target} neutralised."
+    Idle:
+      - "Holding position."
+      - "Perimeter clear."
+
+  # Has done this too many times.
+  veteran:
+    Summoned:
+      - "Again? Fine."
+      - "Third time this week."
+    TargetAcquired:
+      - "Another {target}. Marvellous."
+      - "Seen one, seen 'em all."
+    Hurt:
+      - "Yep. That'll bruise."
+      - "Been worse."
+    Killed:
+      - "That's that, then."
+      - "Anticlimactic."
+    Idle:
+      - "I've stood in worse fields."
+      - "Wake me when it's interesting."
+    CompanionSummoned:
+      - "Another one. Marvellous."
+      - "Don't get comfortable, {companion}."

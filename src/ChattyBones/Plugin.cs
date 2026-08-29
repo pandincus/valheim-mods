@@ -26,6 +26,9 @@ namespace ChattyBones
 
         private Harmony _harmony;
 
+        /// <summary>False when Awake gave up, which is what stops Update running on a half-built mod.</summary>
+        private bool _started;
+
         /// <summary>
         /// Set up the config and apply our patches. BepInEx calls this once, during
         /// startup, before the game has loaded anything interesting.
@@ -46,7 +49,26 @@ namespace ChattyBones
             Log = Logger;
             ModConfig.Init(Config);
             Speech.Resolve();
-            Chatter.Init();
+
+            // Init reads a file and parses YAML, so unlike everything else here it can
+            // fail for reasons outside the mod - and an exception escaping Awake would
+            // stop before PatchAll below, leaving us loaded, unpatched and silent with
+            // only a raw stack trace to go on. Missing YamlDotNet is the likely cause
+            // and it fails exactly this way, so name it.
+            try
+            {
+                Chatter.Init();
+            }
+            catch (System.Exception e)
+            {
+                Log.LogError(
+                    PluginName + " could not start, so your skeletons will stay quiet this session. "
+                    + "The usual cause is a missing YamlDotNet - this mod needs the "
+                    + "ValheimModding-YamlDotNet package, which a mod manager installs for you. " + e);
+
+                return;
+            }
+
             DebugCommands.Register();
 
             // BepInEx raises this off the main thread, which is exactly why
@@ -58,6 +80,8 @@ namespace ChattyBones
             // applies it - everything under Patches/.
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
+
+            _started = true;
 
             Log.LogInfo(PluginName + " v" + PluginVersion + " loaded.");
         }
@@ -77,6 +101,11 @@ namespace ChattyBones
         /// </remarks>
         private void Update()
         {
+            if (!_started)
+            {
+                return;
+            }
+
             Chatter.Tick(Time.deltaTime);
         }
 
@@ -85,10 +114,13 @@ namespace ChattyBones
         /// </summary>
         /// <remarks>
         /// Practically speaking this only matters when something reloads plugins at
-        /// runtime, since a normal quit tears the whole process down anyway.
+        /// runtime, since a normal quit tears the whole process down anyway. The
+        /// watcher on the line pack is a real OS handle rather than something the
+        /// garbage collector will get round to, so it is worth letting go of properly.
         /// </remarks>
         private void OnDestroy()
         {
+            PackFile.StopWatching();
             _harmony?.UnpatchSelf();
         }
     }

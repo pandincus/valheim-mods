@@ -2,6 +2,31 @@ using System.Collections.Generic;
 
 namespace ChattyBones.Logic
 {
+    /// <summary>Why a claim was turned down.</summary>
+    /// <remarks>
+    /// Only ever read by the debug log. The budget refuses far more often than it
+    /// agrees, by design, and every refusal looks identical from outside - the squad
+    /// simply goes quiet. That makes "why is nobody talking" undiagnosable without
+    /// something like this.
+    /// </remarks>
+    internal enum ChatterRefusal
+    {
+        /// <summary>Not refused at all.</summary>
+        None,
+
+        /// <summary>The player switched this event off.</summary>
+        EventDisabled,
+
+        /// <summary>Somebody already remarked on this exact thing.</summary>
+        SubjectEcho,
+
+        /// <summary>This skeleton spoke too recently.</summary>
+        SpeakerCooldown,
+
+        /// <summary>Somebody spoke too recently, and this was not important enough to cut in.</summary>
+        SquadGap,
+    }
+
     /// <summary>
     /// Decides whether a skeleton is allowed to say something right now.
     /// </summary>
@@ -11,7 +36,7 @@ namespace ChattyBones.Logic
     ///
     /// We decide *whether* someone speaks; <see cref="LineChooser"/> decides *what*.
     ///
-    /// Asking and booking are separate calls - see <see cref="CanClaim"/>.
+    /// Asking and booking are separate calls - see <see cref="CanClaim(long, ChatterEvent, int, float)"/>.
     ///
     /// There is no clock and no game state in here; the caller passes the time in,
     /// so a test can cover an afternoon of chatter in microseconds.
@@ -124,10 +149,24 @@ namespace ChattyBones.Logic
         /// </remarks>
         internal bool CanClaim(long speakerId, ChatterEvent kind, int subject, float now)
         {
+            return CanClaim(speakerId, kind, subject, now, out _);
+        }
+
+        /// <summary>As <see cref="CanClaim(long, ChatterEvent, int, float)"/>, and say why not.</summary>
+        /// <returns>True if it may talk.</returns>
+        /// <param name="speakerId">Which skeleton is asking.</param>
+        /// <param name="kind">What just happened.</param>
+        /// <param name="subject">A prefab hash, or 0.</param>
+        /// <param name="now">The game clock.</param>
+        /// <param name="why">Which check turned it down, or None when it did not.</param>
+        internal bool CanClaim(long speakerId, ChatterEvent kind, int subject, float now, out ChatterRefusal why)
+        {
             ChatterSettings settings = Settings;
+            why = ChatterRefusal.None;
 
             if (settings.IsDisabled(kind))
             {
+                why = ChatterRefusal.EventDisabled;
                 return false;
             }
 
@@ -135,6 +174,7 @@ namespace ChattyBones.Logic
                 && _lastRemarkBySubject.TryGetValue(SubjectKey(kind, subject), out float remarkedAt)
                 && now - remarkedAt < settings.SquadEchoWindowSeconds)
             {
+                why = ChatterRefusal.SubjectEcho;
                 return false;
             }
 
@@ -142,6 +182,7 @@ namespace ChattyBones.Logic
                 && _lastSpokeBySpeaker.TryGetValue(speakerId, out float spokeAt)
                 && now - spokeAt < settings.SpeakerCooldownSeconds)
             {
+                why = ChatterRefusal.SpeakerCooldown;
                 return false;
             }
 
@@ -161,18 +202,23 @@ namespace ChattyBones.Logic
             // skeletons dying together does not produce two overlapping death cries,
             // because the second one is not *more* important than the first. One set
             // of last words is plenty.
-            return PriorityOf(kind) > _lastPriority
-                && sinceAnyone >= settings.PreemptGapSeconds;
+            if (PriorityOf(kind) > _lastPriority && sinceAnyone >= settings.PreemptGapSeconds)
+            {
+                return true;
+            }
+
+            why = ChatterRefusal.SquadGap;
+            return false;
         }
 
         /// <summary>Record that this skeleton did in fact speak.</summary>
         /// <param name="speakerId">Who spoke.</param>
         /// <param name="kind">What about.</param>
         /// <param name="subject">What it concerned, or 0.</param>
-        /// <param name="now">The same time you passed to <see cref="CanClaim"/>.</param>
+        /// <param name="now">The same time you passed to <see cref="CanClaim(long, ChatterEvent, int, float)"/>.</param>
         /// <remarks>
         /// Call this only after a line has actually been produced and said. Calling it
-        /// without <see cref="CanClaim"/> having returned true is not checked for and
+        /// without <see cref="CanClaim(long, ChatterEvent, int, float)"/> having returned true is not checked for and
         /// will simply push the windows out, which is the caller getting what it asked
         /// for rather than something to guard against.
         /// </remarks>

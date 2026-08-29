@@ -23,18 +23,44 @@ react to the same greydwarf very differently.
   remark about a thing stops the others repeating it
 - Important things interrupt trivial ones, and a death or an arrival gets an
   answer from somebody else in the same breath
+- Every line lives in a plain file you can edit, swap and hand to somebody else
 - Chattiness settings in the config, editable in-game with ConfigurationManager
   (F1)
+
+## The line pack
+
+Everything the skeletons say is in one file, and it is yours to rewrite:
+
+```
+BepInEx/config/ChattyBones.lines.yaml
+```
+
+It is written for you the first time you run the game, and never touched again.
+**Edit it and save it while the game is running** — the change takes effect on
+the spot, with no restart and without leaving the world. If you break something,
+your skeletons keep using the last version that worked and the reason, with a
+line number, goes to the BepInEx log.
+
+The file explains itself: which events exist, which tokens each one can fill in,
+and how the personalities and the colours work. A second file next to it,
+`ChattyBones.lines.default.yaml`, is refreshed on every launch with exactly what
+the mod shipped with — so there is always a known-good copy to compare against or
+start over from.
+
+The point of a file rather than a config screen is that a pack is something you
+can hand to somebody. A group playing together can agree on one, drop it in, and
+hear the same skeletons say the same things.
 
 ## Not yet
 
 - **Other players see nothing.** Everything is decided and drawn on the machine
   that owns a skeleton, so your squad talks on your screen alone. If you both run
-  the mod, you each hear your own.
-- The lines are a small built-in placeholder. A proper pack, kept in a plain file
-  you can edit and swap — so a group playing together can agree on one and all
-  hear the same skeletons — is the next job.
-- Per-event toggles, so you can switch off just the idle chatter.
+  the mod, you each hear your own — which is also why a shared pack is currently
+  a matter of you both installing the same file.
+- The lines that come with it are thin. The machinery is finished; writing a
+  proper pack on top of it is the next job.
+- Per-event toggles, so you can switch off just the idle chatter. For now,
+  deleting an event from the pack does the same thing.
 
 ## Settings
 
@@ -47,6 +73,12 @@ react to the same greydwarf very differently.
 | `IdleSeconds` | `45` | Roughly how often a skeleton with nothing to do says something anyway. |
 | `HurtFraction` | `0.15` | How big a hit has to be before it is worth mentioning, as a share of the victim's health. Lower it if you are well armoured for where you are. |
 | `TextHeight` | `0.3` | How far above the head the line sits, in metres. |
-| `TextColour` | *(empty)* | Hex code like `#C8FFC8`, or empty for Valheim's usual white. |
+| `TextColour` | *(empty)* | One colour for everything, as a hex code like `#C8FFC8`. Empty — the default — lets the pack colour by event instead. |
 
 There are a few more; ConfigurationManager lists them all with descriptions.
+
+## Requirements
+
+- [BepInExPack Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/)
+- [YamlDotNet](https://thunderstore.io/c/valheim/p/ValheimModding/YamlDotNet/), for
+  reading the line pack. A mod manager installs it for you.
