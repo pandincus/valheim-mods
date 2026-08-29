@@ -316,7 +316,13 @@ namespace ChattyBones
         /// </remarks>
         private void Boast()
         {
-            if (Chatter.TrySpeak(this, ChatterEvent.Killed, _lastTargetPrefab, _lastTargetName, companion: null))
+            // No hit to read - a kill is noticed by the target disappearing, not by
+            // catching the blow - so the weapon comes from the killer's own hands.
+            // Reliable here in a way it is not for a player: a skeleton is handed one
+            // weapon when it is raised and never swaps.
+            LineDetails details = Hits.WieldedBy(Character);
+
+            if (Chatter.TrySpeak(this, ChatterEvent.Killed, _lastTargetPrefab, _lastTargetName, companion: null, details: details))
             {
                 return;
             }
@@ -325,7 +331,8 @@ namespace ChattyBones
                 ChatterEvent.CompanionKilled,
                 _lastTargetPrefab,
                 _lastTargetName,
-                companion: Character);
+                companion: Character,
+                details: details);
         }
 
         /// <summary>Take everything we will want about a target while it still exists.</summary>

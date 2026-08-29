@@ -198,11 +198,19 @@ namespace ChattyBones.Tests
                 or ChatterEvent.CompanionSummoned
                 or ChatterEvent.Idle;
 
-            // The events that come from a HitData, and so can describe the blow.
+            // A live blow, caught as it lands, so it can be described in full.
             bool hasHit = kind is ChatterEvent.Hurt
                 or ChatterEvent.PlayerHurt
                 or ChatterEvent.CompanionHurt
                 or ChatterEvent.PlayerLandedABigHit;
+
+            // Kills and deaths know only what the killer was holding. There is no
+            // blow to read - a kill is noticed by the target vanishing, and by the
+            // time a body is examined the damage on its last hit is incomplete.
+            bool hasWeaponOnly = kind is ChatterEvent.Killed
+                or ChatterEvent.CompanionKilled
+                or ChatterEvent.Died
+                or ChatterEvent.PlayerGotAKill;
 
             bool hasStatus = kind is ChatterEvent.Buffed or ChatterEvent.Afflicted or ChatterEvent.Weather;
 
@@ -212,8 +220,8 @@ namespace ChattyBones.Tests
                 name: "Botvid",
                 companion: hasCompanion ? "Gunnar" : null,
                 details: new LineDetails(
-                    weapon: hasHit ? "Mistwalker" : null,
-                    weaponType: hasHit ? "sword" : null,
+                    weapon: hasHit || hasWeaponOnly ? "Mistwalker" : null,
+                    weaponType: hasHit || hasWeaponOnly ? "sword" : null,
                     damage: hasHit ? "slash" : null,
                     status: hasStatus ? "Burning" : null));
         }

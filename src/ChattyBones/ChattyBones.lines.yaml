@@ -50,7 +50,9 @@
 # EVENTS
 #
 # Seventeen things a skeleton reacts to, and what each one can tell you.
-# "hit tokens" means {weapon}, {weapontype} and {damage} together.
+# "hit tokens" means {weapon}, {weapontype} and {damage} together, and goes to the
+# events that catch a blow as it lands. "weapon" is the first two only: kills and
+# deaths know what the killer was holding, but not what the blow was made of.
 #
 #   Summoned              you raised it                      -
 #   TargetAcquired        it picked something to attack      {target}
@@ -58,15 +60,15 @@
 #   Buffed                it gained a helpful effect         {status}
 #   Afflicted             it caught fire, poison or worse    {status}
 #   Weather               rain, or water, or the swamp       {status}
-#   Killed                it killed something                {target}
-#   Died                  it died                            -
+#   Killed                it killed something                {target}, weapon
+#   Died                  it died                            weapon
 #   Unsummoned            it timed out or strayed too far    -
 #   Idle                  nothing is happening               {companion}
 #   PlayerHurt            you took a hit                     hit tokens
 #   PlayerLandedABigHit   you hit something hard             {target}, hit tokens
-#   PlayerGotAKill        you killed something               {target}
+#   PlayerGotAKill        you killed something               {target}, weapon
 #   CompanionHurt         another skeleton took a hit        {companion}, hit tokens
-#   CompanionKilled       another skeleton got a kill        {companion} {target}
+#   CompanionKilled       another skeleton got a kill        {companion} {target}, weapon
 #   CompanionDied         another skeleton died              {companion}
 #   CompanionSummoned     another skeleton was just raised   {companion}
 #
@@ -219,10 +221,13 @@ lines:
       - "Down it goes."
       - "That {target} won't get up."
       - "Next."
+      - "That is what a {weapontype} is for."
+      - "{weapon} does not miss."
     Died:
       - "Bugger."
       - "Tell my mum."
       - "Back to the dirt."
+      - "A {weapontype}. Of all the ways to go."
     Unsummoned:
       - "Off I go, then."
       - "See you, {player}."
@@ -246,12 +251,14 @@ lines:
     PlayerGotAKill:
       - "Got him!"
       - "Nice one, {player}."
+      - "Nice {weapontype} work, {player}."
     CompanionHurt:
       - "{companion}!"
       - "They're on {companion}!"
       - "Hang on, {companion}!"
     CompanionKilled:
       - "Leave some for me, {companion}."
+      - "That {weapontype} of yours is earning its keep, {companion}."
       - "{companion} got the {target}."
       - "Show-off."
     CompanionDied:

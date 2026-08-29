@@ -251,6 +251,7 @@ namespace ChattyBones.Patches
                 return;
             }
 
+
             HitData last = dead.m_lastHit;
             if (last == null || Player.m_localPlayer == null || last.GetAttacker() != Player.m_localPlayer)
             {
@@ -261,7 +262,8 @@ namespace ChattyBones.Patches
                 ChatterEvent.PlayerGotAKill,
                 Summons.PrefabOf(dead),
                 Summons.CreatureName(dead),
-                companion: null);
+                companion: null,
+                details: Hits.WieldedBy(Player.m_localPlayer));
         }
 
         /// <summary>Last words, and somebody noticing them.</summary>
@@ -279,7 +281,17 @@ namespace ChattyBones.Patches
         /// </remarks>
         private static void Mourn(Character fallen, ChatterComponent speaker)
         {
-            if (!Chatter.TrySpeak(speaker, ChatterEvent.Died, subject: 0, targetName: null, companion: null))
+            // What killed it is still holding the thing it did it with. Not the blow
+            // itself: m_lastHit is read long after RPC_Damage has lifted the fire,
+            // poison and spirit off it, so its damage would be quietly incomplete in
+            // exactly the way the prefix exists to avoid.
+            if (!Chatter.TrySpeak(
+                speaker,
+                ChatterEvent.Died,
+                subject: 0,
+                targetName: null,
+                companion: null,
+                details: Hits.WieldedBy(fallen.m_lastHit?.GetAttacker())))
             {
                 return;
             }

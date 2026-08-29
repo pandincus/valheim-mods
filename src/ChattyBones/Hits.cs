@@ -34,6 +34,31 @@ namespace ChattyBones
                     hit.m_damage.m_spirit));
         }
 
+        /// <summary>Describe what somebody is holding, when there is no blow to read.</summary>
+        /// <returns>The weapon and its kind, with no damage - nobody recorded a hit.</returns>
+        /// <param name="character">Whoever is holding it.</param>
+        /// <remarks>
+        /// For the kill events, which are found by watching a target disappear rather
+        /// than by catching a blow - so there is no HitData and never was one.
+        ///
+        /// The caveat that makes <see cref="WeaponName"/> unreliable does not apply
+        /// here: a skeleton is handed one weapon when it is raised and never touches
+        /// another, so what it is holding now is what it killed with.
+        /// </remarks>
+        internal static LineDetails WieldedBy(Character character)
+        {
+            if (character == null || character is not Humanoid humanoid)
+            {
+                return default;
+            }
+
+            ItemDrop.ItemData weapon = humanoid.GetCurrentWeapon();
+
+            return weapon?.m_shared == null
+                ? default
+                : new LineDetails(weapon: NameOf(weapon), weaponType: TypeName(weapon.m_shared.m_skillType));
+        }
+
         /// <summary>What the attacker is holding, by its own name.</summary>
         /// <returns>Something like "Mistwalker", or null when we cannot tell.</returns>
         /// <param name="hit">The blow, for its attacker.</param>
@@ -58,15 +83,20 @@ namespace ChattyBones
 
             ItemDrop.ItemData weapon = humanoid.GetCurrentWeapon();
 
-            if (weapon?.m_shared == null)
-            {
-                return null;
-            }
+            return weapon?.m_shared == null ? null : NameOf(weapon);
+        }
 
-            // Empty rather than null is what an unnamed item gives back, and Localize
-            // passes it straight through. A token has to be null to be refused, or the
-            // line renders with a hole where the weapon should be.
-            string name = Localization.instance.Localize(weapon.m_shared.m_name);
+        /// <summary>An item's own name, localized.</summary>
+        /// <returns>Something like "Mistwalker", or null when it has not got one.</returns>
+        /// <param name="item">The item to name.</param>
+        /// <remarks>
+        /// Null rather than empty, which is what an unnamed item gives back and what
+        /// Localize passes straight through. Only null makes LineTokens refuse the
+        /// line; empty renders a hole where the weapon should be.
+        /// </remarks>
+        private static string NameOf(ItemDrop.ItemData item)
+        {
+            string name = Localization.instance.Localize(item.m_shared.m_name);
 
             return string.IsNullOrEmpty(name) ? null : name;
         }
