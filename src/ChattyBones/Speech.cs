@@ -83,6 +83,7 @@ namespace ChattyBones
         /// <returns>Which of the two drew it, or <see cref="Drew.Nothing"/>.</returns>
         /// <param name="speaker">Whoever is talking.</param>
         /// <param name="line">Finished text, tokens already filled in.</param>
+        /// <param name="packTag">The colour the pack asked for this event, or null.</param>
         /// <remarks>
         /// This is the one door every caller comes through, which makes it the right
         /// place for the catch. The event hooks sit inside vanilla damage and status
@@ -92,7 +93,7 @@ namespace ChattyBones
         /// Nothing drawn is an ordinary answer rather than a failure: there is no Chat
         /// before the world loads, and the player may simply have switched the mod off.
         /// </remarks>
-        internal static Drew Say(Character speaker, string line)
+        internal static Drew Say(Character speaker, string line, string packTag = null)
         {
             if (!ModConfig.Enabled.Value || speaker == null || string.IsNullOrEmpty(line))
             {
@@ -107,7 +108,7 @@ namespace ChattyBones
 
             try
             {
-                string coloured = Colourise(line);
+                string coloured = Colourise(line, packTag);
 
                 return ModConfig.Bubble.Value == BubbleStyle.FloatingText && TryFloatingText(chat, speaker, coloured)
                     ? Drew.FloatingText
@@ -120,10 +121,16 @@ namespace ChattyBones
             }
         }
 
-        /// <summary>Wrap the line in a colour tag, if one is configured and valid.</summary>
+        /// <summary>Wrap the line in a colour tag, if anything has an opinion about one.</summary>
         /// <returns>The line, possibly wrapped.</returns>
         /// <param name="line">The finished text.</param>
-        private static string Colourise(string line)
+        /// <param name="packTag">What the pack wants for this event, or null.</param>
+        /// <remarks>
+        /// The config wins over the pack. A palette is a statement about a pack, so it
+        /// is the right default; TextColour is the escape hatch for somebody who wants
+        /// one colour and no argument.
+        /// </remarks>
+        private static string Colourise(string line, string packTag)
         {
             string configured = ModConfig.TextColour.Value;
 
@@ -138,7 +145,7 @@ namespace ChattyBones
                     "TextColour '" + configured + "' is not a hex code like #C8FFC8, so it is being ignored.");
             }
 
-            return line;
+            return SpeechFormat.Wrap(line, packTag);
         }
 
         /// <summary>Draw the floating chat text, if we can.</summary>

@@ -55,7 +55,7 @@ namespace ChattyBones.Tests
         /// </remarks>
         private static bool Speak(ChatterBudget budget, long speaker, ChatterEvent kind, int subject, float now)
         {
-            if (!budget.CanClaim(speaker, kind, subject, now))
+            if (!budget.CanClaim(speaker, kind, subject, now, out _))
             {
                 return false;
             }
@@ -509,15 +509,15 @@ namespace ChattyBones.Tests
             // lock, for a line nobody heard.
             ChatterBudget budget = Budget();
 
-            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 0f));
-            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 0f));
-            Assert.True(budget.CanClaim(Bob, ChatterEvent.Idle, NoSubject, 0f));
+            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 0f, out _));
+            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 0f, out _));
+            Assert.True(budget.CanClaim(Bob, ChatterEvent.Idle, NoSubject, 0f, out _));
 
             // Nothing was recorded, so a real claim a moment later is still allowed.
             Assert.True(Speak(budget, Bob, ChatterEvent.Idle, NoSubject, 0f));
 
             // And now it has been.
-            Assert.False(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 0.5f));
+            Assert.False(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 0.5f, out _));
         }
 
         [Fact]
@@ -533,8 +533,8 @@ namespace ChattyBones.Tests
             // for each, then say them all" is the obvious shape and is wrong.
             ChatterBudget budget = Budget();
 
-            Assert.True(budget.CanClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
-            Assert.True(budget.CanClaim(Bob, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+            Assert.True(budget.CanClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f, out _));
+            Assert.True(budget.CanClaim(Bob, ChatterEvent.TargetAcquired, Greydwarf, 0f, out _));
 
             // Both were told yes about the same greydwarf. Commit both and the echo
             // window has been defeated - two skeletons announce the same enemy.
@@ -543,9 +543,9 @@ namespace ChattyBones.Tests
 
             // Done properly - ask, resolve, then ask again - the second one is refused.
             ChatterBudget careful = Budget();
-            Assert.True(careful.CanClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+            Assert.True(careful.CanClaim(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f, out _));
             careful.Commit(Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f);
-            Assert.False(careful.CanClaim(Bob, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+            Assert.False(careful.CanClaim(Bob, ChatterEvent.TargetAcquired, Greydwarf, 0f, out _));
         }
 
         [Fact]
@@ -558,7 +558,7 @@ namespace ChattyBones.Tests
 
             for (int i = 0; i < 3; i++)
             {
-                Assert.True(budget.CanClaim(Alice, ChatterEvent.Buffed, NoSubject, i * 0.1f));
+                Assert.True(budget.CanClaim(Alice, ChatterEvent.Buffed, NoSubject, i * 0.1f, out _));
                 // ...LineChooser returns false here, so no Commit.
             }
 
@@ -575,11 +575,11 @@ namespace ChattyBones.Tests
             Assert.True(Speak(budget, Alice, ChatterEvent.Idle, NoSubject, 0f));
 
             // Alice's cooldown is 10s, so she is normally refused here.
-            Assert.False(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 5f));
+            Assert.False(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 5f, out _));
 
             budget.Settings = Settings(speakerCooldownSeconds: 1f);
 
-            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 5f));
+            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 5f, out _));
         }
 
         [Fact]
@@ -594,8 +594,8 @@ namespace ChattyBones.Tests
 
             budget.Settings = Settings(speakerCooldownSeconds: 60f);
 
-            Assert.False(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 30f));
-            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 61f));
+            Assert.False(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 30f, out _));
+            Assert.True(budget.CanClaim(Alice, ChatterEvent.Idle, NoSubject, 61f, out _));
         }
 
         [Fact]

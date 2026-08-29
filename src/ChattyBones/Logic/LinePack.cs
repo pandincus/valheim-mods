@@ -45,17 +45,29 @@ namespace ChattyBones.Logic
         /// <summary>Wrap what the builder assembled.</summary>
         /// <param name="byPersonality">Personality to event to lines. Every group non-empty.</param>
         /// <param name="personalities">The personality types, sorted, without the shared fallback.</param>
+        /// <param name="colours">What colour each event is drawn in.</param>
         /// <remarks>
         /// Private, and reachable only from <see cref="Builder.Build"/>, which is
         /// what lets everything downstream stop checking for empty groups.
         /// </remarks>
         private LinePack(
             Dictionary<string, Dictionary<ChatterEvent, string[]>> byPersonality,
-            IReadOnlyList<string> personalities)
+            IReadOnlyList<string> personalities,
+            Palette colours)
         {
             _byPersonality = byPersonality;
             Personalities = personalities;
+            Colours = colours;
         }
+
+        /// <summary>What colour each event is drawn in.</summary>
+        /// <remarks>
+        /// Here rather than alongside, so that reloading a pack swaps the lines and
+        /// the colours in a single assignment. Two fields updated one after the other
+        /// would leave a window - short, but during a fight - where a skeleton says a
+        /// new line in the old pack's colour.
+        /// </remarks>
+        internal Palette Colours { get; }
 
         /// <summary>Every personality in the pack, in a stable order.</summary>
         /// <remarks>
@@ -71,6 +83,14 @@ namespace ChattyBones.Logic
         /// a personality type, and nothing should be summoned as "common".
         /// </remarks>
         internal IReadOnlyList<string> Personalities { get; }
+
+        /// <summary>Is there nothing in here at all?</summary>
+        /// <remarks>
+        /// Not the same question as having no personalities - a pack of nothing but
+        /// <see cref="SharedPersonality"/> lines has none and works fine. This asks
+        /// whether the squad would be mute.
+        /// </remarks>
+        internal bool IsEmpty => _byPersonality.Count == 0;
 
         /// <summary>Find the lines available for one personality and event.</summary>
         /// <returns>
@@ -174,13 +194,15 @@ namespace ChattyBones.Logic
         /// to be internal and anybody could build a pack that breaks the guarantees
         /// the pack's own comments promise.
         ///
-        /// The real mod will drive this from a YAML file. The tests drive it by hand,
+        /// The real mod drives this from a YAML file, via PackReader. The tests drive it by hand,
         /// which is exactly why the pack does not read files itself - a test that
         /// needs four lines can just say so in four lines.
         /// </remarks>
         internal sealed class Builder
         {
             private readonly Dictionary<string, Dictionary<ChatterEvent, List<string>>> _lines = [];
+            private readonly Dictionary<ChatterEvent, string> _colours = [];
+            private string _fallbackColour;
 
             /// <summary>Add some lines for one personality reacting to one event.</summary>
             /// <returns>This builder, so calls can be chained.</returns>
@@ -197,8 +219,9 @@ namespace ChattyBones.Logic
             /// </param>
             /// <remarks>
             /// Calling this twice for the same personality and event adds to that
-            /// group rather than replacing it, so a pack file can list a personality
-            /// in more than one place without one half quietly winning.
+            /// group rather than replacing it. No pack file can reach that - YAML
+            /// refuses a duplicate key outright - so it is really a convenience for
+            /// the tests, which build groups up a line at a time.
             /// </remarks>
             internal Builder Add(string personality, ChatterEvent kind, params string[] lines)
             {
@@ -227,6 +250,25 @@ namespace ChattyBones.Logic
                     }
                 }
 
+                return this;
+            }
+
+            /// <summary>Set the colour for events that do not name one of their own.</summary>
+            /// <returns>This builder, so calls can be chained.</returns>
+            /// <param name="hex">A hex code like #E8E4DC, or null for Valheim's usual white.</param>
+            internal Builder SetDefaultColour(string hex)
+            {
+                _fallbackColour = hex;
+                return this;
+            }
+
+            /// <summary>Set the colour for one event.</summary>
+            /// <returns>This builder, so calls can be chained.</returns>
+            /// <param name="kind">The event to colour.</param>
+            /// <param name="hex">A hex code like #F0A9A0.</param>
+            internal Builder SetColour(ChatterEvent kind, string hex)
+            {
+                _colours[kind] = hex;
                 return this;
             }
 
@@ -276,7 +318,7 @@ namespace ChattyBones.Logic
                 // every restart.
                 personalities.Sort(StringComparer.Ordinal);
 
-                return new LinePack(byPersonality, personalities);
+                return new LinePack(byPersonality, personalities, new Palette(_fallbackColour, _colours));
             }
         }
     }

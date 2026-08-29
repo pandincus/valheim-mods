@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using ChattyBones.Logic;
 using System.Text.RegularExpressions;
 
 namespace ChattyBones.Tests
@@ -38,6 +39,49 @@ namespace ChattyBones.Tests
 
             Assert.Equal(csproj, plugin);
             Assert.Equal(csproj, manifest);
+        }
+
+        [Fact]
+        public void TheManifestAndTheTestsAgreeOnWhichYamlDotNetThisIs()
+        {
+            // The trap this exists for: the Thunderstore package is 16.3.1 and the
+            // library inside it is 16.3.0, so the two numbers are *supposed* to differ
+            // in the last digit. That makes an honest mistake indistinguishable from
+            // the correct state by eye. Compare the major and minor, which do have to
+            // match, and leave the patch digit alone.
+            //
+            // Worth having because the failure is the quiet kind: the mod compiles
+            // against whatever DLL is in the profile while the tests keep exercising
+            // whatever NuGet restores, so they can pass while the game breaks.
+            string mod = Path.Combine(RepoRoot(), "src", "ChattyBones");
+
+            string manifest = Extract(
+                Path.Combine(mod, "manifest.json"),
+                @"ValheimModding-YamlDotNet-(\d+\.\d+)\.\d+");
+            string tests = Extract(
+                Path.Combine(RepoRoot(), "tests", "ChattyBones.Tests", "ChattyBones.Tests.csproj"),
+                @"PackageReference\s+Include=""YamlDotNet""\s+Version=""(\d+\.\d+)\.\d+""");
+
+            Assert.Equal(manifest, tests);
+        }
+
+        [Fact]
+        public void BothProjectsEmbedThePackUnderTheNameDefaultPackLooksFor()
+        {
+            // Getting this wrong is a total, silent failure: MSBuild names the resource
+            // after the assembly, DefaultPack cannot find it, Chatter.Init throws, and
+            // Awake's catch reports it as a missing YamlDotNet. Nothing else would fail.
+            string mod = Path.Combine(RepoRoot(), "src", "ChattyBones");
+
+            string src = Extract(
+                Path.Combine(mod, "ChattyBones.csproj"),
+                @"ChattyBones\.lines\.yaml"" LogicalName=""([^""]+)""");
+            string tests = Extract(
+                Path.Combine(RepoRoot(), "tests", "ChattyBones.Tests", "ChattyBones.Tests.csproj"),
+                @"ChattyBones\.lines\.yaml"" LogicalName=""([^""]+)""");
+
+            Assert.Equal(DefaultPack.ResourceName, src);
+            Assert.Equal(DefaultPack.ResourceName, tests);
         }
 
         /// <summary>Pull the first capture group out of a file, or fail saying which file.</summary>

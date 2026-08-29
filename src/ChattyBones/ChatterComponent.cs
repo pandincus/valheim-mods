@@ -65,7 +65,43 @@ namespace ChattyBones
         internal long SpeakerId => field != 0L ? field : (field = ComputeSpeakerId());
 
         /// <summary>Which personality this one was given at summon.</summary>
-        internal string Personality => field ??= ResolvePersonality();
+        /// <remarks>
+        /// Worked out once and remembered, but only for as long as the pack it was
+        /// worked out against. A skeleton stores a position in the pack's sorted list
+        /// of personalities, so renaming one, or adding or removing one, changes what
+        /// that position means - all ordinary things to do while writing a pack.
+        /// Comparing against <see cref="Chatter.PackGeneration"/> is what makes an edit
+        /// show up on the squad standing in front of you rather than on the next one
+        /// you summon.
+        ///
+        /// Only a real answer is remembered, because null is not "no personality" - it
+        /// is the ZDO not being ready, an owner who has not assigned one yet, or a pack
+        /// with nothing but common lines in it. The first two are worth asking about
+        /// again, and the third costs an early return each time.
+        /// </remarks>
+        internal string Personality
+        {
+            get
+            {
+                if (field != null && _personalityGeneration == Chatter.PackGeneration)
+                {
+                    return field;
+                }
+
+                string resolved = ResolvePersonality();
+
+                if (resolved != null)
+                {
+                    field = resolved;
+                    _personalityGeneration = Chatter.PackGeneration;
+                }
+
+                return resolved;
+            }
+        }
+
+        /// <summary>Which pack the personality above was worked out against.</summary>
+        private int _personalityGeneration = -1;
 
         private void Awake()
         {
@@ -231,8 +267,15 @@ namespace ChattyBones
             // compares equal to null, and asking a destroyed object for its health
             // throws.
             bool gone = _lastTarget == null || _lastTarget.GetHealth() <= 0f;
+            bool worth = TargetWatch.WorthRemarking(since, gone);
 
-            if (TargetWatch.WorthRemarking(since, gone))
+            if (ModConfig.LogChatter.Value)
+            {
+                Chatter.Trace(this, ChatterEvent.Killed, "lost its target after " + since.ToString("0.00")
+                    + "s, dead or gone: " + gone + (worth ? " -> gloating" : " -> dropped"));
+            }
+
+            if (worth)
             {
                 Boast();
             }

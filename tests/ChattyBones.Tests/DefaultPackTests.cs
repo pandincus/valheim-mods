@@ -17,6 +17,72 @@ namespace ChattyBones.Tests
     public class DefaultPackTests
     {
         [Fact]
+        public void TheShippedPackParsesWithNothingToComplainAbout()
+        {
+            // This is the one test that covers the .yaml file itself rather than the
+            // code around it. The same text is parsed at startup and written into the
+            // player's config folder, so a mistake in it is a mistake in the mod - and
+            // a warning in somebody's log about a file they have not touched is a
+            // particularly poor first impression.
+            Assert.True(
+                PackReader.TryRead(DefaultPack.Yaml, out LinePack pack, out IReadOnlyList<string> problems),
+                "The shipped pack does not parse.");
+
+            Assert.Empty(problems);
+            Assert.False(pack.IsEmpty);
+        }
+
+        [Fact]
+        public void TheShippedPackColoursBadNewsAndGoodNewsDifferently()
+        {
+            // Three colours, and it matters that they are distinguishable rather than
+            // what they are - the actual shades need eyeballing over grass and snow,
+            // which no test is going to do.
+            LinePack pack = DefaultPack.Build();
+
+            string normal = pack.Colours.TagFor(ChatterEvent.Idle);
+            string alarm = pack.Colours.TagFor(ChatterEvent.Died);
+            string triumph = pack.Colours.TagFor(ChatterEvent.Killed);
+
+            Assert.NotNull(normal);
+            Assert.NotEqual(normal, alarm);
+            Assert.NotEqual(normal, triumph);
+            Assert.NotEqual(alarm, triumph);
+
+            // The player being hurt is alarming for the same reason a skeleton dying
+            // is, and the pack should not have to be read to know that.
+            Assert.Equal(alarm, pack.Colours.TagFor(ChatterEvent.PlayerHurt));
+            Assert.Equal(triumph, pack.Colours.TagFor(ChatterEvent.PlayerGotAKill));
+        }
+
+        [Fact]
+        public void EveryLineInTheShippedPackIsDoubleQuoted()
+        {
+            // The pack header makes this the house rule, and it is the only rule that
+            // catches the mistakes YAML *accepts*: an unquoted "You are # 1" is stored
+            // as "You are" and nothing complains. Parsing cleanly is not enough here.
+            string[] lines = DefaultPack.Yaml.Split('\n');
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i].TrimEnd('\r');
+                string trimmed = line.TrimStart();
+
+                if (!trimmed.StartsWith("- ", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                string dialogue = trimmed[2..].Trim();
+
+                Assert.True(
+                    dialogue.StartsWith("\"", StringComparison.Ordinal)
+                    && dialogue.EndsWith("\"", StringComparison.Ordinal),
+                    "Line " + (i + 1) + " of the shipped pack is not double-quoted: " + trimmed);
+            }
+        }
+
+        [Fact]
         public void EveryEventHasSomethingToSay()
         {
             // The shared group is the backstop - a personality is allowed to have

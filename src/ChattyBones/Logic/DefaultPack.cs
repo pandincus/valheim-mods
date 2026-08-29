@@ -1,116 +1,60 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
+
 namespace ChattyBones.Logic
 {
     /// <summary>
-    /// The lines the mod ships with, so a fresh install has something to say.
+    /// The pack the mod ships with, baked into the DLL.
     /// </summary>
     /// <remarks>
-    /// Deliberately thin, and meant to be replaced by a hand-written pack. The job
-    /// here is to give every hook something to draw, so that a misfiring event looks
-    /// like a misfiring event rather than an empty pack.
+    /// The same text three times over - parsed when the player has no pack, written
+    /// to the config folder on first run, and refreshed into the reference copy - so
+    /// the file a player opens is exactly the pack they are hearing.
     ///
-    /// Most of it sits under <see cref="LinePack.SharedPersonality"/>. The four
-    /// personalities get their own lines only where the difference actually reads. A
-    /// cowardly skeleton and a boastful one being interchangeable on
-    /// <see cref="ChatterEvent.Buffed"/> is not worth four near-identical lines.
-    ///
-    /// Every event has at least one line in the shared group, which is what makes
-    /// "nobody said anything" mean something.
+    /// An embedded resource rather than a string here, so it stays a real .yaml while
+    /// being edited. Its logical name is pinned in both csproj files; the src one
+    /// says why.
     /// </remarks>
     internal static class DefaultPack
     {
-        /// <summary>Build the built-in pack.</summary>
-        /// <returns>A pack with four personalities and a shared fallback.</returns>
-        /// <remarks>
-        /// Built fresh each call rather than cached in a static. It happens once at
-        /// startup, and a mutable static holding the pack is exactly the thing that
-        /// gets awkward once a pack can be reloaded from disk on the fly.
-        /// </remarks>
+        /// <summary>What the resource is called, in both assemblies that carry it.</summary>
+        internal const string ResourceName = "ChattyBones.lines.yaml";
+
+        /// <summary>The shipped pack file, verbatim.</summary>
+        internal static string Yaml { get; } = ReadResource();
+
+        /// <summary>Parse the built-in pack.</summary>
+        /// <returns>The shipped pack, parsed.</returns>
+        /// <remarks>Parsed on each call; it happens once at startup.</remarks>
         internal static LinePack Build()
         {
-            LinePack.Builder builder = new();
+            if (!PackReader.TryRead(Yaml, out LinePack pack, out IReadOnlyList<string> problems))
+            {
+                // Not a player's mistake and not recoverable - the pack baked into the
+                // DLL does not parse, which means the build is broken. DefaultPackTests
+                // reads this same resource, so it should never get out of the repo.
+                throw new InvalidDataException(
+                    "The built-in ChattyBones pack does not parse: " + string.Join("; ", problems));
+            }
 
-            Shared(builder);
-            Cowardly(builder);
-            Boastful(builder);
-            Dutiful(builder);
-            Veteran(builder);
-
-            return builder.Build();
+            return pack;
         }
 
-        /// <summary>Lines anyone falls back on.</summary>
-        /// <param name="b">The builder being filled.</param>
-        private static void Shared(LinePack.Builder b)
+        /// <summary>Pull the pack file out of the assembly.</summary>
+        /// <returns>Its contents.</returns>
+        private static string ReadResource()
         {
-            _ = b.Add(C, ChatterEvent.Summoned, "Up we get.", "Who disturbs me? Oh. You.", "Right then, {player}.")
-                .Add(C, ChatterEvent.TargetAcquired, "That {target} is mine.", "Oi! {target}!", "Here we go.")
-                .Add(C, ChatterEvent.Hurt, "Ow.", "That was a rib!", "Still standing.")
-                .Add(C, ChatterEvent.Buffed, "Ooh, that's the stuff.", "Much obliged.")
-                .Add(C, ChatterEvent.Killed, "Down it goes.", "That {target} won't get up.", "Next.")
-                .Add(C, ChatterEvent.Died, "Bugger.", "Tell my mum.", "Back to the dirt.")
-                .Add(C, ChatterEvent.Unsummoned, "Off I go, then.", "See you, {player}.")
-                .Add(C, ChatterEvent.Idle, "Nice weather for it.", "Anyone else cold?", "I miss having skin.", "Hmm.")
-                .Add(C, ChatterEvent.PlayerHurt, "{player}! Watch it!", "They got you!", "Careful, {player}.")
-                .Add(C, ChatterEvent.PlayerLandedABigHit, "Ooooh.", "Did you see that?", "Lovely swing, {player}.")
-                .Add(C, ChatterEvent.PlayerGotAKill, "Got him!", "Nice one, {player}.")
-                .Add(C, ChatterEvent.CompanionHurt, "{companion}!", "They're on {companion}!", "Hang on, {companion}!")
-                .Add(C, ChatterEvent.CompanionKilled, "Leave some for me, {companion}.", "{companion} got the {target}.", "Show-off.")
-                .Add(C, ChatterEvent.CompanionDied, "Oh no, {companion}!", "{companion}! Get up!", "They got {companion}.")
-                .Add(C, ChatterEvent.CompanionSummoned, "Welcome to the party, {companion}.", "Look who's up.", "Budge up, {companion}.");
-        }
+            Assembly assembly = typeof(DefaultPack).Assembly;
 
-        /// <summary>Would rather be somewhere else.</summary>
-        /// <param name="b">The builder being filled.</param>
-        private static void Cowardly(LinePack.Builder b)
-        {
-            _ = b.Add(Coward, ChatterEvent.Summoned, "Do I have to?", "I was having a lovely rest.")
-                .Add(Coward, ChatterEvent.TargetAcquired, "Is that a {target}? I'd rather not.", "You first, {player}.")
-                .Add(Coward, ChatterEvent.Hurt, "Aaargh!", "I'm hit! I'm hit!", "This is exactly what I meant.")
-                .Add(Coward, ChatterEvent.Killed, "Did I do that?", "It was mostly {player}, honestly.")
-                .Add(Coward, ChatterEvent.Idle, "Can we go home?", "It's very open out here.")
-                .Add(Coward, ChatterEvent.CompanionDied, "We're all going to die out here.", "That could have been me!");
-        }
+            using Stream stream = assembly.GetManifestResourceStream(ResourceName)
+                ?? throw new InvalidDataException(
+                    "ChattyBones was built without its built-in pack. Expected an embedded resource named "
+                    + ResourceName + " in " + assembly.GetName().Name + ".");
 
-        /// <summary>Convinced of its own legend.</summary>
-        /// <param name="b">The builder being filled.</param>
-        private static void Boastful(LinePack.Builder b)
-        {
-            _ = b.Add(Boast, ChatterEvent.Summoned, "The legend returns!", "You chose well, {player}.")
-                .Add(Boast, ChatterEvent.TargetAcquired, "Watch this, {player}.", "That {target} picked the wrong day.")
-                .Add(Boast, ChatterEvent.Hurt, "A scratch!", "I meant to do that.")
-                .Add(Boast, ChatterEvent.Killed, "As foretold!", "Another {target} for the ballad.")
-                .Add(Boast, ChatterEvent.Idle, "They'll sing about me, you know.", "Ask me about the ballad.");
-        }
+            using StreamReader reader = new(stream);
 
-        /// <summary>Takes the job seriously.</summary>
-        /// <param name="b">The builder being filled.</param>
-        private static void Dutiful(LinePack.Builder b)
-        {
-            _ = b.Add(Duty, ChatterEvent.Summoned, "Reporting for duty.", "Orders, {player}?")
-                .Add(Duty, ChatterEvent.TargetAcquired, "Engaging the {target}.", "Target sighted.")
-                .Add(Duty, ChatterEvent.Hurt, "Wound sustained. Continuing.", "Still fit to fight.")
-                .Add(Duty, ChatterEvent.Killed, "Target down.", "{target} neutralised.")
-                .Add(Duty, ChatterEvent.Idle, "Holding position.", "Perimeter clear.");
+            return reader.ReadToEnd();
         }
-
-        /// <summary>Has done this too many times.</summary>
-        /// <param name="b">The builder being filled.</param>
-        private static void Veteran(LinePack.Builder b)
-        {
-            _ = b.Add(Vet, ChatterEvent.Summoned, "Again? Fine.", "Third time this week.")
-                .Add(Vet, ChatterEvent.TargetAcquired, "Another {target}. Marvellous.", "Seen one, seen 'em all.")
-                .Add(Vet, ChatterEvent.Hurt, "Yep. That'll bruise.", "Been worse.")
-                .Add(Vet, ChatterEvent.Killed, "That's that, then.", "Anticlimactic.")
-                .Add(Vet, ChatterEvent.Idle, "I've stood in worse fields.", "Wake me when it's interesting.")
-                .Add(Vet, ChatterEvent.CompanionSummoned, "Another one. Marvellous.", "Don't get comfortable, {companion}.");
-        }
-
-        // Short names because they appear on every line above, and the strings
-        // themselves are what a reader is here to look at.
-        private const string C = LinePack.SharedPersonality;
-        private const string Coward = "cowardly";
-        private const string Boast = "boastful";
-        private const string Duty = "dutiful";
-        private const string Vet = "veteran";
     }
 }

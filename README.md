@@ -8,7 +8,7 @@ One repository, one folder per mod, shared tooling at the root.
 | Mod | What it does |
 |---|---|
 | [FishQualityBonus](src/FishQualityBonus/) | Recipes that consume a whole fish — Fish 'n' Bread and the fish mead bases — pay out more when you spend a bigger fish. |
-| [ChattyBones](src/ChattyBones/) | Dead Raiser skeletons talk: they call out targets, yelp when hit, and grumble when idle. Not released yet. |
+| [ChattyBones](src/ChattyBones/) | Dead Raiser skeletons talk: they call out targets, yelp when hit, grumble when idle, and answer each other by name. Every line is in a file you can edit while the game runs. Not released yet. |
 
 ## Layout
 
@@ -28,6 +28,12 @@ tools/                       shared scripts (deploy, log watcher, decompiler)
 Needs the .NET SDK (8 or newer; developed against 10). No Visual Studio required —
 the `Microsoft.NETFramework.ReferenceAssemblies` package supplies what net472
 needs.
+
+ChattyBones additionally needs the
+[YamlDotNet](https://thunderstore.io/c/valheim/p/ValheimModding/YamlDotNet/)
+Thunderstore package installed in the BepInEx profile, because it compiles
+against the same DLL the game loads at runtime. The build says so if it is
+missing. Nothing else has a dependency outside the game and BepInEx.
 
 ```
 dotnet build ValheimMods.sln -c Release

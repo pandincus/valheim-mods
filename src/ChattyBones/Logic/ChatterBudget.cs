@@ -2,6 +2,25 @@ using System.Collections.Generic;
 
 namespace ChattyBones.Logic
 {
+    /// <summary>Why a claim was turned down. Only ever read by the debug log.</summary>
+    internal enum ChatterRefusal
+    {
+        /// <summary>Not refused at all.</summary>
+        None,
+
+        /// <summary>The player switched this event off.</summary>
+        EventDisabled,
+
+        /// <summary>Somebody already remarked on this exact thing.</summary>
+        SubjectEcho,
+
+        /// <summary>This skeleton spoke too recently.</summary>
+        SpeakerCooldown,
+
+        /// <summary>Somebody spoke too recently, and this was not important enough to cut in.</summary>
+        SquadGap,
+    }
+
     /// <summary>
     /// Decides whether a skeleton is allowed to say something right now.
     /// </summary>
@@ -122,12 +141,15 @@ namespace ChattyBones.Logic
         /// over the squad, so the wrong shape is also the obvious one: ask, then
         /// <see cref="Commit"/> or give up, then move on.
         /// </remarks>
-        internal bool CanClaim(long speakerId, ChatterEvent kind, int subject, float now)
+        /// <param name="why">Which check turned it down, or None when it did not. For the debug log.</param>
+        internal bool CanClaim(long speakerId, ChatterEvent kind, int subject, float now, out ChatterRefusal why)
         {
             ChatterSettings settings = Settings;
+            why = ChatterRefusal.None;
 
             if (settings.IsDisabled(kind))
             {
+                why = ChatterRefusal.EventDisabled;
                 return false;
             }
 
@@ -135,6 +157,7 @@ namespace ChattyBones.Logic
                 && _lastRemarkBySubject.TryGetValue(SubjectKey(kind, subject), out float remarkedAt)
                 && now - remarkedAt < settings.SquadEchoWindowSeconds)
             {
+                why = ChatterRefusal.SubjectEcho;
                 return false;
             }
 
@@ -142,6 +165,7 @@ namespace ChattyBones.Logic
                 && _lastSpokeBySpeaker.TryGetValue(speakerId, out float spokeAt)
                 && now - spokeAt < settings.SpeakerCooldownSeconds)
             {
+                why = ChatterRefusal.SpeakerCooldown;
                 return false;
             }
 
@@ -161,8 +185,13 @@ namespace ChattyBones.Logic
             // skeletons dying together does not produce two overlapping death cries,
             // because the second one is not *more* important than the first. One set
             // of last words is plenty.
-            return PriorityOf(kind) > _lastPriority
-                && sinceAnyone >= settings.PreemptGapSeconds;
+            if (PriorityOf(kind) > _lastPriority && sinceAnyone >= settings.PreemptGapSeconds)
+            {
+                return true;
+            }
+
+            why = ChatterRefusal.SquadGap;
+            return false;
         }
 
         /// <summary>Record that this skeleton did in fact speak.</summary>
