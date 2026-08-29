@@ -115,5 +115,49 @@ namespace ChattyBones
 
             return tameable == null ? string.Empty : tameable.GetHoverName();
         }
+
+        /// <summary>The prefab hash of a creature.</summary>
+        /// <returns>The hash, or 0 if there is no live ZDO to read it from.</returns>
+        /// <param name="character">Any creature. Null is fine.</param>
+        /// <remarks>
+        /// This is what the budget wants as a subject and what other clients want in
+        /// order to name the thing themselves. It identifies a *kind* of creature -
+        /// every greydwarf in the world shares one - which is the property that keeps
+        /// the budget's subject map from growing without bound.
+        /// </remarks>
+        internal static int PrefabOf(Character character)
+        {
+            if (character == null)
+            {
+                return 0;
+            }
+
+            ZNetView view = character.GetComponent<ZNetView>();
+
+            return view == null || !view.IsValid() ? 0 : view.GetZDO().GetPrefab();
+        }
+
+        /// <summary>What to call a creature inside a line.</summary>
+        /// <returns>Its localised name, or null when it has not got one.</returns>
+        /// <param name="character">Any creature. Null is fine.</param>
+        /// <remarks>
+        /// Localised on the machine that is going to read it, which is the point of
+        /// sending prefab hashes between clients rather than words: a German player
+        /// reads "Grauzwerg" where you read "Greydwarf", from the same broadcast.
+        ///
+        /// Localization lives in assembly_guiutils rather than assembly_valheim, which
+        /// is worth knowing before going to look for it.
+        /// </remarks>
+        internal static string CreatureName(Character character)
+        {
+            if (character == null || string.IsNullOrEmpty(character.m_name))
+            {
+                return null;
+            }
+
+            return Localization.instance == null
+                ? character.m_name
+                : Localization.instance.Localize(character.m_name);
+        }
     }
 }

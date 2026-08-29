@@ -44,6 +44,15 @@ namespace ChattyBones
         internal static ConfigEntry<float> TextHeight;
         internal static ConfigEntry<string> TextColour;
 
+        internal static ConfigEntry<float> MinGapSeconds;
+        internal static ConfigEntry<float> PreemptGapSeconds;
+        internal static ConfigEntry<float> SpeakerCooldownSeconds;
+        internal static ConfigEntry<float> SquadEchoWindowSeconds;
+        internal static ConfigEntry<float> IdleSeconds;
+        internal static ConfigEntry<float> SummonGreetingSeconds;
+        internal static ConfigEntry<float> HurtFraction;
+        internal static ConfigEntry<float> BigHitFraction;
+
         /// <summary>
         /// Declare every setting. Called once from <see cref="ChattyBonesPlugin.Awake"/>.
         /// </summary>
@@ -101,6 +110,72 @@ namespace ChattyBones
                 "Colour for skeleton speech, as a hex code like #C8FFC8. Leave empty for " +
                 "Valheim's usual white. Accepts #RGB, #RRGGBB and #RRGGBBAA. Anything " +
                 "that is not a hex code is ignored, with a note in the log.");
+
+            MinGapSeconds = cfg.Bind(
+                "Chatter", "MinGapSeconds", 2.5f,
+                new ConfigDescription(
+                    "How long the whole squad stays quiet after any one of them speaks. This " +
+                    "is the main dial for how talkative they are: raise it if five skeletons " +
+                    "feel like a crowd, lower it if they feel asleep.",
+                    new AcceptableValueRange<float>(0f, 30f)));
+
+            PreemptGapSeconds = cfg.Bind(
+                "Chatter", "PreemptGapSeconds", 0.5f,
+                new ConfigDescription(
+                    "How long something important waits before cutting in on something " +
+                    "trivial. Without a gap a death cry can land in the same frame as the " +
+                    "idle mutter it interrupts, and two lines at once is two lines nobody reads.",
+                    new AcceptableValueRange<float>(0f, 10f)));
+
+            SpeakerCooldownSeconds = cfg.Bind(
+                "Chatter", "SpeakerCooldownSeconds", 8f,
+                new ConfigDescription(
+                    "How long one skeleton waits before speaking again. Much longer than " +
+                    "MinGapSeconds on purpose - the squad keeps a conversation going while " +
+                    "each individual stays fairly quiet, which reads as several people rather " +
+                    "than one person with a lot to say.",
+                    new AcceptableValueRange<float>(0f, 120f)));
+
+            SquadEchoWindowSeconds = cfg.Bind(
+                "Chatter", "SquadEchoWindowSeconds", 6f,
+                new ConfigDescription(
+                    "How long one remark about a thing stops the others remarking on it too. " +
+                    "Send five skeletons at one greydwarf and all five notice it inside the " +
+                    "same second, so without this you get five near-identical lines at once.",
+                    new AcceptableValueRange<float>(0f, 60f)));
+
+            IdleSeconds = cfg.Bind(
+                "Chatter", "IdleSeconds", 45f,
+                new ConfigDescription(
+                    "Roughly how often a skeleton with nothing to do says something anyway. " +
+                    "Scattered by a quarter either way, so a squad summoned together does not " +
+                    "get bored together.",
+                    new AcceptableValueRange<float>(5f, 600f)));
+
+            SummonGreetingSeconds = cfg.Bind(
+                "Chatter", "SummonGreetingSeconds", 5f,
+                new ConfigDescription(
+                    "How new a skeleton has to be to greet you. Skeletons are rebuilt every " +
+                    "time you walk back into their area, so this is what separates being " +
+                    "raised from being reloaded. Only raise it if greetings are being missed " +
+                    "on a slow machine.",
+                    new AcceptableValueRange<float>(1f, 60f)));
+
+            HurtFraction = cfg.Bind(
+                "Chatter", "HurtFraction", 0.15f,
+                new ConfigDescription(
+                    "How big a hit has to be before a skeleton mentions it, as a share of its " +
+                    "own maximum health. At 0.15 it complains about anything taking a seventh " +
+                    "of it; at 0.01 it complains about everything.",
+                    new AcceptableValueRange<float>(0.01f, 1f)));
+
+            BigHitFraction = cfg.Bind(
+                "Chatter", "BigHitFraction", 0.35f,
+                new ConfigDescription(
+                    "How hard you have to hit something before the squad is impressed, as a " +
+                    "share of the victim's maximum health. Kills are handled separately, so " +
+                    "this is about the swing that did not quite finish the job.",
+                    new AcceptableValueRange<float>(0.01f, 1f)));
         }
     }
 }
