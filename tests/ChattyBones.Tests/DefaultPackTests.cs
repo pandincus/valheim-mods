@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using ChattyBones.Logic;
 
 namespace ChattyBones.Tests
@@ -165,6 +166,58 @@ namespace ChattyBones.Tests
                     }
                 }
             }
+        }
+
+        [Fact]
+        public void ThePackHeadersTokenGridMatchesWhatTheEventsActuallySupply()
+        {
+            // The grid in the pack header is the first thing a pack author reads, and
+            // it is a hand-copy of TokensFor - which is itself a hand-copy of fifteen
+            // call sites. Two hops from the truth is one too many, so at least pin the
+            // first: a row that promises a token the event never gets means lines that
+            // silently never fire, and the log says nothing about it.
+            Dictionary<string, string> rows = [];
+
+            foreach (string raw in DefaultPack.Yaml.Split('\n'))
+            {
+                Match match = Regex.Match(
+                    raw.TrimEnd('\r'),
+                    @"^#   (\w+)\s+.*?([T.])  ([C.])  ([W.])  ([K.])  ([D.])  ([S.])$");
+
+                if (match.Success)
+                {
+                    rows[match.Groups[1].Value] = string.Concat(
+                        match.Groups[2].Value, match.Groups[3].Value, match.Groups[4].Value,
+                        match.Groups[5].Value, match.Groups[6].Value, match.Groups[7].Value);
+                }
+            }
+
+            Assert.Equal(Enum.GetValues(typeof(ChatterEvent)).Length, rows.Count);
+
+            foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
+            {
+                LineTokens tokens = TokensFor(kind);
+
+                string expected = string.Concat(
+                    Mark('T', tokens.TryRender("{target}", out _)),
+                    Mark('C', tokens.TryRender("{companion}", out _)),
+                    Mark('W', tokens.TryRender("{weapon}", out _)),
+                    Mark('K', tokens.TryRender("{weapontype}", out _)),
+                    Mark('D', tokens.TryRender("{damage}", out _)),
+                    Mark('S', tokens.TryRender("{status}", out _)));
+
+                Assert.True(rows.ContainsKey(kind.ToString()), "No row in the pack header for " + kind + ".");
+                Assert.Equal(expected, rows[kind.ToString()]);
+            }
+        }
+
+        /// <summary>One cell of the grid.</summary>
+        /// <returns>The token's letter when it is supplied, a dot when it is not.</returns>
+        /// <param name="letter">The column's letter.</param>
+        /// <param name="supplied">Whether the event fills that token in.</param>
+        private static string Mark(char letter, bool supplied)
+        {
+            return supplied ? letter.ToString() : ".";
         }
 
         /// <summary>What the hooks actually supply for each event.</summary>

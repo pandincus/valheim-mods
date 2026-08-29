@@ -49,28 +49,36 @@
 #
 # EVENTS
 #
-# Seventeen things a skeleton reacts to, and what each one can tell you.
-# "hit tokens" means {weapon}, {weapontype} and {damage} together, and goes to the
-# events that catch a blow as it lands. "weapon" is the first two only: kills and
-# deaths know what the killer was holding, but not what the blow was made of.
+# Seventeen things a skeleton reacts to, and which tokens each one can fill in.
+# {name} and {player} are left out of the table because every event has them.
 #
-#   Summoned              you raised it                      -
-#   TargetAcquired        it picked something to attack      {target}
-#   Hurt                  something hit it                   hit tokens
-#   Buffed                it gained a helpful effect         {status}
-#   Afflicted             it caught fire, poison or worse    {status}
-#   Weather               rain, or water, or the swamp       {status}
-#   Killed                it killed something                {target}, weapon
-#   Died                  it died                            weapon
-#   Unsummoned            it timed out or strayed too far    -
-#   Idle                  nothing is happening               {companion}
-#   PlayerHurt            you took a hit                     hit tokens
-#   PlayerLandedABigHit   you hit something hard             {target}, hit tokens
-#   PlayerGotAKill        you killed something               {target}, weapon
-#   CompanionHurt         another skeleton took a hit        {companion}, hit tokens
-#   CompanionKilled       another skeleton got a kill        {companion} {target}, weapon
-#   CompanionDied         another skeleton died              {companion}
-#   CompanionSummoned     another skeleton was just raised   {companion}
+#     T {target}       W {weapon}        D {damage}
+#     C {companion}    K {weapontype}    S {status}
+#
+#                                                      T  C  W  K  D  S
+#   Summoned             you raised it                 .  .  .  .  .  .
+#   TargetAcquired       it picked something           T  .  .  .  .  .
+#   Hurt                 something hit it              .  .  W  K  D  .
+#   Buffed               it gained a helpful effect    .  .  .  .  .  S
+#   Afflicted            it caught fire or poison      .  .  .  .  .  S
+#   Weather              rain, water, or the swamp     .  .  .  .  .  S
+#   Killed               it killed something           T  .  W  K  .  .
+#   Died                 it died                       .  .  W  K  .  .
+#   Unsummoned           it timed out or strayed       .  .  .  .  .  .
+#   Idle                 nothing is happening          .  C  .  .  .  .
+#   PlayerHurt           you took a hit                .  .  W  K  D  .
+#   PlayerLandedABigHit  you hit something hard        T  .  W  K  D  .
+#   PlayerGotAKill       you killed something          T  .  W  K  .  .
+#   CompanionHurt        another skeleton was hit      .  C  W  K  D  .
+#   CompanionKilled      another skeleton got a kill   T  C  W  K  .  .
+#   CompanionDied        another skeleton died         .  C  .  .  .  .
+#   CompanionSummoned    another was just raised       .  C  .  .  .  .
+#
+# The D column is the one worth a second look. {damage} only reaches the events
+# that catch a blow as it lands, because that is the only moment the numbers
+# still exist - by the time a body is examined, the game has taken the fire and
+# poison off its last hit. So a near-miss can say "nice fire hit" and a kill
+# cannot. Kills and deaths get W and K from whatever the killer was holding.
 #
 # Idle's {companion} is null when a skeleton is out alone, so keep plain idle
 # lines too.
