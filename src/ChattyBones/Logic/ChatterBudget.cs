@@ -6,9 +6,8 @@ namespace ChattyBones.Logic
     /// Decides whether a skeleton is allowed to say something right now.
     /// </summary>
     /// <remarks>
-    /// This is what makes the mod bearable rather than what makes it funny. Five
-    /// skeletons all reacting to everything is an unreadable wall of text, so a line
-    /// has to get past four checks before anyone opens their mouth.
+    /// Five skeletons all reacting to everything is an unreadable wall of text, so
+    /// a line has to get past four checks before anyone opens their mouth.
     ///
     /// We decide *whether* someone speaks; <see cref="LineChooser"/> decides *what*.
     ///
@@ -26,10 +25,6 @@ namespace ChattyBones.Logic
         /// skeleton every ten seconds costs about 50KB - and dead skeletons are the
         /// cheap case, since they stop adding entries. The subject map is bounded by
         /// how many kinds of creature the game has.
-        ///
-        /// There was a Prune pass. It was dropped because trimming against the
-        /// *current* window meant raising the speaker cooldown mid-session was
-        /// silently ignored for anyone who had already spoken.
         /// </remarks>
         private readonly Dictionary<long, float> _lastSpokeBySpeaker = [];
 
@@ -189,13 +184,6 @@ namespace ChattyBones.Logic
             // An answer never lowers the bar. It is part of the moment it answers, so
             // the standing that has to be beaten stays the opener's - "oh no" is not a
             // weaker thing to interrupt than the death that prompted it.
-            //
-            // Assigning here unconditionally was a real fault, and a compounding one.
-            // Answering a Died (130) with a CompanionDied (105) dropped the bar to 105,
-            // so the next skeleton to die half a second later could preempt, open a
-            // fresh moment, be answered, drop the bar again - four deaths produced
-            // seven lines inside a second and a half. Exactly the pile-up the comment
-            // on this method claimed was impossible.
             int priority = PriorityOf(kind);
             if (Answers(kind) == null || priority > _lastPriority)
             {
@@ -280,14 +268,10 @@ namespace ChattyBones.Logic
         /// </returns>
         /// <param name="kind">The event to rank.</param>
         /// <remarks>
-        /// The gaps are wide so there is room to slot something in later without
-        /// renumbering everything. That did not survive first contact - promoting the
-        /// three outcome events above TargetAcquired needed more room than the gaps
-        /// had, so the whole thing was renumbered at once. Harmless, since only the
-        /// ordering is ever read, but it is the reason the numbers look freshly
-        /// spaced. No two events may share a rank - barging in needs a strictly
-        /// higher number, so a tie silently means neither can ever interrupt the
-        /// other. There is a test for that.
+        /// The gaps are wide so there is room to slot something in later. No two
+        /// events may share a rank - barging in needs a strictly higher number, so a
+        /// tie silently means neither can ever interrupt the other, and there is a
+        /// test for that.
         ///
         /// I have left this hard-coded rather than exposing it in the config. It is
         /// hard to describe to a player in a way they could act on, and getting it
@@ -314,12 +298,8 @@ namespace ChattyBones.Logic
                 ChatterEvent.Hurt => 100,
                 ChatterEvent.CompanionHurt => 90,
 
-                // Outcomes above intentions. These three sat below TargetAcquired at
-                // first, which sounds harmless and is not: a fight is usually over
-                // inside MinGapSeconds, so the kill could not preempt the announcement
-                // that preceded it and was dropped outright, while the next target
-                // acquisition sailed through at the higher rank. The result in the
-                // Black Forest was three "there's a greydwarf" and never a result.
+                // Outcomes above intentions, which they were not at first. See
+                // HowAFightEndedOutranksNoticingItStarted for what that cost.
                 ChatterEvent.PlayerGotAKill => 80,
                 ChatterEvent.Killed => 70,
                 ChatterEvent.CompanionKilled => 60,

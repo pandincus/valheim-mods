@@ -66,7 +66,7 @@ namespace ChattyBones
                 return;
             }
 
-            string name = Summons.NameOf(skeleton);
+            string name = Summons.NameOf(skeleton) ?? "It";
             Drew drew = Speech.Say(skeleton, line);
 
             args.Context.AddString(drew == Drew.Nothing
@@ -97,7 +97,7 @@ namespace ChattyBones
 
                 found++;
                 args.Context.AddString(
-                    Summons.NameOf(all[i])
+                    (Summons.NameOf(all[i]) ?? "(unnamed)")
                     + " - " + Mathf.RoundToInt(Vector3.Distance(me, all[i].transform.position)) + "m"
                     + " - " + PersonalityOf(all[i]));
             }

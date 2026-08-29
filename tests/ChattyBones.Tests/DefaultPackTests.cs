@@ -49,16 +49,28 @@ namespace ChattyBones.Tests
         [InlineData("boastful")]
         [InlineData("dutiful")]
         [InlineData("veteran")]
-        public void EveryPersonalityCanReactToEveryEvent(string personality)
+        public void EveryPersonalitySoundsLikeItselfSomewhere(string personality)
         {
+            // Asserting that a personality can react to every event proves nothing:
+            // TryGetGroup falls back to the shared group, which EveryEventHasSomething
+            // ToSay already covers, so it comes back true whatever the personality
+            // contains - including nothing at all. What is worth checking is that each
+            // one has lines of its own somewhere, or it is a name with no character.
             LinePack pack = DefaultPack.Build();
+            int own = 0;
 
             foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
             {
-                Assert.True(
-                    pack.TryGetGroup(personality, kind, out _),
-                    personality + " has nothing for " + kind + ", not even by fallback.");
+                _ = pack.TryGetGroup(LinePack.SharedPersonality, kind, out IReadOnlyList<string> shared);
+
+                if (pack.TryGetGroup(personality, kind, out IReadOnlyList<string> lines)
+                    && !ReferenceEquals(lines, shared))
+                {
+                    own++;
+                }
             }
+
+            Assert.True(own > 0, personality + " has no lines of its own for any event.");
         }
 
         [Fact]

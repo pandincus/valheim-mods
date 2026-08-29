@@ -62,9 +62,8 @@ namespace ChattyBones
         /// <param name="found">The nearest one, or null.</param>
         /// <remarks>
         /// Walks <c>Character.GetAllCharacters()</c>, which is every loaded creature.
-        /// Fine for a console command and much too slow for anything regular - when
-        /// the skeletons start reacting on their own they should keep a list of
-        /// themselves rather than have us search for them.
+        /// Fine for a console command you type once. Anything regular uses
+        /// <see cref="ChatterComponent.All"/> instead.
         /// </remarks>
         internal static bool TryFindNearest(Vector3 point, float maxDistance, out Character found)
         {
@@ -92,7 +91,13 @@ namespace ChattyBones
         }
 
         /// <summary>What to call this skeleton.</summary>
-        /// <returns>Its given name, or its creature name if it has not got one.</returns>
+        /// <returns>
+        /// Its given name, its creature name if it has not got one, or null when there
+        /// is nothing to ask - which is not the same as an empty string. LineTokens
+        /// refuses a template whose token has no value and renders one whose value is
+        /// blank, so returning "" here would put "Welcome to the party, ." on screen
+        /// instead of quietly picking another line.
+        /// </returns>
         /// <param name="character">One of ours.</param>
         /// <remarks>
         /// Skeletons arrive named and players can rename them, both of which live in
@@ -108,12 +113,12 @@ namespace ChattyBones
         {
             if (character == null)
             {
-                return string.Empty;
+                return null;
             }
 
             Tameable tameable = character.GetComponent<Tameable>();
 
-            return tameable == null ? string.Empty : tameable.GetHoverName();
+            return tameable == null ? null : tameable.GetHoverName();
         }
 
         /// <summary>The prefab hash of a creature.</summary>

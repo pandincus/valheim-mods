@@ -3,7 +3,7 @@
 ## Unreleased
 
 Summoned skeletons talk. They react to being raised, to picking a fight, to
-winning or losing one, to being hurt or healed, and to you doing any of the same
+winning or losing one, to being hurt or shielded, and to you doing any of the same
 — and they react to each other, by name.
 
 Fifteen things they notice, and a small built-in set of lines across four

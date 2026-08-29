@@ -126,17 +126,10 @@ namespace ChattyBones
                 return false;
             }
 
-            // The ownership test lives here rather than in each hook, because a Harmony
-            // postfix runs whichever way the patched method returned, and RPC_Damage
-            // bails out early on a non-owner while our postfix does not.
-            //
-            // I first justified this by saying a hit reaches every client who can see
-            // the skeleton, which is wrong - InvokeRPC routes to m_zdo.GetOwner() and
-            // nobody else, so RPC_Damage arrives in one place. The gate is still needed
-            // for the case RPC_Damage's own owner check exists to cover: ownership can
-            // move between the RPC being sent and it arriving. Worth correcting rather
-            // than leaving, because someone reading the old reason would find it false
-            // and delete the gate.
+            // A Harmony postfix runs whichever way the patched method returned, and
+            // RPC_Damage bails out early on a non-owner while ours does not. Ownership
+            // can also move between an RPC being sent and arriving, which is the case
+            // RPC_Damage's own owner check exists to cover.
             if (!speaker.IsOwned)
             {
                 return false;
@@ -148,42 +141,6 @@ namespace ChattyBones
                 return false;
             }
 
-            try
-            {
-                return Decide(speaker, character, kind, subject, targetName, companion, companionName);
-            }
-            catch (System.Exception e)
-            {
-                // The hooks call in from inside vanilla combat code, and one of them is
-                // a *prefix* on Character.Damage - which runs before the call that
-                // actually sends the damage RPC. An exception escaping there does not
-                // merely lose a line, it loses the player's blow, and looks like a game
-                // bug rather than ours. Speech.Say catches its own, but everything
-                // upstream of it here - name lookups, localisation, rendering a line -
-                // was running bare.
-                ChattyBonesPlugin.Log.LogWarning("ChattyBones could not work out what to say: " + e);
-                return false;
-            }
-        }
-
-        /// <summary>The body of <see cref="TrySpeak"/>, minus the guards and the catch.</summary>
-        /// <returns>True if a line was drawn.</returns>
-        /// <param name="speaker">Which of ours is reacting.</param>
-        /// <param name="character">Its Character, already checked.</param>
-        /// <param name="kind">What happened.</param>
-        /// <param name="subject">A prefab hash, or 0.</param>
-        /// <param name="targetName">Already localised, or null.</param>
-        /// <param name="companion">Another skeleton, or null.</param>
-        /// <param name="companionName">Its name when it may no longer exist to be asked.</param>
-        private static bool Decide(
-            ChatterComponent speaker,
-            Character character,
-            ChatterEvent kind,
-            int subject,
-            string targetName,
-            Character companion,
-            string companionName)
-        {
             long speakerId = speaker.SpeakerId;
             float now = Time.time;
 
@@ -256,8 +213,7 @@ namespace ChattyBones
                 return false;
             }
 
-            // Masked to stay positive. int.MaxValue is about four hours of asking at
-            // the sweep rate, and a negative remainder is a negative index.
+            // Masked to stay positive - a negative remainder is a negative index.
             int start = (_nextSpeaker++ & int.MaxValue) % count;
 
             for (int offset = 0; offset < count; offset++)
@@ -309,10 +265,21 @@ namespace ChattyBones
             float elapsed = SweepSeconds - _untilSweep;
             _untilSweep = SweepSeconds;
 
+            // Guarded per skeleton rather than around the loop, so one of them failing
+            // costs its own turn rather than the rest of the squad's. This is the only
+            // way into our code that is not a Harmony patch - the patches carry their
+            // own catch, for the same reason and with rather more at stake.
             List<ChatterComponent> squad = ChatterComponent.All;
             for (int i = 0; i < squad.Count; i++)
             {
-                squad[i].Sweep(elapsed);
+                try
+                {
+                    squad[i].Sweep(elapsed);
+                }
+                catch (System.Exception e)
+                {
+                    ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled watching a skeleton: " + e);
+                }
             }
         }
     }

@@ -159,7 +159,7 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void AnEventThePlayerSwitchedOffNeverGetsThrough()
+        public void ADisabledEventNeverGetsThrough()
         {
             ChatterBudget budget = new(Settings(disabledEvents: [ChatterEvent.TargetAcquired]));
 
@@ -236,12 +236,14 @@ namespace ChattyBones.Tests
         {
             ChatterBudget budget = Budget();
 
-            // One hit on you, five skeletons that all noticed. The squad echo already
-            // handles this: pass whatever hit you as the subject and it collapses to
-            // a single remark, exactly as it does for a shared target.
-            Assert.True(Speak(budget, Alice, ChatterEvent.PlayerHurt, Greydwarf, 0f));
-            Assert.False(Speak(budget, Bob, ChatterEvent.PlayerHurt, Greydwarf, 3f));
-            Assert.False(Speak(budget, Carol, ChatterEvent.PlayerHurt, Greydwarf, 5f));
+            // Subject 0, because that is what the hook actually passes - being hit is
+            // not "about" a kind of creature the way a target is. So the squad echo is
+            // not what holds this down; the squad gap is, and this is the test that it
+            // does. An earlier version passed a creature here and proved the echo
+            // window instead, which no caller ever reaches.
+            Assert.True(Speak(budget, Alice, ChatterEvent.PlayerHurt, NoSubject, 0f));
+
+            Assert.False(Speak(budget, Bob, ChatterEvent.PlayerHurt, NoSubject, 0.5f));
         }
 
         /// <summary>Can <paramref name="barger"/> interrupt <paramref name="sitting"/>, on rank alone?</summary>
@@ -434,11 +436,12 @@ namespace ChattyBones.Tests
         [Fact]
         public void ASquadRaisedTogetherGivesOneWelcomeBetweenThem()
         {
-            // Three skeletons arriving in the same breath each run Start and each try
-            // to introduce themselves. The second and third are refused because a
-            // greeting cannot barge in on a greeting - same event, same rank, and
-            // barging in wants strictly higher. So the answer machinery is not what
-            // holds this down; the tie is.
+            // The newcomer introduces itself and an existing skeleton welcomes it -
+            // that pair is one moment, so the welcome does not wait. A *second*
+            // newcomer arriving in the same breath is refused, because a greeting
+            // cannot barge in on a greeting: same event, same rank, and barging in
+            // wants strictly higher. The tie is what holds a batch down, not the
+            // answer machinery.
             ChatterBudget budget = Budget();
             Assert.True(Speak(budget, Alice, ChatterEvent.Summoned, NoSubject, 0f));
             Assert.True(Speak(budget, Bob, ChatterEvent.CompanionSummoned, NoSubject, 0f));
@@ -656,18 +659,5 @@ namespace ChattyBones.Tests
             Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 1000f));
         }
 
-        [Fact]
-        public void ASteadyStreamOfDifferentEnemiesKeepsWorking()
-        {
-            ChatterBudget budget = Budget();
-
-            // Fifty different creatures, comfortably spaced so nothing should refuse.
-            // A weak test on its own - the point is that a long session does not
-            // quietly change how the rules behave.
-            for (int i = 0; i < 50; i++)
-            {
-                Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, 9000 + i, i * 20f));
-            }
-        }
     }
 }

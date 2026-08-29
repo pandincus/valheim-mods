@@ -214,7 +214,7 @@ namespace ChattyBones
                 Vector3.up * 1.5f,
                 ModConfig.DialoguePanelCullDistance.Value,
                 ModConfig.DialoguePanelSeconds.Value,
-                Summons.NameOf(speaker),
+                Summons.NameOf(speaker) ?? string.Empty,
                 line,
                 large: false);
 

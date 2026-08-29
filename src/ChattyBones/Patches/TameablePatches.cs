@@ -1,3 +1,4 @@
+using System;
 using ChattyBones.Logic;
 using HarmonyLib;
 
@@ -10,24 +11,26 @@ namespace ChattyBones.Patches
     /// looking at and nothing without one ever is.
     ///
     /// The check is <see cref="Summons.IsSummoned"/>, which asks the prefab about
-    /// unsummon behaviour rather than reading s_follow. That distinction matters
-    /// more here than anywhere: s_follow is set by a routed RPC, so it is still
-    /// empty at Awake - a skeleton would fail the test at the exact moment it was
-    /// summoned and pass it on every zone reload afterwards.
+    /// unsummon behaviour rather than reading s_follow. See the remarks there.
     /// </remarks>
     [HarmonyPatch(typeof(Tameable), "Awake")]
     internal static class TameableAwakePatch
     {
         private static void Postfix(Tameable __instance)
         {
-            Character character = __instance.m_character;
-
-            if (!Summons.IsSummoned(character) || character.GetComponent<ChatterComponent>() != null)
+            try
             {
-                return;
-            }
+                Character character = __instance.m_character;
 
-            _ = character.gameObject.AddComponent<ChatterComponent>();
+                if (Summons.IsSummoned(character) && character.GetComponent<ChatterComponent>() == null)
+                {
+                    _ = character.gameObject.AddComponent<ChatterComponent>();
+                }
+            }
+            catch (Exception e)
+            {
+                ChattyBonesPlugin.Log.LogWarning("ChattyBones could not attach to a summon: " + e);
+            }
         }
     }
 
@@ -47,19 +50,20 @@ namespace ChattyBones.Patches
     {
         private static void Prefix(Tameable __instance)
         {
-            Character character = __instance.m_character;
-            if (character == null)
+            try
             {
-                return;
-            }
+                Character character = __instance.m_character;
+                ChatterComponent speaker = character == null ? null : character.GetComponent<ChatterComponent>();
 
-            ChatterComponent speaker = character.GetComponent<ChatterComponent>();
-            if (speaker == null)
+                if (speaker != null)
+                {
+                    _ = Chatter.TrySpeak(speaker, ChatterEvent.Unsummoned, subject: 0, targetName: null, companion: null);
+                }
+            }
+            catch (Exception e)
             {
-                return;
+                ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over an unsummon: " + e);
             }
-
-            _ = Chatter.TrySpeak(speaker, ChatterEvent.Unsummoned, subject: 0, targetName: null, companion: null);
         }
     }
 }

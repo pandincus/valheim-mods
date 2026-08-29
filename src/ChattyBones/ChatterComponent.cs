@@ -44,6 +44,9 @@ namespace ChattyBones
 
         private float _untilIdle;
 
+        /// <summary>When we last actually saw the target we are remembering.</summary>
+        private float _lastSawTargetAt = float.NegativeInfinity;
+
         /// <summary>The skeleton this is riding on.</summary>
         internal Character Character { get; private set; }
 
@@ -147,46 +150,39 @@ namespace ChattyBones
         /// more than a reference - by the time a creature is dead the game has often
         /// destroyed it and put a ragdoll in its place, so its name and prefab have to
         /// have been taken while it was still there.
+        ///
+        /// A target we were following going *away* is the kill signal, and it does not
+        /// only go away by becoming null. MonsterAI re-picks a target on its own timer,
+        /// so a skeleton in a pack often steps straight from the greydwarf it just
+        /// killed to the next one, and an earlier version that only watched for null
+        /// missed those kills entirely - roughly one in eight, and precisely in the
+        /// crowded fights where the squad has most to say.
         /// </remarks>
         internal void Sweep(float dt)
         {
             if (!IsOwned || _ai == null)
             {
+                Forget();
                 return;
             }
 
             Character target = _ai.GetTargetCreature();
 
+            if (_hadTarget && target != _lastTarget)
+            {
+                Settle();
+            }
+
             if (target != null)
             {
-                if (!_hadTarget || target != _lastTarget)
+                _lastSawTargetAt = Time.time;
+
+                if (!_hadTarget)
                 {
                     Remember(target);
                     _ = Chatter.TrySpeak(this, ChatterEvent.TargetAcquired, _lastTargetPrefab, _lastTargetName, companion: null);
                 }
 
-                _untilIdle = NextIdleGap();
-                return;
-            }
-
-            if (_hadTarget)
-            {
-                _hadTarget = false;
-
-                // A destroyed Character compares equal to null, so "gone" and "dead"
-                // arrive as the same answer here and both mean the fight is over. It
-                // could also have been a zone unloading rather than a kill, which is
-                // rare and costs at worst one undeserved boast.
-                //
-                // Health rather than IsDead(): Character.IsDead() is a flat false that
-                // only Player overrides, so asking a greydwarf always says no. It is
-                // the null that has been carrying this check.
-                if (_lastTarget == null || _lastTarget.GetHealth() <= 0f)
-                {
-                    Boast();
-                }
-
-                _lastTarget = null;
                 _untilIdle = NextIdleGap();
                 return;
             }
@@ -198,6 +194,51 @@ namespace ChattyBones
                 _ = Chatter.TrySpeak(this, ChatterEvent.Idle, subject: 0, targetName: null, companion: null);
             }
         }
+
+        /// <summary>Work out what became of the target we were following, and say so.</summary>
+        /// <remarks>
+        /// A destroyed Character compares equal to null, so "gone" and "dead" arrive as
+        /// the same answer and both mean the fight is over. Health rather than
+        /// IsDead(): Character.IsDead() is a flat false that only Player overrides, so
+        /// asking a greydwarf always says no, and it is the null that has been carrying
+        /// this check.
+        ///
+        /// The staleness test is what stops a boast about something killed ten minutes
+        /// ago. Sweeping can stop and restart - the master switch is advertised as safe
+        /// to flip mid-game, and ownership can move away and back - and without this,
+        /// the first sweep after the gap would find a target it last saw in another era
+        /// and gloat about it by name.
+        /// </remarks>
+        private void Settle()
+        {
+            bool fresh = Time.time - _lastSawTargetAt <= StaleTargetSeconds;
+
+            _hadTarget = false;
+
+            if (fresh && (_lastTarget == null || _lastTarget.GetHealth() <= 0f))
+            {
+                Boast();
+            }
+
+            _lastTarget = null;
+            _untilIdle = NextIdleGap();
+        }
+
+        /// <summary>Drop everything we were remembering about a fight.</summary>
+        private void Forget()
+        {
+            _hadTarget = false;
+            _lastTarget = null;
+            _lastTargetName = null;
+            _lastTargetPrefab = 0;
+        }
+
+        /// <summary>How out of date a target sighting can be and still be worth a remark.</summary>
+        /// <remarks>
+        /// Four sweeps. Long enough that an ordinary frame hitch does not lose a kill,
+        /// short enough that a gap in sweeping cannot bank one.
+        /// </remarks>
+        private const float StaleTargetSeconds = 1f;
 
         /// <summary>Mark the kill - by the one who made it, or by somebody standing nearby.</summary>
         /// <remarks>
@@ -243,8 +284,7 @@ namespace ChattyBones
         /// <param name="subject">The prefab hash the remark was about, or 0.</param>
         /// <remarks>
         /// Writing only. Nobody reads these yet, but the write belongs with the
-        /// speaking, and doing it here leaves the mirroring as a poll and a render
-        /// rather than a rework.
+        /// speaking.
         ///
         /// The counter is what makes a repeat visible: two identical remarks in a row
         /// would otherwise write the same int twice and a watcher polling the field

@@ -22,12 +22,28 @@ namespace ChattyBones.Patches
     {
         private static void Postfix(SEMan __instance, StatusEffect statusEffect, StatusEffect __result)
         {
-            if (!ModConfig.Enabled.Value || __result == null || __instance == null || statusEffect == null)
+            try
+            {
+                React(__instance, statusEffect, __result);
+            }
+            catch (System.Exception e)
+            {
+                ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over a status effect: " + e);
+            }
+        }
+
+        /// <summary>Have the skeleton thank you for the shield.</summary>
+        /// <param name="seman">The status effect manager the effect was added to.</param>
+        /// <param name="statusEffect">The effect being added.</param>
+        /// <param name="added">What AddStatusEffect returned. Null when nothing was added.</param>
+        private static void React(SEMan seman, StatusEffect statusEffect, StatusEffect added)
+        {
+            if (!ModConfig.Enabled.Value || added == null || seman == null || statusEffect == null)
             {
                 return;
             }
 
-            Character character = __instance.m_character;
+            Character character = seman.m_character;
             if (character == null)
             {
                 return;
