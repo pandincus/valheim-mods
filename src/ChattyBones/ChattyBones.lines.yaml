@@ -128,15 +128,15 @@
 #   - "\\o/"                       one backslash refuses the file
 #   - "shrug: ¯\\_(o_o)_/¯"        one backslash silently eats a character
 
-# Colour is by event rather than by personality. Who is speaking is already
+# Color is by event rather than by personality. Who is speaking is already
 # clear from the name plate and from the words; what is worth knowing at a
 # glance is whether something has gone wrong. A death cry in red reads as bad
 # news before you have read a syllable of it.
 #
-# Keep this short. Twelve colours on screen is the same unreadable wall that
+# Keep this short. Twelve colors on screen is the same unreadable wall that
 # having five skeletons talk at once would be, and pale, washed-out shades are
 # the ones that stay readable over grass, snow and lava alike.
-colours:
+colors:
 
   # Name as many or as few as you like. "normal" is the one every event uses
   # unless it is listed under events: below. Leave it out for Valheim's white.

@@ -10,7 +10,7 @@ namespace ChattyBones.Tests
     /// The pack is the one file this mod actively invites players to edit by hand,
     /// in a format where a stray space is a syntax error. So the tests worth reading
     /// here are the ones about what a mistake costs: a bad event name costs that
-    /// event, a bad colour costs that colour, and only a file with nothing usable in
+    /// event, a bad color costs that color, and only a file with nothing usable in
     /// it at all costs the pack.
     ///
     /// Line numbers are asserted on rather than just "something was reported",
@@ -411,7 +411,7 @@ namespace ChattyBones.Tests
             // Parses cleanly and is still useless. Handing this back would leave the
             // whole squad mute with nothing in the log to explain it.
             const string yaml = """
-                colours:
+                colors:
                   palette:
                     normal: "#E8E4DC"
                 """;
@@ -459,10 +459,10 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void ColoursReachTheEventsThatNameThem()
+        public void ColorsReachTheEventsThatNameThem()
         {
             const string yaml = """
-                colours:
+                colors:
                   palette:
                     normal: "#E8E4DC"
                     alarm: "#F0A9A0"
@@ -477,10 +477,10 @@ namespace ChattyBones.Tests
             Assert.True(PackReader.TryRead(yaml, out LinePack pack, out IReadOnlyList<string> problems));
             Assert.Empty(problems);
 
-            Assert.Equal("<color=#F0A9A0>", pack.Colours.TagFor(ChatterEvent.Died));
+            Assert.Equal("<color=#F0A9A0>", pack.Colors.TagFor(ChatterEvent.Died));
 
             // Everything the events list does not mention takes "normal".
-            Assert.Equal("<color=#E8E4DC>", pack.Colours.TagFor(ChatterEvent.Idle));
+            Assert.Equal("<color=#E8E4DC>", pack.Colors.TagFor(ChatterEvent.Idle));
         }
 
         [Fact]
@@ -490,7 +490,7 @@ namespace ChattyBones.Tests
             // section has been read, because a pack author is entitled to write these
             // two in whichever order reads better to them.
             const string yaml = """
-                colours:
+                colors:
                   events:
                     Died: alarm
                   palette:
@@ -503,11 +503,11 @@ namespace ChattyBones.Tests
 
             Assert.True(PackReader.TryRead(yaml, out LinePack pack, out IReadOnlyList<string> problems));
             Assert.Empty(problems);
-            Assert.Equal("<color=#F0A9A0>", pack.Colours.TagFor(ChatterEvent.Died));
+            Assert.Equal("<color=#F0A9A0>", pack.Colors.TagFor(ChatterEvent.Died));
         }
 
         [Fact]
-        public void NoColoursAtAllMeansTheGameDrawsItsUsualWhite()
+        public void NoColorsAtAllMeansTheGameDrawsItsUsualWhite()
         {
             const string yaml = """
                 lines:
@@ -517,14 +517,14 @@ namespace ChattyBones.Tests
                 """;
 
             Assert.True(PackReader.TryRead(yaml, out LinePack pack, out _));
-            Assert.Null(pack.Colours.TagFor(ChatterEvent.Idle));
+            Assert.Null(pack.Colors.TagFor(ChatterEvent.Idle));
         }
 
         [Fact]
-        public void ABadHexCodeCostsThatColourAndIsReported()
+        public void ABadHexCodeCostsThatColorAndIsReported()
         {
             const string yaml = """
-                colours:
+                colors:
                   palette:
                     normal: "#E8E4DC"
                     alarm: reddish
@@ -538,21 +538,21 @@ namespace ChattyBones.Tests
 
             Assert.True(PackReader.TryRead(yaml, out LinePack pack, out IReadOnlyList<string> problems));
 
-            // Two complaints, and both are useful: the colour is not a hex code, and
+            // Two complaints, and both are useful: the color is not a hex code, and
             // as a result the event asking for it cannot be given one.
             Assert.Equal(2, problems.Count);
             Assert.Contains("line 4", problems[0]);
             Assert.Contains("line 6", problems[1]);
 
             // Died falls back to normal rather than to nothing.
-            Assert.Equal("<color=#E8E4DC>", pack.Colours.TagFor(ChatterEvent.Died));
+            Assert.Equal("<color=#E8E4DC>", pack.Colors.TagFor(ChatterEvent.Died));
         }
 
         [Fact]
-        public void AColourNameNothingDefinesIsReported()
+        public void AColorNameNothingDefinesIsReported()
         {
             const string yaml = """
-                colours:
+                colors:
                   palette:
                     normal: "#E8E4DC"
                   events:
@@ -565,7 +565,7 @@ namespace ChattyBones.Tests
 
             Assert.True(PackReader.TryRead(yaml, out LinePack pack, out IReadOnlyList<string> problems));
             Assert.Contains("alrm", Assert.Single(problems));
-            Assert.Equal("<color=#E8E4DC>", pack.Colours.TagFor(ChatterEvent.Died));
+            Assert.Equal("<color=#E8E4DC>", pack.Colors.TagFor(ChatterEvent.Died));
         }
 
         [Fact]

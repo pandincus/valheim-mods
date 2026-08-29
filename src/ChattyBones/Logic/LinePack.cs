@@ -45,7 +45,7 @@ namespace ChattyBones.Logic
         /// <summary>Wrap what the builder assembled.</summary>
         /// <param name="byPersonality">Personality to event to lines. Every group non-empty.</param>
         /// <param name="personalities">The personality types, sorted, without the shared fallback.</param>
-        /// <param name="colours">What colour each event is drawn in.</param>
+        /// <param name="colors">What color each event is drawn in.</param>
         /// <remarks>
         /// Private, and reachable only from <see cref="Builder.Build"/>, which is
         /// what lets everything downstream stop checking for empty groups.
@@ -53,21 +53,21 @@ namespace ChattyBones.Logic
         private LinePack(
             Dictionary<string, Dictionary<ChatterEvent, string[]>> byPersonality,
             IReadOnlyList<string> personalities,
-            Palette colours)
+            Palette colors)
         {
             _byPersonality = byPersonality;
             Personalities = personalities;
-            Colours = colours;
+            Colors = colors;
         }
 
-        /// <summary>What colour each event is drawn in.</summary>
+        /// <summary>What color each event is drawn in.</summary>
         /// <remarks>
         /// Here rather than alongside, so that reloading a pack swaps the lines and
-        /// the colours in a single assignment. Two fields updated one after the other
+        /// the colors in a single assignment. Two fields updated one after the other
         /// would leave a window - short, but during a fight - where a skeleton says a
-        /// new line in the old pack's colour.
+        /// new line in the old pack's color.
         /// </remarks>
-        internal Palette Colours { get; }
+        internal Palette Colors { get; }
 
         /// <summary>Every personality in the pack, in a stable order.</summary>
         /// <remarks>
@@ -201,8 +201,8 @@ namespace ChattyBones.Logic
         internal sealed class Builder
         {
             private readonly Dictionary<string, Dictionary<ChatterEvent, List<string>>> _lines = [];
-            private readonly Dictionary<ChatterEvent, string> _colours = [];
-            private string _fallbackColour;
+            private readonly Dictionary<ChatterEvent, string> _colors = [];
+            private string _fallbackColor;
 
             /// <summary>Add some lines for one personality reacting to one event.</summary>
             /// <returns>This builder, so calls can be chained.</returns>
@@ -253,22 +253,22 @@ namespace ChattyBones.Logic
                 return this;
             }
 
-            /// <summary>Set the colour for events that do not name one of their own.</summary>
+            /// <summary>Set the color for events that do not name one of their own.</summary>
             /// <returns>This builder, so calls can be chained.</returns>
             /// <param name="hex">A hex code like #E8E4DC, or null for Valheim's usual white.</param>
-            internal Builder SetDefaultColour(string hex)
+            internal Builder SetDefaultColor(string hex)
             {
-                _fallbackColour = hex;
+                _fallbackColor = hex;
                 return this;
             }
 
-            /// <summary>Set the colour for one event.</summary>
+            /// <summary>Set the color for one event.</summary>
             /// <returns>This builder, so calls can be chained.</returns>
-            /// <param name="kind">The event to colour.</param>
+            /// <param name="kind">The event to color.</param>
             /// <param name="hex">A hex code like #F0A9A0.</param>
-            internal Builder SetColour(ChatterEvent kind, string hex)
+            internal Builder SetColor(ChatterEvent kind, string hex)
             {
-                _colours[kind] = hex;
+                _colors[kind] = hex;
                 return this;
             }
 
@@ -318,7 +318,7 @@ namespace ChattyBones.Logic
                 // every restart.
                 personalities.Sort(StringComparer.Ordinal);
 
-                return new LinePack(byPersonality, personalities, new Palette(_fallbackColour, _colours));
+                return new LinePack(byPersonality, personalities, new Palette(_fallbackColor, _colors));
             }
         }
     }

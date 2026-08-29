@@ -11,8 +11,8 @@ namespace ChattyBones.Logic
     /// </remarks>
     internal static class SpeechFormat
     {
-        /// <summary>Turn a configured hex code into an opening TextMeshPro colour tag.</summary>
-        /// <returns>False when there is no usable colour, which includes "none set".</returns>
+        /// <summary>Turn a configured hex code into an opening TextMeshPro color tag.</summary>
+        /// <returns>False when there is no usable color, which includes "none set".</returns>
         /// <param name="configured">Whatever the player typed. Null and blank are fine.</param>
         /// <param name="tag">The opening tag, or null.</param>
         /// <remarks>
@@ -21,7 +21,7 @@ namespace ChattyBones.Logic
         /// type by accident when you meant 3 or 6, and silently getting a
         /// transparent bubble is a worse outcome than being told the code is wrong.
         /// </remarks>
-        internal static bool TryColourTag(string configured, out string tag)
+        internal static bool TryColorTag(string configured, out string tag)
         {
             tag = null;
 
@@ -48,10 +48,10 @@ namespace ChattyBones.Logic
             return true;
         }
 
-        /// <summary>Wrap a line in a colour tag, if there is one.</summary>
+        /// <summary>Wrap a line in a color tag, if there is one.</summary>
         /// <returns>The wrapped line, or the original when there is no tag.</returns>
         /// <param name="line">The finished text.</param>
-        /// <param name="tag">An opening tag from <see cref="TryColourTag"/>, or null.</param>
+        /// <param name="tag">An opening tag from <see cref="TryColorTag"/>, or null.</param>
         /// <remarks>
         /// Angle brackets already in the line are left alone. That is deliberate:
         /// Valheim strips them from player chat in OnNewChatMessage, which we skip, so
@@ -95,20 +95,20 @@ namespace ChattyBones.Logic
         }
     }
 
-    /// <summary>Remembers the last colour we looked at, so a bad one is complained about once.</summary>
+    /// <summary>Remembers the last color we looked at, so a bad one is complained about once.</summary>
     /// <remarks>
     /// The player can retype the setting at any moment, and a bad hex code reaches
     /// the screen as literal text - "#GGG" appears over a skeleton's head as
     /// &lt;color=#GGG&gt;. So it wants a log line, and it wants exactly one of them
     /// rather than one per line spoken.
     /// </remarks>
-    internal sealed class ColourTagCache
+    internal sealed class ColorTagCache
     {
         private string _seen;
         private string _tag;
 
         /// <summary>Get the tag for a configured value, evaluating it only when it changes.</summary>
-        /// <returns>False when there is no colour to apply.</returns>
+        /// <returns>False when there is no color to apply.</returns>
         /// <param name="configured">The current setting.</param>
         /// <param name="tag">The opening tag, or null.</param>
         /// <param name="newlyRejected">True exactly once per bad value, so the caller can log it.</param>
@@ -125,7 +125,7 @@ namespace ChattyBones.Logic
             if (configured != _seen)
             {
                 _seen = configured;
-                newlyRejected = !SpeechFormat.TryColourTag(configured, out _tag);
+                newlyRejected = !SpeechFormat.TryColorTag(configured, out _tag);
             }
 
             tag = _tag;

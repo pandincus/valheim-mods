@@ -16,9 +16,9 @@ namespace ChattyBones.Tests
         [InlineData("C8FFC8", "<color=#C8FFC8>")]
         [InlineData("  #fff  ", "<color=#fff>")]
         [InlineData("#FFFFFFAA", "<color=#FFFFFFAA>")]
-        public void AHexCodeBecomesAColourTag(string configured, string expected)
+        public void AHexCodeBecomesAColorTag(string configured, string expected)
         {
-            Assert.True(SpeechFormat.TryColourTag(configured, out string tag));
+            Assert.True(SpeechFormat.TryColorTag(configured, out string tag));
             Assert.Equal(expected, tag);
         }
 
@@ -31,7 +31,7 @@ namespace ChattyBones.Tests
         [InlineData("#FFFFF")]
         public void AnythingElseIsRefused(string configured)
         {
-            Assert.False(SpeechFormat.TryColourTag(configured, out string tag));
+            Assert.False(SpeechFormat.TryColorTag(configured, out string tag));
             Assert.Null(tag);
         }
 
@@ -42,7 +42,7 @@ namespace ChattyBones.Tests
             // Four digits is easy to type when you meant three or six, and the result
             // would be a silently transparent bubble - much worse than being told the
             // code is wrong.
-            Assert.False(SpeechFormat.TryColourTag("#FFF8", out _));
+            Assert.False(SpeechFormat.TryColorTag("#FFF8", out _));
         }
 
         [Fact]
@@ -105,9 +105,9 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void ABadColourIsComplainedAboutOnceRatherThanEveryLine()
+        public void ABadColorIsComplainedAboutOnceRatherThanEveryLine()
         {
-            ColourTagCache cache = new();
+            ColorTagCache cache = new();
             int rejections = 0;
 
             for (int i = 0; i < 5; i++)
@@ -123,9 +123,9 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void ChangingTheColourReEvaluatesIt()
+        public void ChangingTheColorReEvaluatesIt()
         {
-            ColourTagCache cache = new();
+            ColorTagCache cache = new();
 
             Assert.True(cache.TryTagFor("#FFFFFF", out string white, out _));
             Assert.Equal("<color=#FFFFFF>", white);
@@ -144,7 +144,7 @@ namespace ChattyBones.Tests
             // bad again still only complains once. Pinning that deliberately, because
             // it is a consequence of the early return rather than something anyone
             // designed.
-            ColourTagCache cache = new();
+            ColorTagCache cache = new();
 
             _ = cache.TryTagFor("#GGGGGG", out _, out bool first);
             _ = cache.TryTagFor("", out _, out bool blank);
@@ -156,9 +156,9 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void NoColourSetIsNotARejection()
+        public void NoColorSetIsNotARejection()
         {
-            ColourTagCache cache = new();
+            ColorTagCache cache = new();
 
             Assert.False(cache.TryTagFor("", out string tag, out bool rejected));
             Assert.Null(tag);

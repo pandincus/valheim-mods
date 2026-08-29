@@ -11,7 +11,7 @@ namespace ChattyBones.Logic
     /// </summary>
     /// <remarks>
     /// Nothing throws, and a mistake costs only itself: an unknown event name costs
-    /// that event, a bad hex code costs that colour. Only a file with no lines at all
+    /// that event, a bad hex code costs that color. Only a file with no lines at all
     /// comes back false. The exception is getting the document to parse - a duplicate
     /// key takes the whole pack, and that is YamlDotNet's call rather than ours.
     ///
@@ -22,7 +22,7 @@ namespace ChattyBones.Logic
     internal static class PackReader
     {
         /// <summary>The palette entry every event uses unless it names another.</summary>
-        private const string DefaultColourName = "normal";
+        private const string DefaultColorName = "normal";
 
         /// <summary>Read a pack file.</summary>
         /// <returns>
@@ -103,13 +103,13 @@ namespace ChattyBones.Logic
                         ReadLines(section.Value, builder, found);
                         break;
 
-                    case "colours":
-                        ReadColours(section.Value, builder, found);
+                    case "colors":
+                        ReadColors(section.Value, builder, found);
                         break;
 
                     default:
                         found.Add(At(section.Key) + "'" + name + "' is not a section ChattyBones knows about. "
-                            + "The two it reads are 'lines' and 'colours'.");
+                            + "The two it reads are 'lines' and 'colors'.");
                         break;
                 }
             }
@@ -201,8 +201,8 @@ namespace ChattyBones.Logic
             }
         }
 
-        /// <summary>Read the colours section: a named palette, and which events use which.</summary>
-        /// <param name="node">Whatever followed 'colours:'.</param>
+        /// <summary>Read the colors section: a named palette, and which events use which.</summary>
+        /// <param name="node">Whatever followed 'colors:'.</param>
         /// <param name="builder">The pack being assembled.</param>
         /// <param name="problems">Where to record anything wrong.</param>
         /// <remarks>
@@ -210,11 +210,11 @@ namespace ChattyBones.Logic
         /// because it refers to palette entries by name and a pack author is entitled
         /// to write the two sections in either order.
         /// </remarks>
-        private static void ReadColours(YamlNode node, LinePack.Builder builder, List<string> problems)
+        private static void ReadColors(YamlNode node, LinePack.Builder builder, List<string> problems)
         {
             if (node is not YamlMappingNode map)
             {
-                problems.Add(At(node) + "'colours' should hold 'palette' and 'events'.");
+                problems.Add(At(node) + "'colors' should hold 'palette' and 'events'.");
                 return;
             }
 
@@ -236,24 +236,24 @@ namespace ChattyBones.Logic
                         break;
 
                     default:
-                        problems.Add(At(entry.Key) + "'" + name + "' does not belong under 'colours'. "
+                        problems.Add(At(entry.Key) + "'" + name + "' does not belong under 'colors'. "
                             + "The two that do are 'palette' and 'events'.");
                         break;
                 }
             }
 
-            if (palette.TryGetValue(DefaultColourName, out string fallback))
+            if (palette.TryGetValue(DefaultColorName, out string fallback))
             {
-                _ = builder.SetDefaultColour(fallback);
+                _ = builder.SetDefaultColor(fallback);
             }
 
             if (events != null)
             {
-                ReadEventColours(events, palette, builder, problems);
+                ReadEventColors(events, palette, builder, problems);
             }
         }
 
-        /// <summary>Read the named colours themselves.</summary>
+        /// <summary>Read the named colors themselves.</summary>
         /// <param name="node">Whatever followed 'palette:'.</param>
         /// <param name="palette">Filled in with name to hex code.</param>
         /// <param name="problems">Where to record anything wrong.</param>
@@ -270,9 +270,9 @@ namespace ChattyBones.Logic
                 string name = NameOf(entry.Key);
                 string hex = NameOf(entry.Value);
 
-                if (!SpeechFormat.TryColourTag(hex, out _))
+                if (!SpeechFormat.TryColorTag(hex, out _))
                 {
-                    problems.Add(At(entry.Value) + "'" + hex + "' is not a hex colour like \"#F0A9A0\", so '"
+                    problems.Add(At(entry.Value) + "'" + hex + "' is not a hex color like \"#F0A9A0\", so '"
                         + name + "' is being ignored.");
                     continue;
                 }
@@ -281,12 +281,12 @@ namespace ChattyBones.Logic
             }
         }
 
-        /// <summary>Read which events depart from the default colour.</summary>
+        /// <summary>Read which events depart from the default color.</summary>
         /// <param name="node">Whatever followed 'events:'.</param>
-        /// <param name="palette">The colours available, by name.</param>
+        /// <param name="palette">The colors available, by name.</param>
         /// <param name="builder">The pack being assembled.</param>
         /// <param name="problems">Where to record anything wrong.</param>
-        private static void ReadEventColours(
+        private static void ReadEventColors(
             YamlNode node,
             Dictionary<string, string> palette,
             LinePack.Builder builder,
@@ -294,29 +294,29 @@ namespace ChattyBones.Logic
         {
             if (node is not YamlMappingNode map)
             {
-                problems.Add(At(node) + "'events' under 'colours' should be a list of events with a colour name against each.");
+                problems.Add(At(node) + "'events' under 'colors' should be a list of events with a color name against each.");
                 return;
             }
 
             foreach (KeyValuePair<YamlNode, YamlNode> entry in map)
             {
                 string what = NameOf(entry.Key);
-                string colour = NameOf(entry.Value);
+                string color = NameOf(entry.Value);
 
                 if (!TryEvent(what, out ChatterEvent kind))
                 {
-                    problems.Add(At(entry.Key) + "'" + what + "' is not an event, so it cannot be given a colour.");
+                    problems.Add(At(entry.Key) + "'" + what + "' is not an event, so it cannot be given a color.");
                     continue;
                 }
 
-                if (!palette.TryGetValue(colour, out string hex))
+                if (!palette.TryGetValue(color, out string hex))
                 {
-                    problems.Add(At(entry.Value) + "'" + colour + "' is not one of the colours in the palette, so "
-                        + what + " is being left the usual colour.");
+                    problems.Add(At(entry.Value) + "'" + color + "' is not one of the colors in the palette, so "
+                        + what + " is being left the usual color.");
                     continue;
                 }
 
-                _ = builder.SetColour(kind, hex);
+                _ = builder.SetColor(kind, hex);
             }
         }
 
@@ -476,7 +476,7 @@ namespace ChattyBones.Logic
         /// <remarks>
         /// The IsDefined call is doing real work. Enum.TryParse on its own accepts a
         /// number as well as a name, so a pack with "3:" under events would quietly
-        /// colour Buffed rather than being told that 3 is not an event.
+        /// color Buffed rather than being told that 3 is not an event.
         ///
         /// Case sensitive, like the tokens are, so "summoned" is reported rather than
         /// accepted. Loose matching is cheap only while nothing else is nearly the

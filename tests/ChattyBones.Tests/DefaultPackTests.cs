@@ -33,16 +33,16 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void TheShippedPackColoursBadNewsAndGoodNewsDifferently()
+        public void TheShippedPackColorsBadNewsAndGoodNewsDifferently()
         {
-            // Three colours, and it matters that they are distinguishable rather than
+            // Three colors, and it matters that they are distinguishable rather than
             // what they are - the actual shades need eyeballing over grass and snow,
             // which no test is going to do.
             LinePack pack = DefaultPack.Build();
 
-            string normal = pack.Colours.TagFor(ChatterEvent.Idle);
-            string alarm = pack.Colours.TagFor(ChatterEvent.Died);
-            string triumph = pack.Colours.TagFor(ChatterEvent.Killed);
+            string normal = pack.Colors.TagFor(ChatterEvent.Idle);
+            string alarm = pack.Colors.TagFor(ChatterEvent.Died);
+            string triumph = pack.Colors.TagFor(ChatterEvent.Killed);
 
             Assert.NotNull(normal);
             Assert.NotEqual(normal, alarm);
@@ -51,8 +51,8 @@ namespace ChattyBones.Tests
 
             // The player being hurt is alarming for the same reason a skeleton dying
             // is, and the pack should not have to be read to know that.
-            Assert.Equal(alarm, pack.Colours.TagFor(ChatterEvent.PlayerHurt));
-            Assert.Equal(triumph, pack.Colours.TagFor(ChatterEvent.PlayerGotAKill));
+            Assert.Equal(alarm, pack.Colors.TagFor(ChatterEvent.PlayerHurt));
+            Assert.Equal(triumph, pack.Colors.TagFor(ChatterEvent.PlayerGotAKill));
         }
 
         [Fact]

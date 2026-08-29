@@ -45,7 +45,7 @@ namespace ChattyBones
         /// <summary>Name of the empty child we hang the text from.</summary>
         private const string AnchorName = "ChattyBonesSpeechAnchor";
 
-        private static readonly ColourTagCache Colours = new();
+        private static readonly ColorTagCache Colors = new();
 
         private static MethodInfo _addInworldText;
 
@@ -83,7 +83,7 @@ namespace ChattyBones
         /// <returns>Which of the two drew it, or <see cref="Drew.Nothing"/>.</returns>
         /// <param name="speaker">Whoever is talking.</param>
         /// <param name="line">Finished text, tokens already filled in.</param>
-        /// <param name="packTag">The colour the pack asked for this event, or null.</param>
+        /// <param name="packTag">The color the pack asked for this event, or null.</param>
         /// <remarks>
         /// This is the one door every caller comes through, which makes it the right
         /// place for the catch. The event hooks sit inside vanilla damage and status
@@ -108,11 +108,11 @@ namespace ChattyBones
 
             try
             {
-                string coloured = Colourise(line, packTag);
+                string colored = Colorize(line, packTag);
 
-                return ModConfig.Bubble.Value == BubbleStyle.FloatingText && TryFloatingText(chat, speaker, coloured)
+                return ModConfig.Bubble.Value == BubbleStyle.FloatingText && TryFloatingText(chat, speaker, colored)
                     ? Drew.FloatingText
-                    : ShowPanel(chat, speaker, coloured);
+                    : ShowPanel(chat, speaker, colored);
             }
             catch (Exception e)
             {
@@ -121,20 +121,20 @@ namespace ChattyBones
             }
         }
 
-        /// <summary>Wrap the line in a colour tag, if anything has an opinion about one.</summary>
+        /// <summary>Wrap the line in a color tag, if anything has an opinion about one.</summary>
         /// <returns>The line, possibly wrapped.</returns>
         /// <param name="line">The finished text.</param>
         /// <param name="packTag">What the pack wants for this event, or null.</param>
         /// <remarks>
         /// The config wins over the pack. A palette is a statement about a pack, so it
-        /// is the right default; TextColour is the escape hatch for somebody who wants
-        /// one colour and no argument.
+        /// is the right default; TextColor is the escape hatch for somebody who wants
+        /// one color and no argument.
         /// </remarks>
-        private static string Colourise(string line, string packTag)
+        private static string Colorize(string line, string packTag)
         {
-            string configured = ModConfig.TextColour.Value;
+            string configured = ModConfig.TextColor.Value;
 
-            if (Colours.TryTagFor(configured, out string tag, out bool newlyRejected))
+            if (Colors.TryTagFor(configured, out string tag, out bool newlyRejected))
             {
                 return SpeechFormat.Wrap(line, tag);
             }
@@ -142,7 +142,7 @@ namespace ChattyBones
             if (newlyRejected)
             {
                 ChattyBonesPlugin.Log.LogWarning(
-                    "TextColour '" + configured + "' is not a hex code like #C8FFC8, so it is being ignored.");
+                    "TextColor '" + configured + "' is not a hex code like #C8FFC8, so it is being ignored.");
             }
 
             return SpeechFormat.Wrap(line, packTag);
@@ -155,7 +155,7 @@ namespace ChattyBones
         /// <param name="line">Finished text.</param>
         /// <remarks>
         /// Talker.Type.Normal on purpose. Chat only prefixes the speaker's name for
-        /// Shout and Ping, and Shout also uppercases and colours the text yellow - so
+        /// Shout and Ping, and Shout also uppercases and colors the text yellow - so
         /// Normal gives a plain white line, which is what a bubble should be. A pack
         /// that wants the name in the text can use {name}.
         ///

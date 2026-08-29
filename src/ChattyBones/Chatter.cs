@@ -192,7 +192,7 @@ namespace ChattyBones
                 return false;
             }
 
-            if (Speech.Say(character, line, _pack.Colours.TagFor(kind)) == Drew.Nothing)
+            if (Speech.Say(character, line, _pack.Colors.TagFor(kind)) == Drew.Nothing)
             {
                 Trace(speaker, kind, "had \"" + line + "\" but nothing was drawn");
                 return false;

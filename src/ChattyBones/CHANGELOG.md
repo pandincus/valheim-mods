@@ -18,10 +18,10 @@ alongside and refreshed each launch, so there is always something known-good to
 compare against. The set of lines that comes with it is still thin; the point of
 this release is that replacing it is a text editor away.
 
-Lines are coloured by what happened rather than by who is speaking, so a death
+Lines are colored by what happened rather than by who is speaking, so a death
 cry reads as bad news before you have read a word of it. The palette is part of
-the pack. `TextColour` in the config still overrides the lot if you would rather
-have one colour and no argument.
+the pack. `TextColor` in the config still overrides the lot if you would rather
+have one color and no argument.
 
 How talkative they are is configurable. The squad stays quiet for a moment after
 any one of them speaks, an individual waits rather longer, and one remark about a

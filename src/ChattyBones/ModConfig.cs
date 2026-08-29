@@ -35,7 +35,7 @@ namespace ChattyBones
         internal static ConfigEntry<float> DialoguePanelSeconds;
         internal static ConfigEntry<float> DialoguePanelCullDistance;
         internal static ConfigEntry<float> TextHeight;
-        internal static ConfigEntry<string> TextColour;
+        internal static ConfigEntry<string> TextColor;
 
         internal static ConfigEntry<float> MinGapSeconds;
         internal static ConfigEntry<float> PreemptGapSeconds;
@@ -100,11 +100,11 @@ namespace ChattyBones
                     "player's chat, which lands right on the name.",
                     new AcceptableValueRange<float>(0f, 2f)));
 
-            TextColour = cfg.Bind(
-                "Appearance", "TextColour", "",
-                "One colour for everything the skeletons say, as a hex code like #C8FFC8. " +
+            TextColor = cfg.Bind(
+                "Appearance", "TextColor", "",
+                "One color for everything the skeletons say, as a hex code like #C8FFC8. " +
                 "Leave it empty - which is the default - and the line pack decides " +
-                "instead, which is usually what you want: packs colour by event, so a " +
+                "instead, which is usually what you want: packs color by event, so a " +
                 "death cry reads as bad news before you have read a word of it. Set this " +
                 "to override the pack entirely. Accepts #RGB, #RRGGBB and #RRGGBBAA, and " +
                 "anything that is not a hex code is ignored with a note in the log.");

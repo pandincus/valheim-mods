@@ -42,7 +42,7 @@ your skeletons keep using the last version that worked and the reason, with a
 line number, goes to the BepInEx log.
 
 The file explains itself: which events exist, which tokens each one can fill in,
-and how the personalities and the colours work. A second file next to it,
+and how the personalities and the colors work. A second file next to it,
 `ChattyBones.lines.default.yaml`, is refreshed on every launch with exactly what
 the mod shipped with — so there is always a known-good copy to compare against or
 start over from.
@@ -73,7 +73,7 @@ hear the same skeletons say the same things.
 | `IdleSeconds` | `45` | Roughly how often a skeleton with nothing to do says something anyway. |
 | `HurtFraction` | `0.15` | How big a hit has to be before it is worth mentioning, as a share of the victim's health. Lower it if you are well armoured for where you are. |
 | `TextHeight` | `0.3` | How far above the head the line sits, in metres. |
-| `TextColour` | *(empty)* | One colour for everything, as a hex code like `#C8FFC8`. Empty — the default — lets the pack colour by event instead. |
+| `TextColor` | *(empty)* | One color for everything, as a hex code like `#C8FFC8`. Empty — the default — lets the pack color by event instead. |
 
 There are a few more; ConfigurationManager lists them all with descriptions.
 
