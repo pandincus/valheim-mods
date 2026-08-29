@@ -14,8 +14,8 @@ namespace ChattyBones
     ///
     /// One of these goes on every summon on every client, but only the ZDO's owner
     /// decides anything: it is the only machine where the AI is running, so it is the
-    /// only one that can see a target being picked. The rest are here for Phase 6,
-    /// which will have them read what the owner left in the ZDO and draw that instead.
+    /// only one that can see a target being picked. The rest are here so that another
+    /// client can read what the owner left in the ZDO and draw that instead.
     /// <see cref="IsOwned"/> is the line between the two.
     /// </remarks>
     internal sealed class ChatterComponent : MonoBehaviour
@@ -164,7 +164,11 @@ namespace ChattyBones
                 // arrive as the same answer here and both mean the fight is over. It
                 // could also have been a zone unloading rather than a kill, which is
                 // rare and costs at worst one undeserved boast.
-                if (_lastTarget == null || _lastTarget.IsDead())
+                //
+                // Health rather than IsDead(): Character.IsDead() is a flat false that
+                // only Player overrides, so asking a greydwarf always says no. It is
+                // the null that has been carrying this check.
+                if (_lastTarget == null || _lastTarget.GetHealth() <= 0f)
                 {
                     Boast();
                 }
@@ -225,9 +229,9 @@ namespace ChattyBones
         /// <param name="lineRef">Which line, in the form that survives a different pack.</param>
         /// <param name="subject">The prefab hash the remark was about, or 0.</param>
         /// <remarks>
-        /// Writing only. Nobody reads these yet - mirroring them onto other players'
-        /// screens is Phase 6 - but the write belongs with the speaking, and doing it
-        /// here means Phase 6 is a poll and a render rather than a rework.
+        /// Writing only. Nobody reads these yet, but the write belongs with the
+        /// speaking, and doing it here leaves the mirroring as a poll and a render
+        /// rather than a rework.
         ///
         /// The counter is what makes a repeat visible: two identical remarks in a row
         /// would otherwise write the same int twice and a watcher polling the field
@@ -296,17 +300,9 @@ namespace ChattyBones
         /// <summary>Are we the client that gets to decide what this skeleton says?</summary>
         /// <returns>True on the owner of a live skeleton.</returns>
         /// <remarks>
-        /// Every client attaches one of these to every summon it can see, which is
-        /// what Phase 6 will need in order to draw somebody else's skeleton talking.
-        /// Only one of those clients may actually decide, though, and this is the
-        /// test for which.
-        ///
-        /// Worth being clear about why the hooks cannot be trusted to check this
-        /// themselves. Character.RPC_Damage returns early on a non-owner, but a
-        /// Harmony postfix runs regardless of which way the method left - so on a
-        /// four-player server, one skeleton getting hit reaches this code four times.
-        /// Three of those must come to nothing, and <see cref="Chatter.TrySpeak"/>
-        /// asks here rather than leaving it to each hook to remember.
+        /// Every client attaches one of these to every summon it can see, so that
+        /// another client can later draw somebody else's skeleton talking. Only one of
+        /// them may actually decide, and this is the test for which.
         /// </remarks>
         internal bool IsOwned => Character != null && _view != null && _view.IsValid() && _view.IsOwner();
 

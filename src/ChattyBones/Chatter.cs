@@ -94,6 +94,10 @@ namespace ChattyBones
         /// while there is still something to take it from.
         /// </param>
         /// <param name="companion">Another of your skeletons, for lines about each other.</param>
+        /// <param name="companionName">
+        /// The companion's name, already resolved, for when it is not around to be
+        /// asked any more. Wins over <paramref name="companion"/> when supplied.
+        /// </param>
         /// <remarks>
         /// Three ways to come back false, and all three are ordinary: the budget said
         /// no, the pack had nothing sayable, or the world is not in a state to draw.
@@ -114,7 +118,8 @@ namespace ChattyBones
             ChatterEvent kind,
             int subject,
             string targetName,
-            Character companion)
+            Character companion,
+            string companionName = null)
         {
             if (!ModConfig.Enabled.Value || speaker == null || _budget == null)
             {
@@ -122,10 +127,16 @@ namespace ChattyBones
             }
 
             // The ownership test lives here rather than in each hook, because a Harmony
-            // postfix runs whichever way the patched method returned. RPC_Damage bails
-            // out early on a non-owner, but our postfix does not - so on a shared world
-            // one skeleton being hit reaches this code once per player who can see it,
-            // and all but one of those has to come to nothing.
+            // postfix runs whichever way the patched method returned, and RPC_Damage
+            // bails out early on a non-owner while our postfix does not.
+            //
+            // I first justified this by saying a hit reaches every client who can see
+            // the skeleton, which is wrong - InvokeRPC routes to m_zdo.GetOwner() and
+            // nobody else, so RPC_Damage arrives in one place. The gate is still needed
+            // for the case RPC_Damage's own owner check exists to cover: ownership can
+            // move between the RPC being sent and it arriving. Worth correcting rather
+            // than leaving, because someone reading the old reason would find it false
+            // and delete the gate.
             if (!speaker.IsOwned)
             {
                 return false;
@@ -137,6 +148,42 @@ namespace ChattyBones
                 return false;
             }
 
+            try
+            {
+                return Decide(speaker, character, kind, subject, targetName, companion, companionName);
+            }
+            catch (System.Exception e)
+            {
+                // The hooks call in from inside vanilla combat code, and one of them is
+                // a *prefix* on Character.Damage - which runs before the call that
+                // actually sends the damage RPC. An exception escaping there does not
+                // merely lose a line, it loses the player's blow, and looks like a game
+                // bug rather than ours. Speech.Say catches its own, but everything
+                // upstream of it here - name lookups, localisation, rendering a line -
+                // was running bare.
+                ChattyBonesPlugin.Log.LogWarning("ChattyBones could not work out what to say: " + e);
+                return false;
+            }
+        }
+
+        /// <summary>The body of <see cref="TrySpeak"/>, minus the guards and the catch.</summary>
+        /// <returns>True if a line was drawn.</returns>
+        /// <param name="speaker">Which of ours is reacting.</param>
+        /// <param name="character">Its Character, already checked.</param>
+        /// <param name="kind">What happened.</param>
+        /// <param name="subject">A prefab hash, or 0.</param>
+        /// <param name="targetName">Already localised, or null.</param>
+        /// <param name="companion">Another skeleton, or null.</param>
+        /// <param name="companionName">Its name when it may no longer exist to be asked.</param>
+        private static bool Decide(
+            ChatterComponent speaker,
+            Character character,
+            ChatterEvent kind,
+            int subject,
+            string targetName,
+            Character companion,
+            string companionName)
+        {
             long speakerId = speaker.SpeakerId;
             float now = Time.time;
 
@@ -147,11 +194,15 @@ namespace ChattyBones
 
             // Built only once the budget has said yes. Summons.NameOf costs two ZDO
             // reads and a filter pass, and the refusal path is much the busier one.
+            //
+            // companionName wins when supplied, for a companion that is not around to
+            // be asked any more - a skeleton being mourned is destroyed moments later,
+            // so its name has to be taken while it is still standing.
             LineTokens tokens = new(
                 target: targetName,
                 player: Player.m_localPlayer == null ? null : Player.m_localPlayer.GetPlayerName(),
                 name: Summons.NameOf(character),
-                companion: companion == null ? null : Summons.NameOf(companion));
+                companion: companionName ?? (companion == null ? null : Summons.NameOf(companion)));
 
             if (!_chooser.TryChoose(_pack, speaker.Personality, kind, tokens, _random, out int lineRef, out string line))
             {
@@ -174,7 +225,8 @@ namespace ChattyBones
         /// <param name="kind">What happened.</param>
         /// <param name="subject">A prefab hash, or 0.</param>
         /// <param name="targetName">Already localised, or null.</param>
-        /// <param name="companion">The skeleton the remark is about, for CompanionHurt. Never the speaker.</param>
+        /// <param name="companion">The skeleton the remark is about. Never the speaker - it is excluded by reference.</param>
+        /// <param name="companionName">Its name, already resolved, when it may no longer exist to be asked.</param>
         /// <remarks>
         /// Used by the events that happen to you or to the world rather than to one
         /// particular skeleton - you took a hit, you landed one, somebody's colleague
@@ -190,7 +242,12 @@ namespace ChattyBones
         /// refusal, the skeleton you summoned first would do a noticeably large share
         /// of the talking.
         /// </remarks>
-        internal static bool SpeakAny(ChatterEvent kind, int subject, string targetName, Character companion)
+        internal static bool SpeakAny(
+            ChatterEvent kind,
+            int subject,
+            string targetName,
+            Character companion,
+            string companionName = null)
         {
             List<ChatterComponent> squad = ChatterComponent.All;
             int count = squad.Count;
@@ -213,7 +270,7 @@ namespace ChattyBones
                     continue;
                 }
 
-                if (TrySpeak(speaker, kind, subject, targetName, companion))
+                if (TrySpeak(speaker, kind, subject, targetName, companion, companionName))
                 {
                     return true;
                 }

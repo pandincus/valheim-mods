@@ -98,7 +98,7 @@ namespace ChattyBones.Tests
         ///
         /// Target is only there when the event is about a creature, which rules out the
         /// ones that are about the skeleton itself or about you. Companion is narrower
-        /// still - the two events where one skeleton is reacting to another - though
+        /// still - the three events where one skeleton is reacting to another - though
         /// supplying it on Idle so they can rib each other is the best content idea
         /// anyone has had for this mod.
         ///
@@ -113,7 +113,9 @@ namespace ChattyBones.Tests
                 or ChatterEvent.PlayerLandedABigHit
                 or ChatterEvent.PlayerGotAKill;
 
-            bool hasCompanion = kind is ChatterEvent.CompanionHurt or ChatterEvent.CompanionKilled;
+            bool hasCompanion = kind is ChatterEvent.CompanionHurt
+                or ChatterEvent.CompanionKilled
+                or ChatterEvent.CompanionDied;
 
             return new LineTokens(
                 target: hasTarget ? "Greydwarf" : null,

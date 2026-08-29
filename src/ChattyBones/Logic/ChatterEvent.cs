@@ -110,5 +110,15 @@ namespace ChattyBones.Logic
         /// would disagree about what they had just been told.
         /// </remarks>
         CompanionKilled,
+
+        /// <summary>Another of your skeletons just died.</summary>
+        /// <remarks>
+        /// Unlike the two above, this does not wait for the fallen one to fail to
+        /// speak. It answers the death cry rather than covering for it - see
+        /// <see cref="ChatterBudget.Answers"/> - so "Bugger." and "Oh no, {companion}!"
+        /// land together, from two skeletons standing apart, and read as one moment
+        /// rather than two remarks.
+        /// </remarks>
+        CompanionDied,
     }
 }

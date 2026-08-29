@@ -44,6 +44,25 @@ namespace ChattyBones.Logic
         private float _lastSpokeAt = float.NegativeInfinity;
         private int _lastPriority = int.MinValue;
 
+        /// <summary>What the squad is currently talking about, and whether anyone has answered.</summary>
+        /// <remarks>
+        /// The gaps space out *subjects of conversation*, not utterances. One event
+        /// opens a moment, and an event that answers that moment is the second half of
+        /// it rather than a new interruption - so it does not wait, in the same way
+        /// that you do not pause before saying "oh no" when somebody drops something.
+        /// </remarks>
+        private ChatterEvent _momentKind;
+        private float _momentAt = float.NegativeInfinity;
+        private bool _momentAnswered;
+
+        /// <summary>How long an answer stays part of the moment it is answering.</summary>
+        /// <remarks>
+        /// Answers are raised in the same frame as the thing they answer, so this is
+        /// almost always zero. A second rather than nothing, so that answering from the
+        /// next sweep instead would still count.
+        /// </remarks>
+        private const float AnswerWindowSeconds = 1f;
+
         /// <summary>Build a budget over the given settings.</summary>
         /// <param name="settings">The starting settings. See <see cref="Settings"/>.</param>
         internal ChatterBudget(ChatterSettings settings)
@@ -124,10 +143,16 @@ namespace ChattyBones.Logic
                 return false;
             }
 
-            if (_lastSpokeBySpeaker.TryGetValue(speakerId, out float spokeAt)
+            if (!IsTerminal(kind)
+                && _lastSpokeBySpeaker.TryGetValue(speakerId, out float spokeAt)
                 && now - spokeAt < settings.SpeakerCooldownSeconds)
             {
                 return false;
+            }
+
+            if (IsAnsweringTheMoment(kind, now))
+            {
+                return true;
             }
 
             float sinceAnyone = now - _lastSpokeAt;
@@ -159,13 +184,82 @@ namespace ChattyBones.Logic
         internal void Commit(long speakerId, ChatterEvent kind, int subject, float now)
         {
             _lastSpokeAt = now;
-            _lastPriority = PriorityOf(kind);
             _lastSpokeBySpeaker[speakerId] = now;
+
+            // An answer never lowers the bar. It is part of the moment it answers, so
+            // the standing that has to be beaten stays the opener's - "oh no" is not a
+            // weaker thing to interrupt than the death that prompted it.
+            //
+            // Assigning here unconditionally was a real fault, and a compounding one.
+            // Answering a Died (130) with a CompanionDied (105) dropped the bar to 105,
+            // so the next skeleton to die half a second later could preempt, open a
+            // fresh moment, be answered, drop the bar again - four deaths produced
+            // seven lines inside a second and a half. Exactly the pile-up the comment
+            // on this method claimed was impossible.
+            int priority = PriorityOf(kind);
+            if (Answers(kind) == null || priority > _lastPriority)
+            {
+                _lastPriority = priority;
+            }
 
             if (subject != 0)
             {
                 _lastRemarkBySubject[SubjectKey(kind, subject)] = now;
             }
+
+            if (Answers(kind) == null)
+            {
+                _momentKind = kind;
+                _momentAt = now;
+                _momentAnswered = false;
+            }
+            else
+            {
+                // One answer to a moment, so a squad wipe is still one exchange rather
+                // than four skeletons all saying "oh no" over each other.
+                _momentAnswered = true;
+            }
+        }
+
+        /// <summary>Is this claim the second half of what the squad is already saying?</summary>
+        /// <returns>True if it answers the moment in progress, and nobody has answered yet.</returns>
+        /// <param name="kind">The event being claimed.</param>
+        /// <param name="now">The game clock.</param>
+        private bool IsAnsweringTheMoment(ChatterEvent kind, float now)
+        {
+            return !_momentAnswered
+                && Answers(kind) is ChatterEvent subject
+                && subject.Equals(_momentKind)
+                && now - _momentAt <= AnswerWindowSeconds;
+        }
+
+        /// <summary>Which event, if any, this one is a reply to.</summary>
+        /// <returns>The event answered, or null when this starts a subject of its own.</returns>
+        /// <param name="kind">The event to look up.</param>
+        /// <remarks>
+        /// An answer skips the squad gap and the preempt gap, because it is not a
+        /// second remark - it is the rest of the first one. Everything else still
+        /// applies, and the speaker cooldown in particular does: whoever answers
+        /// should be a skeleton that has been quiet, not the one that has been
+        /// narrating all fight.
+        ///
+        /// CompanionHurt and CompanionKilled are deliberately not here. They *cover*
+        /// for a subject that could not speak rather than replying to one that did, so
+        /// nothing was said and there is no gap to skip - that is done at the call
+        /// site, by trying the subject first and the squad second. NOTES-ChattyBones.md
+        /// has why promoting them is a content decision rather than a free one.
+        /// </remarks>
+        private static ChatterEvent? Answers(ChatterEvent kind)
+        {
+            // A plain if rather than a switch expression: a switch over one interesting
+            // case and thirteen nulls trips IDE0072, which wants every event spelled
+            // out to be satisfied.
+            if (kind == ChatterEvent.CompanionDied)
+            {
+                return ChatterEvent.Died;
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -205,6 +299,10 @@ namespace ChattyBones.Logic
                 // chewed on and a skeleton is too, the one worth hearing about is you.
                 ChatterEvent.PlayerHurt => 110,
 
+                // Above Hurt, because dying beats being wounded; below PlayerHurt for
+                // the same reason Hurt is.
+                ChatterEvent.CompanionDied => 105,
+
                 ChatterEvent.Hurt => 100,
                 ChatterEvent.CompanionHurt => 90,
 
@@ -230,6 +328,22 @@ namespace ChattyBones.Logic
                 // merely quiet rather than a crash mid-fight.
                 _ => 0,
             };
+        }
+
+        /// <summary>Is this the last thing this skeleton will ever say?</summary>
+        /// <returns>True for the two events a skeleton only ever reaches once, on its way out.</returns>
+        /// <param name="kind">The event being claimed.</param>
+        /// <remarks>
+        /// These skip the speaker cooldown, because the cooldown is forward-looking:
+        /// it rations how often one skeleton speaks *next*, so a single loud one does
+        /// not carry the squad. A dying skeleton has no next, and holding back its
+        /// last words protects a budget it will never spend.
+        ///
+        /// Nothing else is waived - the gaps still apply, and Commit still records it.
+        /// </remarks>
+        private static bool IsTerminal(ChatterEvent kind)
+        {
+            return kind is ChatterEvent.Died or ChatterEvent.Unsummoned;
         }
 
         /// <summary>Pack an event and its subject into a single dictionary key.</summary>

@@ -33,14 +33,14 @@ namespace ChattyBones.Patches
 
     /// <summary>Lets a skeleton say something on its way out.</summary>
     /// <remarks>
-    /// A prefix rather than a postfix, because RPC_UnSummon destroys the GameObject
-    /// on the owner and a line drawn after that has nothing left to hang on.
+    /// A prefix rather than a postfix: RPC_UnSummon destroys the GameObject, and we
+    /// want the skeleton still standing when we ask it for its name and its head.
     ///
-    /// It is only half a win even so: the floating text is parented to the skeleton,
-    /// so on the owner's screen the parting line goes down with it and is visible
-    /// for a frame at best. Other clients keep the object a moment longer and do
-    /// rather better. Making this actually readable needs the text to outlive its
-    /// speaker, which is a change to <see cref="Speech"/> rather than to the hook.
+    /// The line then outlives it, which I had assumed it would not. Chat keeps the
+    /// position handed to AddInworldText and falls back to it the moment the object
+    /// the text was anchored to stops existing, so a parting line hangs in the air
+    /// where the skeleton was and drifts gently upward for the rest of its five
+    /// seconds. See <see cref="Speech"/> for the rest of that.
     /// </remarks>
     [HarmonyPatch(typeof(Tameable), "RPC_UnSummon")]
     internal static class TameableUnSummonPatch

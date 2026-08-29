@@ -4,19 +4,17 @@ namespace ChattyBones.Logic
     /// The lines the mod ships with, so a fresh install has something to say.
     /// </summary>
     /// <remarks>
-    /// Deliberately thin. Phase 5 replaces this with a YAML file that is written
-    /// properly, and the job here is only to give every hook something to draw so
-    /// that a misfiring event looks like a misfiring event rather than an empty
-    /// pack.
+    /// Deliberately thin, and meant to be replaced by a hand-written pack. The job
+    /// here is to give every hook something to draw, so that a misfiring event looks
+    /// like a misfiring event rather than an empty pack.
     ///
     /// Most of it sits under <see cref="LinePack.SharedPersonality"/>. The four
-    /// personalities each get lines only where the difference actually reads -
-    /// meeting you, picking a fight, getting hurt, winning one, and standing about.
-    /// A cowardly skeleton and a boastful one being interchangeable on
+    /// personalities get their own lines only where the difference actually reads. A
+    /// cowardly skeleton and a boastful one being interchangeable on
     /// <see cref="ChatterEvent.Buffed"/> is not worth four near-identical lines.
     ///
     /// Every event has at least one line in the shared group, which is what makes
-    /// "nobody said anything" mean something during Phase 4 testing.
+    /// "nobody said anything" mean something.
     /// </remarks>
     internal static class DefaultPack
     {
@@ -25,7 +23,7 @@ namespace ChattyBones.Logic
         /// <remarks>
         /// Built fresh each call rather than cached in a static. It happens once at
         /// startup, and a mutable static holding the pack is exactly the thing that
-        /// gets awkward when Phase 5 starts reloading the file on the fly.
+        /// gets awkward once a pack can be reloaded from disk on the fly.
         /// </remarks>
         internal static LinePack Build()
         {
@@ -56,7 +54,8 @@ namespace ChattyBones.Logic
                 .Add(C, ChatterEvent.PlayerLandedABigHit, "Ooooh.", "Did you see that?", "Lovely swing, {player}.")
                 .Add(C, ChatterEvent.PlayerGotAKill, "Got him!", "Nice one, {player}.")
                 .Add(C, ChatterEvent.CompanionHurt, "{companion}!", "They're on {companion}!", "Hang on, {companion}!")
-                .Add(C, ChatterEvent.CompanionKilled, "Nice one, {companion}!", "{companion} got the {target}.", "Show-off.");
+                .Add(C, ChatterEvent.CompanionKilled, "Leave some for me, {companion}.", "{companion} got the {target}.", "Show-off.")
+                .Add(C, ChatterEvent.CompanionDied, "Oh no, {companion}!", "{companion}! Get up!", "They got {companion}.");
         }
 
         /// <summary>Would rather be somewhere else.</summary>
@@ -67,7 +66,8 @@ namespace ChattyBones.Logic
                 .Add(Coward, ChatterEvent.TargetAcquired, "Is that a {target}? I'd rather not.", "You first, {player}.")
                 .Add(Coward, ChatterEvent.Hurt, "Aaargh!", "I'm hit! I'm hit!", "This is exactly what I meant.")
                 .Add(Coward, ChatterEvent.Killed, "Did I do that?", "It was mostly {player}, honestly.")
-                .Add(Coward, ChatterEvent.Idle, "Can we go home?", "It's very open out here.");
+                .Add(Coward, ChatterEvent.Idle, "Can we go home?", "It's very open out here.")
+                .Add(Coward, ChatterEvent.CompanionDied, "We're all going to die out here.", "That could have been me!");
         }
 
         /// <summary>Convinced of its own legend.</summary>
