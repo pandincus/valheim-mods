@@ -1,6 +1,7 @@
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
+using UnityEngine;
 
 namespace ChattyBones
 {
@@ -45,14 +46,38 @@ namespace ChattyBones
             Log = Logger;
             ModConfig.Init(Config);
             Speech.Resolve();
+            Chatter.Init();
             DebugCommands.Register();
 
+            // BepInEx raises this off the main thread, which is exactly why
+            // RefreshSettings builds a whole new settings object rather than editing
+            // the one in use. See the note on ChatterSettings.
+            Config.SettingChanged += (_, _) => Chatter.RefreshSettings();
+
             // PatchAll finds every [HarmonyPatch] class in this assembly and
-            // applies it. There are none yet.
+            // applies it - everything under Patches/.
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll();
 
             Log.LogInfo(PluginName + " v" + PluginVersion + " loaded.");
+        }
+
+        /// <summary>
+        /// Drive the squad's sweep. BepInEx plugins are MonoBehaviours, so this is an
+        /// ordinary Unity Update running once a frame.
+        /// </summary>
+        /// <remarks>
+        /// One sweep for the whole squad rather than an Update on each skeleton. The
+        /// budget's rule is that a claim must be resolved before the next one is made,
+        /// and that is easy to honour in a loop we control and awkward in a set of
+        /// components Unity calls in an order of its own choosing.
+        ///
+        /// <see cref="Chatter.Tick"/> is a decrement and a comparison on most frames;
+        /// the actual work happens four times a second.
+        /// </remarks>
+        private void Update()
+        {
+            Chatter.Tick(Time.deltaTime);
         }
 
         /// <summary>

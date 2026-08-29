@@ -83,7 +83,10 @@ namespace ChattyBones.Logic
         /// </remarks>
         internal static long SenderId(long userId, uint zdoId)
         {
-            // The bytes spell CHATTY. It does nothing, but it did amuse me.
+            // The bytes spell CHATTY. Mostly it amused me, but it also does the work
+            // of keeping a ZDOID of (0, 0) - an unassigned one - from folding to zero,
+            // which Chat would treat as a real sender. The guard below is for the one
+            // in four billion other inputs that could land on zero by chance.
             const long salt = 0x43_48_41_54_54_59L;
 
             long mixed = unchecked((userId * 1099511628211L) ^ zdoId ^ salt);

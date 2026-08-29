@@ -90,5 +90,47 @@ namespace ChattyBones.Logic
         /// something vague about a colleague.
         /// </remarks>
         CompanionHurt,
+
+        /// <summary>Another of your skeletons got a kill.</summary>
+        /// <remarks>
+        /// Fired only when the one that actually did it cannot speak, which in
+        /// practice means its own cooldown: the skeleton that announced the target a
+        /// few seconds ago is usually the same one now standing over the body, and it
+        /// is still serving out the <see cref="ChatterSettings.SpeakerCooldownSeconds"/>
+        /// it spent on the announcement.
+        ///
+        /// Kept separate from <see cref="Killed"/> because the line is addressed to
+        /// somebody. "Nice one, {companion}!" is a different sentence from "Down it
+        /// goes", and a squad that congratulates each other by name reads as a group
+        /// of people rather than as several narrators.
+        ///
+        /// Appended rather than slotted in beside CompanionHurt, and that is on
+        /// purpose: the enum's values travel in a packed int, so inserting one here
+        /// would renumber every event after it and two clients on different builds
+        /// would disagree about what they had just been told.
+        /// </remarks>
+        CompanionKilled,
+
+        /// <summary>Another of your skeletons just died.</summary>
+        /// <remarks>
+        /// Unlike the two above, this does not wait for the fallen one to fail to
+        /// speak. It answers the death cry rather than covering for it - see
+        /// <see cref="ChatterBudget.Answers"/> - so "Bugger." and "Oh no, {companion}!"
+        /// land together, from two skeletons standing apart, and read as one moment
+        /// rather than two remarks.
+        /// </remarks>
+        CompanionDied,
+
+        /// <summary>Somebody new has just been raised.</summary>
+        /// <remarks>
+        /// The other side of <see cref="Summoned"/>, and the cheerful one: the newcomer
+        /// introduces itself and the squad welcomes it, in the same breath.
+        ///
+        /// Only the first arrival of a batch gets a welcome. Raise three at once and
+        /// the second and third are refused, because barging in wants a strictly
+        /// higher rank than the greeting already in progress and they are all the same
+        /// event - so you get one exchange rather than three people talking at once.
+        /// </remarks>
+        CompanionSummoned,
     }
 }

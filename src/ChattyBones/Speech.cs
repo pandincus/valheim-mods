@@ -214,7 +214,7 @@ namespace ChattyBones
                 Vector3.up * 1.5f,
                 ModConfig.DialoguePanelCullDistance.Value,
                 ModConfig.DialoguePanelSeconds.Value,
-                Summons.NameOf(speaker),
+                Summons.NameOf(speaker) ?? string.Empty,
                 line,
                 large: false);
 
@@ -225,9 +225,16 @@ namespace ChattyBones
         /// <returns>An empty child above the skeleton's head, or the skeleton itself.</returns>
         /// <param name="speaker">Whoever is talking.</param>
         /// <remarks>
-        /// The position we pass to AddInworldText is thrown away. UpdateWorldTexts
-        /// recomputes it every frame, and for anything with a Character on it that
-        /// means <c>GetHeadPoint() + 0.3</c> - which lands on top of the name label.
+        /// The position we pass to AddInworldText is thrown away for as long as the
+        /// object it is anchored to exists. UpdateWorldTexts recomputes it every
+        /// frame, and for anything with a Character on it that means
+        /// <c>GetHeadPoint() + 0.3</c> - which lands on top of the name label.
+        ///
+        /// Only for as long as it exists, mind, and that turns out to matter. Once
+        /// the anchor is destroyed, Chat falls back to the position we passed and
+        /// keeps drawing there - so a skeleton's last words survive it, hanging where
+        /// it fell. That makes <c>GetHeadPoint()</c> the right thing to send even
+        /// though it is ignored almost every time it is sent.
         ///
         /// The way out is the other branch of that same line: an object *without* a
         /// Character is drawn at its own transform position instead. So I hang the

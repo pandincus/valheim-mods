@@ -45,16 +45,10 @@ namespace ChattyBones.Logic
 
         /// <summary>Another skeleton this line is about, or null when it is about nobody.</summary>
         /// <remarks>
-        /// Only set for the events where one skeleton is reacting to another, which
-        /// today means <see cref="ChatterEvent.CompanionHurt"/>. Everywhere else this
-        /// is null, so a "{companion}" written into an idle line quietly refuses
-        /// rather than producing a sentence with a hole in it.
-        ///
-        /// TODO: supply this on Idle too, so they can rib each other when nothing is
-        /// happening - "Hey {companion}, your insides are showin'!" is a better use
-        /// of them knowing each other's names than only reacting to injuries. That
-        /// means the caller choosing which tokens each event gets, rather than the
-        /// companion events being the only ones that fill this in.
+        /// Only set for the Companion* events, where one skeleton is reacting to
+        /// another. Everywhere else this is null, so a "{companion}" written into an
+        /// idle line quietly refuses rather than producing a sentence with a hole in
+        /// it. DefaultPackTests keeps the authoritative list of which events get what.
         /// </remarks>
         internal string Companion { get; }
 
@@ -173,11 +167,7 @@ namespace ChattyBones.Logic
         /// <remarks>
         /// Case-sensitive on purpose. The pack is a file people edit by hand, and I
         /// would rather "{Target}" show up in game looking wrong than quietly work.
-        ///
-        /// I originally justified that by saying it would matter "the day we add a
-        /// fourth token", which turned out to be about an hour later when {companion}
-        /// arrived. The reasoning holds up better than the timescale did: loose
-        /// matching is only ever cheap while the set is small, and this set grows.
+        /// Loose matching is only cheap while the set is small, and this set grows.
         /// </remarks>
         private static bool IsKnown(string token)
         {

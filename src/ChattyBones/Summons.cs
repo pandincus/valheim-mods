@@ -62,9 +62,8 @@ namespace ChattyBones
         /// <param name="found">The nearest one, or null.</param>
         /// <remarks>
         /// Walks <c>Character.GetAllCharacters()</c>, which is every loaded creature.
-        /// Fine for a console command and much too slow for anything regular - when
-        /// the skeletons start reacting on their own they should keep a list of
-        /// themselves rather than have us search for them.
+        /// Fine for a console command you type once. Anything regular uses
+        /// <see cref="ChatterComponent.All"/> instead.
         /// </remarks>
         internal static bool TryFindNearest(Vector3 point, float maxDistance, out Character found)
         {
@@ -92,7 +91,13 @@ namespace ChattyBones
         }
 
         /// <summary>What to call this skeleton.</summary>
-        /// <returns>Its given name, or its creature name if it has not got one.</returns>
+        /// <returns>
+        /// Its given name, its creature name if it has not got one, or null when there
+        /// is nothing to ask - which is not the same as an empty string. LineTokens
+        /// refuses a template whose token has no value and renders one whose value is
+        /// blank, so returning "" here would put "Welcome to the party, ." on screen
+        /// instead of quietly picking another line.
+        /// </returns>
         /// <param name="character">One of ours.</param>
         /// <remarks>
         /// Skeletons arrive named and players can rename them, both of which live in
@@ -108,12 +113,56 @@ namespace ChattyBones
         {
             if (character == null)
             {
-                return string.Empty;
+                return null;
             }
 
             Tameable tameable = character.GetComponent<Tameable>();
 
-            return tameable == null ? string.Empty : tameable.GetHoverName();
+            return tameable == null ? null : tameable.GetHoverName();
+        }
+
+        /// <summary>The prefab hash of a creature.</summary>
+        /// <returns>The hash, or 0 if there is no live ZDO to read it from.</returns>
+        /// <param name="character">Any creature. Null is fine.</param>
+        /// <remarks>
+        /// This is what the budget wants as a subject and what other clients want in
+        /// order to name the thing themselves. It identifies a *kind* of creature -
+        /// every greydwarf in the world shares one - which is the property that keeps
+        /// the budget's subject map from growing without bound.
+        /// </remarks>
+        internal static int PrefabOf(Character character)
+        {
+            if (character == null)
+            {
+                return 0;
+            }
+
+            ZNetView view = character.GetComponent<ZNetView>();
+
+            return view == null || !view.IsValid() ? 0 : view.GetZDO().GetPrefab();
+        }
+
+        /// <summary>What to call a creature inside a line.</summary>
+        /// <returns>Its localised name, or null when it has not got one.</returns>
+        /// <param name="character">Any creature. Null is fine.</param>
+        /// <remarks>
+        /// Localised on the machine that is going to read it, which is the point of
+        /// sending prefab hashes between clients rather than words: a German player
+        /// reads "Grauzwerg" where you read "Greydwarf", from the same broadcast.
+        ///
+        /// Localization lives in assembly_guiutils rather than assembly_valheim, which
+        /// is worth knowing before going to look for it.
+        /// </remarks>
+        internal static string CreatureName(Character character)
+        {
+            if (character == null || string.IsNullOrEmpty(character.m_name))
+            {
+                return null;
+            }
+
+            return Localization.instance == null
+                ? character.m_name
+                : Localization.instance.Localize(character.m_name);
         }
     }
 }

@@ -70,7 +70,7 @@ dotnet_diagnostic.IDE0030.severity = none
 
 # ...and put them back for the Logic folders, which contain no Unity types at
 # all. Stated positively rather than relying on the glob above to miss them, so
-# that adding src/<Mod>/Patches/ later cannot quietly change what applies where.
+# that a new folder under src/<Mod>/ cannot quietly change what applies where.
 [src/*/Logic/**.cs]
 dotnet_diagnostic.IDE0031.severity = warning
 dotnet_diagnostic.IDE0029.severity = warning

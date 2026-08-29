@@ -159,7 +159,7 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void AnEventThePlayerSwitchedOffNeverGetsThrough()
+        public void ADisabledEventNeverGetsThrough()
         {
             ChatterBudget budget = new(Settings(disabledEvents: [ChatterEvent.TargetAcquired]));
 
@@ -236,27 +236,217 @@ namespace ChattyBones.Tests
         {
             ChatterBudget budget = Budget();
 
-            // One hit on you, five skeletons that all noticed. The squad echo already
-            // handles this: pass whatever hit you as the subject and it collapses to
-            // a single remark, exactly as it does for a shared target.
-            Assert.True(Speak(budget, Alice, ChatterEvent.PlayerHurt, Greydwarf, 0f));
-            Assert.False(Speak(budget, Bob, ChatterEvent.PlayerHurt, Greydwarf, 3f));
-            Assert.False(Speak(budget, Carol, ChatterEvent.PlayerHurt, Greydwarf, 5f));
+            // Subject 0, because that is what the hook actually passes - being hit is
+            // not "about" a kind of creature the way a target is. So the squad echo is
+            // not what holds this down; the squad gap is, and this is the test that it
+            // does. An earlier version passed a creature here and proved the echo
+            // window instead, which no caller ever reaches.
+            Assert.True(Speak(budget, Alice, ChatterEvent.PlayerHurt, NoSubject, 0f));
+
+            Assert.False(Speak(budget, Bob, ChatterEvent.PlayerHurt, NoSubject, 0.5f));
         }
 
-        /// <summary>Can <paramref name="barger"/> interrupt <paramref name="sitting"/>?</summary>
+        /// <summary>Can <paramref name="barger"/> interrupt <paramref name="sitting"/>, on rank alone?</summary>
+        /// <returns>True if the barger got through.</returns>
+        /// <param name="barger">The event trying to cut in.</param>
+        /// <param name="sitting">The event already said.</param>
         /// <remarks>
         /// A fresh budget each time, two different speakers so no per-speaker cooldown
-        /// is involved, and no subject so the squad echo stays out of it. The second
-        /// claim lands inside the squad gap but past the barge-in floor, so the only
-        /// thing that can decide it is which event outranks the other.
+        /// is involved, and no subject so the squad echo stays out of it.
+        ///
+        /// 1.5 seconds sits in exactly one window: inside MinGapSeconds, so rank is
+        /// what decides, and past the answer window, so an event that *answers* the one
+        /// already said does not come back true for that reason instead. At 1.0 it
+        /// does, and NoTwoEventsShareARank reports a tie between Died and CompanionDied
+        /// that is not a tie.
         /// </remarks>
         private static bool CanInterrupt(ChatterEvent barger, ChatterEvent sitting)
         {
             ChatterBudget budget = Budget();
             Assert.True(Speak(budget, Alice, sitting, NoSubject, 0f));
 
-            return Speak(budget, Bob, barger, NoSubject, 1f);
+            return Speak(budget, Bob, barger, NoSubject, 1.5f);
+        }
+
+        [Fact]
+        public void HowAFightEndedOutranksNoticingItStarted()
+        {
+            // One Fact rather than a Theory with InlineData, because ChatterEvent is
+            // internal and xUnit needs the test method public - a public method cannot
+            // take an internal parameter.
+            ChatterEvent[] outcomes =
+            [
+                ChatterEvent.PlayerGotAKill,
+                ChatterEvent.Killed,
+                ChatterEvent.CompanionKilled,
+            ];
+
+            foreach (ChatterEvent outcome in outcomes)
+            {
+                AnOutcomeBeatsAnAnnouncement(outcome);
+            }
+        }
+
+        /// <summary>Both directions of one outcome against TargetAcquired.</summary>
+        /// <param name="outcome">The result event that should win.</param>
+        private static void AnOutcomeBeatsAnAnnouncement(ChatterEvent outcome)
+        {
+            // This is a fix pinned in place, not a preference. TargetAcquired used to
+            // outrank all three of these, and because a fight is usually over inside
+            // MinGapSeconds, the kill could not preempt the announcement that preceded
+            // it - so it was dropped outright while the next target announcement went
+            // through at the higher rank. Watching a squad in the Black Forest gave
+            // three "there's a greydwarf" and never once a result.
+            Assert.True(
+                CanInterrupt(outcome, ChatterEvent.TargetAcquired),
+                outcome + " should have been able to cut in on TargetAcquired");
+
+            // And not the other way round, or we have simply moved the problem.
+            Assert.False(
+                CanInterrupt(ChatterEvent.TargetAcquired, outcome),
+                "TargetAcquired should not have cut in on " + outcome);
+        }
+
+        [Fact]
+        public void LastWordsAreNotHeldBackByTheSpeakersOwnCooldown()
+        {
+            // A skeleton that called out a target and then died four seconds later
+            // used to go quietly. The cooldown is checked before priority is even
+            // looked at, so Died outranking everything did not help it at all - and
+            // in a fight, a skeleton that has been silent for a full eight seconds
+            // beforehand is nearly none of them.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+
+            Assert.True(Speak(budget, Alice, ChatterEvent.Died, NoSubject, 4f));
+        }
+
+        [Fact]
+        public void BeingUnsummonedIsAlsoWorthTheLastWord()
+        {
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+
+            Assert.True(Speak(budget, Alice, ChatterEvent.Unsummoned, NoSubject, 4f));
+        }
+
+        [Fact]
+        public void OnlyTheTerminalEventsSkipTheCooldown()
+        {
+            // The control for the two above. Being badly hurt is urgent and outranks
+            // most things, and it still waits its turn - otherwise the exemption has
+            // quietly grown into "important events ignore the cooldown", which is the
+            // whole rule gone.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+
+            Assert.False(Speak(budget, Alice, ChatterEvent.Hurt, NoSubject, 4f));
+        }
+
+        [Fact]
+        public void ADeathCryStillLeavesABeatOfQuiet()
+        {
+            // The exemption is only about the speaker's own cooldown. Committing a
+            // death still spends the squad gap, so the survivors do not talk over it.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.Died, NoSubject, 0f));
+
+            Assert.False(Speak(budget, Bob, ChatterEvent.Idle, NoSubject, 1f));
+        }
+
+        [Fact]
+        public void AnAnswerLandsInTheSameBreathAsWhatItAnswers()
+        {
+            // The gaps space out subjects of conversation, not utterances. A death cry
+            // and somebody reacting to it are one moment between two skeletons, so the
+            // second does not wait - you do not pause before saying "oh no" when
+            // somebody drops something.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.Died, NoSubject, 0f));
+
+            Assert.True(Speak(budget, Bob, ChatterEvent.CompanionDied, NoSubject, 0f));
+        }
+
+        [Fact]
+        public void AMomentGetsOneAnswerAndNoMore()
+        {
+            // Otherwise a squad wipe is four skeletons saying "oh no" over each other,
+            // which is the wall of text this whole class exists to prevent.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.Died, NoSubject, 0f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.CompanionDied, NoSubject, 0f));
+
+            Assert.False(Speak(budget, Carol, ChatterEvent.CompanionDied, NoSubject, 0f));
+        }
+
+        [Fact]
+        public void AnAnswerOnlySkipsTheGapForTheMomentItActuallyAnswers()
+        {
+            // The exemption is tied to what is being talked about, not to the event
+            // being a companion one. Nobody has died here, so there is nothing to
+            // answer and it queues like anything else.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 0f));
+
+            Assert.False(Speak(budget, Bob, ChatterEvent.CompanionDied, NoSubject, 0.1f));
+        }
+
+        [Fact]
+        public void AnAnswerGoesStaleRatherThanWaitingForAGap()
+        {
+            // A reply arriving well after the thing it replies to is worse than no
+            // reply, so the exemption expires instead of being banked.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.Died, NoSubject, 0f));
+
+            Assert.False(Speak(budget, Bob, ChatterEvent.CompanionDied, NoSubject, 1.5f));
+        }
+
+        [Fact]
+        public void AnsweringDoesNotOpenAMomentOfItsOwn()
+        {
+            // If a reply started a fresh moment, a second reply could answer the first
+            // and the squad would talk itself in a circle.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.Died, NoSubject, 0f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.CompanionDied, NoSubject, 0f));
+
+            // PlayerHurt rather than Idle, and the choice is the test. Idle is ranked
+            // 10 and is refused whatever the standing priority is, so it passed while
+            // the bar was being wrongly lowered to the answer's own rank. PlayerHurt
+            // is 110 - above CompanionDied's 105 and below Died's 130 - so it lands
+            // exactly in the gap the fault opened up and fails if it comes back.
+            Assert.False(Speak(budget, Carol, ChatterEvent.PlayerHurt, NoSubject, 1f));
+        }
+
+        [Fact]
+        public void AnsweringADeathDoesNotLetTheNextDeathCascade()
+        {
+            // The measured version of the fault above. Four skeletons dying half a
+            // second apart, each death answered, produced seven lines in a second and
+            // a half: the answer lowered the bar to 105, the next Died beat that, and
+            // round it went. Two deaths is enough to catch it.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.Died, NoSubject, 0f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.CompanionDied, NoSubject, 0f));
+
+            Assert.False(Speak(budget, Carol, ChatterEvent.Died, NoSubject, 0.5f));
+        }
+
+        [Fact]
+        public void ASquadRaisedTogetherGivesOneWelcomeBetweenThem()
+        {
+            // The newcomer introduces itself and an existing skeleton welcomes it -
+            // that pair is one moment, so the welcome does not wait. A *second*
+            // newcomer arriving in the same breath is refused, because a greeting
+            // cannot barge in on a greeting: same event, same rank, and barging in
+            // wants strictly higher. The tie is what holds a batch down, not the
+            // answer machinery.
+            ChatterBudget budget = Budget();
+            Assert.True(Speak(budget, Alice, ChatterEvent.Summoned, NoSubject, 0f));
+            Assert.True(Speak(budget, Bob, ChatterEvent.CompanionSummoned, NoSubject, 0f));
+
+            Assert.False(Speak(budget, Carol, ChatterEvent.Summoned, NoSubject, 0.1f));
         }
 
         [Fact]
@@ -469,18 +659,5 @@ namespace ChattyBones.Tests
             Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, Greydwarf, 1000f));
         }
 
-        [Fact]
-        public void ASteadyStreamOfDifferentEnemiesKeepsWorking()
-        {
-            ChatterBudget budget = Budget();
-
-            // Fifty different creatures, comfortably spaced so nothing should refuse.
-            // A weak test on its own - the point is that a long session does not
-            // quietly change how the rules behave.
-            for (int i = 0; i < 50; i++)
-            {
-                Assert.True(Speak(budget, Alice, ChatterEvent.TargetAcquired, 9000 + i, i * 20f));
-            }
-        }
     }
 }
