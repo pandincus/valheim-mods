@@ -14,7 +14,7 @@ namespace ChattyBones.Logic
     /// - {player} is you, whoever summoned it
     /// - {name} is the skeleton's own name
     /// - {companion} is another of your skeletons, for lines about each other
-    /// - {weapon}, {weapontype}, {damage}, {status}, {biome}, {food} and {skill}
+    /// - {weapon}, {weapontype}, {damage}, {status}, {biome}, {item} and {skill}
     ///   describe what happened and where, and live on <see cref="LineDetails"/>
     ///
     /// Every client fills these in for itself rather than being sent the words. For
@@ -186,7 +186,7 @@ namespace ChattyBones.Logic
         {
             return token is "target" or "player" or "name" or "companion"
                 or "weapon" or "weapontype" or "damage" or "status" or "biome"
-                or "food" or "skill";
+                or "item" or "skill";
         }
 
         /// <summary>The value for a known token, or null when we do not have one.</summary>
@@ -205,7 +205,7 @@ namespace ChattyBones.Logic
                 "damage" => Details.Damage,
                 "status" => Details.Status,
                 "biome" => Details.Biome,
-                "food" => Details.Food,
+                "item" => Details.Item,
                 "skill" => Details.Skill,
                 _ => null,
             };

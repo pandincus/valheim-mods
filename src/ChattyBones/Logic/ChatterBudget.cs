@@ -406,9 +406,10 @@ namespace ChattyBones.Logic
                 // anywhere higher and a skeleton crossing a stream talks over a kill.
                 ChatterEvent.Weather => 12,
 
-                // One above Idle, which is the whole reason LootKind is allowed to be
-                // four blunt tests: at this rank a wrong answer costs a loot mutter in
-                // place of an idle one and nothing else.
+                // One above Idle, and doing the whole job of deciding how often you
+                // hear about loot - there is no filter on what is worth mentioning,
+                // because at this rank the squad gap already decides that better than
+                // any judgement about items could.
                 ChatterEvent.Looted => 11,
 
                 ChatterEvent.Idle => 10,

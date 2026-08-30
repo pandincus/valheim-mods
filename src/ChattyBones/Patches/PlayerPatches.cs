@@ -47,7 +47,7 @@ namespace ChattyBones.Patches
         }
     }
 
-    /// <summary>Reacts to you picking something up worth mentioning.</summary>
+    /// <summary>Reacts to you picking anything up.</summary>
     /// <remarks>
     /// Hooked on ShowPickupMessage rather than on Pickup itself, and that is worth
     /// explaining because Pickup looks like the obvious place. By the time Pickup
@@ -57,9 +57,21 @@ namespace ChattyBones.Patches
     ///
     /// ShowPickupMessage sidesteps it entirely: vanilla calls it from inside Pickup
     /// with the item data already in hand and already loaded, and only when the
-    /// picker is a player. Auto-pickup routes through Pickup too, so this catches the
-    /// hoovering as well as the deliberate grabs - which is why it needs
-    /// <see cref="LootKind"/> in front of it.
+    /// picker is a player.
+    ///
+    /// Nothing filters what is worth mentioning, and that is the design rather than
+    /// an omission. A first version sorted items into notable and not - trophies,
+    /// anything with a coin value, anything that does not stack - and it was wrong
+    /// twice over. Wrong in detail, because it counted trophies as treasure when a
+    /// chest of eleven greydwarf trophies is what most players actually have. And
+    /// wrong in kind, because the budget is already a rate limiter and a far better
+    /// one: Looted sits one rank above Idle, so it can only speak when nothing else
+    /// is happening, and the squad gap decides how often that is.
+    ///
+    /// So every pickup is a candidate and almost none of them get through. The lines
+    /// are written to work for whatever it happens to catch, which is usually
+    /// something dull - and a skeleton being unimpressed by your fortieth piece of
+    /// wood is funnier than one enthusing about a ruby.
     /// </remarks>
     [HarmonyPatch(typeof(Character), "ShowPickupMessage")]
     internal static class CharacterPickupPatch
@@ -82,7 +94,7 @@ namespace ChattyBones.Patches
             }
         }
 
-        /// <summary>Decide whether that was worth a remark.</summary>
+        /// <summary>Offer it to the squad, and let the budget decide.</summary>
         /// <param name="picker">Whoever picked it up.</param>
         /// <param name="item">What they picked up.</param>
         private static void React(Character picker, ItemDrop.ItemData item)
@@ -97,19 +109,12 @@ namespace ChattyBones.Patches
                 return;
             }
 
-            bool trophy = item.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Trophy;
-
-            if (!LootKind.IsNotable(trophy, item.m_shared.m_value, item.m_shared.m_maxStackSize, item.m_quality))
-            {
-                return;
-            }
-
             _ = Chatter.SpeakAny(
                 ChatterEvent.Looted,
                 subject: 0,
                 targetName: null,
                 companion: null,
-                details: new LineDetails(food: Doings.NameOf(item)));
+                details: new LineDetails(item: Doings.NameOf(item)));
         }
     }
 
@@ -150,7 +155,7 @@ namespace ChattyBones.Patches
                     subject: 0,
                     targetName: null,
                     companion: null,
-                    details: new LineDetails(food: Doings.NameOf(item)));
+                    details: new LineDetails(item: Doings.NameOf(item)));
             }
             catch (Exception e)
             {

@@ -262,7 +262,7 @@ namespace ChattyBones.Tests
             {
                 Match match = Regex.Match(
                     raw.TrimEnd('\r'),
-                    @"^#   (\w+)\s+.*?([T.])  ([C.])  ([W.])  ([K.])  ([D.])  ([S.])  ([B.])  ([F.])  ([L.])$");
+                    @"^#   (\w+)\s+.*?([T.])  ([C.])  ([W.])  ([K.])  ([D.])  ([S.])  ([B.])  ([I.])  ([L.])$");
 
                 if (match.Success)
                 {
@@ -287,7 +287,7 @@ namespace ChattyBones.Tests
                     Mark('D', tokens.TryRender("{damage}", out _)),
                     Mark('S', tokens.TryRender("{status}", out _)),
                     Mark('B', tokens.TryRender("{biome}", out _)),
-                    Mark('F', tokens.TryRender("{food}", out _)),
+                    Mark('I', tokens.TryRender("{item}", out _)),
                     Mark('L', tokens.TryRender("{skill}", out _)));
 
                 Assert.True(rows.ContainsKey(kind.ToString()), "No row in the pack header for " + kind + ".");
@@ -329,7 +329,7 @@ namespace ChattyBones.Tests
                     damage: Fill(promised, TokenSet.Damage, "slash"),
                     status: Fill(promised, TokenSet.Status, "Burning"),
                     biome: Fill(promised, TokenSet.Biome, "Black Forest"),
-                    food: Fill(promised, TokenSet.Food, "Carrot Soup"),
+                    item: Fill(promised, TokenSet.Item, "Carrot Soup"),
                     skill: Fill(promised, TokenSet.Skill, "Blocking")));
         }
 

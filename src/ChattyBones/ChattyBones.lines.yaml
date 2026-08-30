@@ -52,10 +52,10 @@
 # Thirty things a skeleton reacts to, and which tokens each one can fill in.
 # {name} and {player} are left out of the table because every event has them.
 #
-#     T {target}       W {weapon}        D {damage}    B {biome}   F {food}
+#     T {target}       W {weapon}        D {damage}    B {biome}   I {item}
 #     C {companion}    K {weapontype}    S {status}   L {skill}
 #
-#                                                      T  C  W  K  D  S  B  F  L
+#                                                      T  C  W  K  D  S  B  I  L
 #   Summoned             you raised it                 .  .  .  .  .  .  .  .  .
 #   TargetAcquired       it picked something           T  .  .  .  .  .  .  .  .
 #   Hurt                 something hit it              .  .  W  K  D  .  .  .  .
@@ -83,8 +83,8 @@
 #   Raid                 something is coming           .  .  .  .  .  .  .  .  .
 #   RaidEnded            you saw it off                .  .  .  .  .  .  .  .  .
 #   Sheltered            it reached one of your bases  .  .  .  .  .  .  .  .  .
-#   Looted               you picked something up       .  .  .  .  .  .  .  F  .
-#   PlayerAte            you ate something             .  .  .  .  .  .  .  F  .
+#   Looted               you picked something up       .  .  .  .  .  .  .  I  .
+#   PlayerAte            you ate something             .  .  .  .  .  .  .  I  .
 #   PlayerSkilledUp      you got better at something   .  .  .  .  .  .  .  .  L
 #
 # The D column is the one worth a second look. {damage} only reaches the events
@@ -125,7 +125,7 @@
 #                 lightning, poison or spirit
 #   {status}      a status effect by name, e.g. "Burning"
 #   {biome}       where it is standing, e.g. "Black Forest"
-#   {food}        something you ate or picked up, e.g. "Carrot Soup"
+#   {item}        something you ate or picked up, e.g. "Carrot Soup"
 #   {skill}       the skill that just went up, e.g. "Blocking"
 #
 # Neither weapon token is exact, in different ways. {weapon} is read from the
@@ -356,14 +356,14 @@ lines:
       - "This will do nicely."
       - "Safe as anything."
     Looted:
-      - "Ooh, what is that?"
-      - "That {food} looks useful."
-      - "Pocketing the {food}, are we?"
+      - "More {item}, then."
+      - "That {item} looks useful. Probably."
+      - "Pocketing the {item}, are we?"
       - "Finders keepers, I suppose."
     PlayerAte:
-      - "Eating some {food}? I used to eat."
+      - "Eating some {item}? I used to eat."
       - "It goes straight through me these days."
-      - "Enjoy the {food}. Truly."
+      - "Enjoy the {item}. Truly."
       - "I remember tasting things."
     PlayerSkilledUp:
       - "Better at {skill} now, are you."
@@ -454,7 +454,7 @@ lines:
   # Takes the job seriously.
   dutiful:
     Looted:
-      - "{food}. Logged."
+      - "{item}. Logged."
       - "Recovered and accounted for."
     Raid:
       - "Perimeter. Now."

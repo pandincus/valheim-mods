@@ -35,8 +35,8 @@ namespace ChattyBones.Logic
         /// <summary>{biome} - where the skeleton is standing.</summary>
         Biome = 64,
 
-        /// <summary>{food} - an item eaten or picked up.</summary>
-        Food = 128,
+        /// <summary>{item} - something eaten or picked up.</summary>
+        Item = 128,
 
         /// <summary>{skill} - the skill that went up.</summary>
         Skill = 256,
@@ -140,7 +140,7 @@ namespace ChattyBones.Logic
             // The same question either way - what was it - so one token serves both.
             if (kind is ChatterEvent.Looted or ChatterEvent.PlayerAte)
             {
-                set |= TokenSet.Food;
+                set |= TokenSet.Item;
             }
 
             if (kind == ChatterEvent.PlayerSkilledUp)
@@ -167,7 +167,7 @@ namespace ChattyBones.Logic
             if (details.Damage != null) { set |= TokenSet.Damage; }
             if (details.Status != null) { set |= TokenSet.Status; }
             if (details.Biome != null) { set |= TokenSet.Biome; }
-            if (details.Food != null) { set |= TokenSet.Food; }
+            if (details.Item != null) { set |= TokenSet.Item; }
             if (details.Skill != null) { set |= TokenSet.Skill; }
 
             return set;

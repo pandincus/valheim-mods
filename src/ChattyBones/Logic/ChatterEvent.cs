@@ -238,12 +238,12 @@ namespace ChattyBones.Logic
         /// </remarks>
         Sheltered,
 
-        /// <summary>You picked up something worth mentioning.</summary>
+        /// <summary>You picked something up.</summary>
         /// <remarks>
-        /// Ranked just above Idle, which is what makes the filter in
-        /// <see cref="LootKind"/> a small decision rather than a load-bearing one: it
-        /// can only speak when nothing else is happening, so a wrong answer costs you
-        /// a loot mutter in place of an idle one.
+        /// Anything at all, with no judgement about what is worth mentioning. Ranked
+        /// one above Idle, so the squad gap decides how often you hear about it - and
+        /// what it happens to catch is therefore near enough random, which the lines
+        /// are written for.
         /// </remarks>
         Looted,
 
