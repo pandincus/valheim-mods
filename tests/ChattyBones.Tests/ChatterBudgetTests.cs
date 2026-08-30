@@ -269,6 +269,34 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void RemarkingOnTheWeatherNeverTalksOverAnything()
+        {
+            // Weather may interrupt an idle mutter and nothing else. That is the point.
+            Assert.True(CanInterrupt(ChatterEvent.Weather, ChatterEvent.Idle));
+            Assert.False(CanInterrupt(ChatterEvent.Weather, ChatterEvent.Killed));
+            Assert.False(CanInterrupt(ChatterEvent.Weather, ChatterEvent.TargetAcquired));
+            Assert.False(CanInterrupt(ChatterEvent.Weather, ChatterEvent.CompanionSummoned));
+        }
+
+        [Fact]
+        public void CatchingFireOutranksTheBlowThatCausedIt()
+        {
+            // Uniqueness alone left this rank free to move either way. Why it is above
+            // Hurt is in ChatterBudget.
+            Assert.True(CanInterrupt(ChatterEvent.Afflicted, ChatterEvent.Hurt));
+        }
+
+        [Fact]
+        public void CatchingFireDoesNotTalkOverSomethingWorse()
+        {
+            // The other side of it. A skeleton on fire must not drown out you being
+            // mauled or a companion going down.
+            Assert.False(CanInterrupt(ChatterEvent.Afflicted, ChatterEvent.PlayerHurt));
+            Assert.False(CanInterrupt(ChatterEvent.Afflicted, ChatterEvent.CompanionDied));
+            Assert.False(CanInterrupt(ChatterEvent.Afflicted, ChatterEvent.Died));
+        }
+
+        [Fact]
         public void HowAFightEndedOutranksNoticingItStarted()
         {
             // One Fact rather than a Theory with InlineData, because ChatterEvent is

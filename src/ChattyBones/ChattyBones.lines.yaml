@@ -47,54 +47,97 @@
 # was relying on the fallback goes quiet without a word of complaint.
 #
 #
-# TOKENS
-#
-# Four things a line can drop into itself:
-#
-#   {name}       the skeleton speaking
-#   {player}     you
-#   {target}     the creature it is reacting to
-#   {companion}  another of your skeletons
-#
-# {name} and {player} are always available. The other two are not, and that is
-# useful rather than a limitation: a line asking for something we do not know is
-# quietly passed over and a different one is chosen instead. So you can write
-#
-#   - Get lost, {target}!
-#   - Get lost!
-#
-# side by side, and the first is used when we know what it is shouting at.
-#
-# Which events supply which tokens is listed below. A typo like {targat} is left
-# alone rather than guessed at, so you will see it floating over a skeleton's
-# head and know immediately what happened. Tokens are case sensitive.
-#
-#
 # EVENTS
 #
-# Fifteen things a skeleton reacts to. The token columns say what is available.
+# Seventeen things a skeleton reacts to, and which tokens each one can fill in.
+# {name} and {player} are left out of the table because every event has them.
 #
-#   Summoned              you raised it                        -
-#   TargetAcquired        it picked something to attack        {target}
-#   Hurt                  something hit it                     -
-#   Buffed                it gained a status effect            -
-#   Killed                it killed something                  {target}
-#   Died                  it died                              -
-#   Unsummoned            it timed out or strayed too far      -
-#   Idle                  nothing is happening                 -
-#   PlayerHurt            you took a hit                       -
-#   PlayerLandedABigHit   you hit something hard               {target}
-#   PlayerGotAKill        you killed something                 {target}
-#   CompanionHurt         another skeleton took a hit          {companion}
-#   CompanionKilled       another skeleton got a kill          {companion} {target}
-#   CompanionDied         another skeleton died                {companion}
-#   CompanionSummoned     another skeleton was just raised     {companion}
+#     T {target}       W {weapon}        D {damage}
+#     C {companion}    K {weapontype}    S {status}
+#
+#                                                      T  C  W  K  D  S
+#   Summoned             you raised it                 .  .  .  .  .  .
+#   TargetAcquired       it picked something           T  .  .  .  .  .
+#   Hurt                 something hit it              .  .  W  K  D  .
+#   Buffed               it gained a helpful effect    .  .  .  .  .  S
+#   Afflicted            it caught fire or poison      .  .  .  .  .  S
+#   Weather              rain, water, or the swamp     .  .  .  .  .  S
+#   Killed               it killed something           T  .  W  K  .  .
+#   Died                 it died                       .  .  W  K  .  .
+#   Unsummoned           it timed out or strayed       .  .  .  .  .  .
+#   Idle                 nothing is happening          .  C  .  .  .  .
+#   PlayerHurt           you took a hit                .  .  W  K  D  .
+#   PlayerLandedABigHit  you hit something hard        T  .  W  K  D  .
+#   PlayerGotAKill       you killed something          T  .  W  K  .  .
+#   CompanionHurt        another skeleton was hit      .  C  W  K  D  .
+#   CompanionKilled      another skeleton got a kill   T  C  W  K  .  .
+#   CompanionDied        another skeleton died         .  C  .  .  .  .
+#   CompanionSummoned    another was just raised       .  C  .  .  .  .
+#
+# The D column is the one worth a second look. {damage} only reaches the events
+# that catch a blow as it lands, because that is the only moment the numbers
+# still exist - by the time a body is examined, the game has taken the fire and
+# poison off its last hit. So a near-miss can say "nice fire hit" and a kill
+# cannot.
+#
+# A mark means the token can be filled, not that it always is: Idle's
+# {companion} is null when a skeleton is out alone, and a kill's weapon is
+# missing if the killer was disarmed. Keep plain lines in every group.
+#
+# Weather is mostly rain, but the same effect comes from wading in, swimming, and
+# simply being in the Swamp - so a line that commits to falling rain will
+# sometimes be wrong. "My bones are wet" travels better than "it is raining".
 #
 # Spelling counts, capitals included: "idle" is not "Idle", and a name that is
-# not exactly one of the fifteen above is reported in the log and skipped.
+# not exactly one of the seventeen above is reported in the log and skipped.
 #
 # An event you leave out entirely is simply never commented on, which is a fine
 # way to switch off the idle chatter.
+#
+#
+# TOKENS
+#
+# Eight things a line can drop into itself. Four are about the people involved:
+#
+#   {name}        the skeleton speaking
+#   {player}      you
+#   {target}      the creature it is reacting to
+#   {companion}   another of your skeletons
+#
+# ...and four describe what actually happened:
+#
+#   {weapon}      the weapon by name, e.g. "Mistwalker"
+#   {weapontype}  what kind it is, e.g. "sword"
+#   {damage}      the main damage type: blunt, slash, pierce, fire, frost,
+#                 lightning, poison or spirit
+#   {status}      a status effect by name, e.g. "Burning"
+#
+# Neither weapon token is exact, in different ways. {weapon} is read from the
+# attacker's hands a moment after the blow, so an arrow still in the air, a
+# thrown spear or a mid-swing swap can leave it naming the wrong thing.
+# {weapontype} comes off the blow itself, so it names what actually landed - but
+# a creature with no real weapon reports "sword", because that is the default on
+# an attack nobody filled in. Prefer {weapontype} where a mistake would read
+# badly, and expect the occasional well-armed greydwarf.
+#
+# {status} arrives capitalized, because that is how the game names it on your
+# status bar - "Burning", "Wet", "Tarred". Put it where a capital belongs, at
+# the start of a sentence or after a full stop. "My bones are {status}." comes
+# out as "My bones are Wet." and reads like a typo.
+#
+# {name} and {player} are always available. The rest are not, and that is useful
+# rather than a limitation: a line asking for something we do not know is quietly
+# passed over and a different one is chosen instead. So you can write
+#
+#   - "Get lost, {target}!"
+#   - "Get lost!"
+#
+# side by side, and the first is used when we know what it is shouting at. Write
+# a plain version of any line that uses a token, or it will simply never be said.
+#
+# A typo like {targat} is left alone rather than guessed at, so you will see it
+# floating over a skeleton's head and know immediately what happened. Tokens are
+# case sensitive and always lower case.
 #
 #
 # YAML, BRIEFLY
@@ -152,6 +195,7 @@ colors:
     PlayerHurt: alarm
     CompanionHurt: alarm
     CompanionDied: alarm
+    Afflicted: alarm
     Killed: triumph
     PlayerGotAKill: triumph
     CompanionKilled: triumph
@@ -173,17 +217,33 @@ lines:
       - "Ow."
       - "That was a rib!"
       - "Still standing."
+      - "Right in the {damage}."
+      - "Who brought the {weapontype}?"
     Buffed:
       - "Ooh, that's the stuff."
       - "Much obliged."
+      - "{status}? Don't mind if I do."
+    Afflicted:
+      - "{status}. Right through to the bones."
+      - "Ah. {status}. Wonderful."
+      - "I do not care for this."
+      - "{status}! Somebody do something!"
+    Weather:
+      - "{status}. Right through to the bones."
+      - "{status}. Marvellous."
+      - "This is why I stayed buried."
+      - "Does anyone else feel that?"
     Killed:
       - "Down it goes."
       - "That {target} won't get up."
       - "Next."
+      - "That is what the {weapontype} is for."
+      - "{weapon} does not miss."
     Died:
       - "Bugger."
       - "Tell my mum."
       - "Back to the dirt."
+      - "Done in by the {weapontype}, then."
     Unsummoned:
       - "Off I go, then."
       - "See you, {player}."
@@ -192,6 +252,8 @@ lines:
       - "Anyone else cold?"
       - "I miss having skin."
       - "Hmm."
+      - "{companion}, your insides are showing."
+      - "Do you ever think about it, {companion}? Being alive?"
     PlayerHurt:
       - "{player}! Watch it!"
       - "They got you!"
@@ -200,15 +262,19 @@ lines:
       - "Ooooh."
       - "Did you see that?"
       - "Lovely swing, {player}."
+      - "Nice {damage} hit with that {weapon}!"
+      - "The {weapontype} does its work."
     PlayerGotAKill:
       - "Got him!"
       - "Nice one, {player}."
+      - "Nice {weapontype} work, {player}."
     CompanionHurt:
       - "{companion}!"
       - "They're on {companion}!"
       - "Hang on, {companion}!"
     CompanionKilled:
       - "Leave some for me, {companion}."
+      - "Handy with the {weapontype}, {companion}."
       - "{companion} got the {target}."
       - "Show-off."
     CompanionDied:
@@ -241,9 +307,15 @@ lines:
     CompanionDied:
       - "We're all going to die out here."
       - "That could have been me!"
+    Afflicted:
+      - "{status}! {status}! Get it off!"
+      - "I knew this would happen."
 
   # Convinced of its own legend.
   boastful:
+    Afflicted:
+      - "{status}? A legend endures worse."
+      - "I have had worse."
     Summoned:
       - "The legend returns!"
       - "You chose well, {player}."
@@ -280,6 +352,11 @@ lines:
 
   # Has done this too many times.
   veteran:
+    Weather:
+      - "{status} again. Naturally."
+    Afflicted:
+      - "{status}. Naturally."
+      - "Add it to the list."
     Summoned:
       - "Again? Fine."
       - "Third time this week."

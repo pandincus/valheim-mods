@@ -32,7 +32,21 @@ namespace ChattyBones.Patches
             }
         }
 
-        /// <summary>Have the skeleton thank you for the shield.</summary>
+        /// <summary>What to call this effect in a line.</summary>
+        /// <returns>Its localized name, or null when it has not got one.</returns>
+        /// <param name="effect">The effect being added.</param>
+        /// <remarks>
+        /// Null rather than empty, because only null makes LineTokens refuse the line -
+        /// an unnamed effect would otherwise render "Ah. . Wonderful."
+        /// </remarks>
+        private static string Named(StatusEffect effect)
+        {
+            string name = Localization.instance.Localize(effect.m_name);
+
+            return string.IsNullOrEmpty(name) ? null : name;
+        }
+
+        /// <summary>Have the skeleton thank you for the shield, or complain about the fire.</summary>
         /// <param name="seman">The status effect manager the effect was added to.</param>
         /// <param name="statusEffect">The effect being added.</param>
         /// <param name="added">What AddStatusEffect returned. Null when nothing was added.</param>
@@ -55,15 +69,18 @@ namespace ChattyBones.Patches
                 return;
             }
 
+            ChatterEvent kind = StatusKind.EventFor(statusEffect.name);
+
             // The effect's name hash is a kind of thing rather than a particular one,
             // so it is a safe subject: two skeletons shielded by the same cast produce
             // one remark between them.
             _ = Chatter.TrySpeak(
                 speaker,
-                ChatterEvent.Buffed,
+                kind,
                 statusEffect.NameHash(),
                 targetName: null,
-                companion: null);
+                companion: null,
+                details: new LineDetails(status: Named(statusEffect)));
         }
     }
 }

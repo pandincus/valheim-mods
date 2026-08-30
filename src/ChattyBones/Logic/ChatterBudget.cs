@@ -324,6 +324,13 @@ namespace ChattyBones.Logic
                 // the same reason Hurt is.
                 ChatterEvent.CompanionDied => 105,
 
+                // Above Hurt, because the blow that sets you alight raises both in
+                // the same frame - SEMan.AddStatusEffect runs from inside RPC_Damage -
+                // and catching fire is the more interesting half of that pair. The
+                // burning itself never reaches Hurt at all: SE_Burning ticks through
+                // ApplyDamage directly and skips RPC_Damage, where our hook is.
+                ChatterEvent.Afflicted => 102,
+
                 ChatterEvent.Hurt => 100,
                 ChatterEvent.CompanionHurt => 90,
 
@@ -338,6 +345,11 @@ namespace ChattyBones.Logic
                 ChatterEvent.Buffed => 30,
                 ChatterEvent.Summoned => 20,
                 ChatterEvent.CompanionSummoned => 15,
+
+                // Being rained on is small talk, and any water at all applies it - so
+                // anywhere higher and a skeleton crossing a stream talks over a kill.
+                ChatterEvent.Weather => 12,
+
                 ChatterEvent.Idle => 10,
 
                 // Practically speaking we never land here, because the enum is ours

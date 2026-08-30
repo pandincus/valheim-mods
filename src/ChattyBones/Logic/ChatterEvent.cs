@@ -132,5 +132,22 @@ namespace ChattyBones.Logic
         /// event - so you get one exchange rather than three people talking at once.
         /// </remarks>
         CompanionSummoned,
+
+        /// <summary>Something unpleasant has taken hold of it - fire, poison, frost.</summary>
+        /// <remarks>
+        /// The other half of <see cref="Buffed"/>, and a correction to it: that event
+        /// fired for every status effect, so a burning skeleton used to thank you for
+        /// it. <see cref="StatusKind"/> is what tells the two apart.
+        /// </remarks>
+        Afflicted,
+
+        /// <summary>The weather has got to it - rain, water, cold.</summary>
+        /// <remarks>
+        /// Wet is the one that matters, and it is why this exists separately from
+        /// <see cref="Afflicted"/>: any water at all applies it, so ranking a remark
+        /// about being damp anywhere near an injury meant a skeleton wading into a
+        /// swamp talking over its own kills.
+        /// </remarks>
+        Weather,
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using ChattyBones.Logic;
 
 namespace ChattyBones.Tests
@@ -53,6 +54,51 @@ namespace ChattyBones.Tests
             // is, and the pack should not have to be read to know that.
             Assert.Equal(alarm, pack.Colors.TagFor(ChatterEvent.PlayerHurt));
             Assert.Equal(triumph, pack.Colors.TagFor(ChatterEvent.PlayerGotAKill));
+        }
+
+        [Fact]
+        public void NoLineGluesAnArticleToAWeaponType()
+        {
+            // "That is what a {weapontype} is for." reads fine until somebody swings
+            // an axe, and "a fists" is worse. No rendering test can catch it: the
+            // fixture below renders {weapontype} as "sword", which is the one word in
+            // the vocabulary under which every such line happens to work - and the
+            // vocabulary itself lives in the Unity half, out of reach.
+            //
+            // This has now been introduced twice, so it gets a rule rather than a fix.
+            foreach (string raw in DefaultPack.Yaml.Split('\n'))
+            {
+                string line = raw.TrimEnd('\r');
+
+                Assert.False(
+                    Regex.IsMatch(line, @"\b[Aa]n? \{weapon(type)?\}"),
+                    "An article glued to a weapon token, which reads as \"a axe\": " + line.Trim());
+            }
+        }
+
+        [Fact]
+        public void NoLineDropsAStatusTokenIntoTheMiddleOfASentence()
+        {
+            // The game names a status effect for its status bar, so {status} always
+            // arrives capitalized - "Wet", "Burning", "Tarred". Sentence-initial that
+            // is exactly right, and "Hey, my bones are Wet." looks like a typo. Seen in
+            // a live session on three shipped lines, which is why it is a rule: 5d is a
+            // whole pass of writing new ones, and this reads fine on the page.
+            //
+            // Comment lines are skipped deliberately - the pack header demonstrates the
+            // mistake in order to warn about it.
+            foreach (string raw in DefaultPack.Yaml.Split('\n'))
+            {
+                string line = raw.TrimEnd('\r');
+                if (line.TrimStart().StartsWith("#", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                Assert.False(
+                    Regex.IsMatch(line, @"[\p{L}\d,]\s*\{status\}"),
+                    "A status token mid-sentence, which reads as \"my bones are Wet\": " + line.Trim());
+            }
         }
 
         [Fact]
@@ -167,6 +213,56 @@ namespace ChattyBones.Tests
             }
         }
 
+        [Fact]
+        public void ThePackHeadersTokenGridMatchesWhatTheEventsActuallySupply()
+        {
+            // A row promising a token the event never supplies means lines that
+            // silently never fire, and the log says nothing about it. TokensFor is
+            // itself still a hand-copy of the call sites.
+            Dictionary<string, string> rows = [];
+
+            foreach (string raw in DefaultPack.Yaml.Split('\n'))
+            {
+                Match match = Regex.Match(
+                    raw.TrimEnd('\r'),
+                    @"^#   (\w+)\s+.*?([T.])  ([C.])  ([W.])  ([K.])  ([D.])  ([S.])$");
+
+                if (match.Success)
+                {
+                    rows[match.Groups[1].Value] = string.Concat(
+                        match.Groups[2].Value, match.Groups[3].Value, match.Groups[4].Value,
+                        match.Groups[5].Value, match.Groups[6].Value, match.Groups[7].Value);
+                }
+            }
+
+            Assert.Equal(Enum.GetValues(typeof(ChatterEvent)).Length, rows.Count);
+
+            foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
+            {
+                LineTokens tokens = TokensFor(kind);
+
+                string expected = string.Concat(
+                    Mark('T', tokens.TryRender("{target}", out _)),
+                    Mark('C', tokens.TryRender("{companion}", out _)),
+                    Mark('W', tokens.TryRender("{weapon}", out _)),
+                    Mark('K', tokens.TryRender("{weapontype}", out _)),
+                    Mark('D', tokens.TryRender("{damage}", out _)),
+                    Mark('S', tokens.TryRender("{status}", out _)));
+
+                Assert.True(rows.ContainsKey(kind.ToString()), "No row in the pack header for " + kind + ".");
+                Assert.Equal(expected, rows[kind.ToString()]);
+            }
+        }
+
+        /// <summary>One cell of the grid.</summary>
+        /// <returns>The token's letter when it is supplied, a dot when it is not.</returns>
+        /// <param name="letter">The column's letter.</param>
+        /// <param name="supplied">Whether the event fills that token in.</param>
+        private static string Mark(char letter, bool supplied)
+        {
+            return supplied ? letter.ToString() : ".";
+        }
+
         /// <summary>What the hooks actually supply for each event.</summary>
         /// <returns>Tokens with a value for what is available and null for what is not.</returns>
         /// <param name="kind">The event being fired.</param>
@@ -191,16 +287,38 @@ namespace ChattyBones.Tests
                 or ChatterEvent.PlayerLandedABigHit
                 or ChatterEvent.PlayerGotAKill;
 
+            // Idle is in the list on purpose - they rib each other by name.
             bool hasCompanion = kind is ChatterEvent.CompanionHurt
                 or ChatterEvent.CompanionKilled
                 or ChatterEvent.CompanionDied
-                or ChatterEvent.CompanionSummoned;
+                or ChatterEvent.CompanionSummoned
+                or ChatterEvent.Idle;
+
+            // A live blow, caught as it lands, so it can be described in full.
+            bool hasHit = kind is ChatterEvent.Hurt
+                or ChatterEvent.PlayerHurt
+                or ChatterEvent.CompanionHurt
+                or ChatterEvent.PlayerLandedABigHit;
+
+            // Kills and deaths know only what the killer was holding - see
+            // Hits.WieldedBy.
+            bool hasWeaponOnly = kind is ChatterEvent.Killed
+                or ChatterEvent.CompanionKilled
+                or ChatterEvent.Died
+                or ChatterEvent.PlayerGotAKill;
+
+            bool hasStatus = kind is ChatterEvent.Buffed or ChatterEvent.Afflicted or ChatterEvent.Weather;
 
             return new LineTokens(
                 target: hasTarget ? "Greydwarf" : null,
                 player: "Ragnar",
                 name: "Botvid",
-                companion: hasCompanion ? "Gunnar" : null);
+                companion: hasCompanion ? "Gunnar" : null,
+                details: new LineDetails(
+                    weapon: hasHit || hasWeaponOnly ? "Mistwalker" : null,
+                    weaponType: hasHit || hasWeaponOnly ? "sword" : null,
+                    damage: hasHit ? "slash" : null,
+                    status: hasStatus ? "Burning" : null));
         }
     }
 }

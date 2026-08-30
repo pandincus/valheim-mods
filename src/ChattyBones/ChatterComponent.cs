@@ -239,7 +239,14 @@ namespace ChattyBones
             if (_untilIdle <= 0f)
             {
                 _untilIdle = NextIdleGap();
-                _ = Chatter.TrySpeak(this, ChatterEvent.Idle, subject: 0, targetName: null, companion: null);
+
+                // A companion so the idle lines can rib each other by name.
+                _ = Chatter.TrySpeak(
+                    this,
+                    ChatterEvent.Idle,
+                    subject: 0,
+                    targetName: null,
+                    companion: Chatter.AnotherOf(this));
             }
         }
 
@@ -309,7 +316,10 @@ namespace ChattyBones
         /// </remarks>
         private void Boast()
         {
-            if (Chatter.TrySpeak(this, ChatterEvent.Killed, _lastTargetPrefab, _lastTargetName, companion: null))
+            // No blow to read on a kill, so the weapon comes from its own hands.
+            LineDetails details = Hits.WieldedBy(Character);
+
+            if (Chatter.TrySpeak(this, ChatterEvent.Killed, _lastTargetPrefab, _lastTargetName, companion: null, details: details))
             {
                 return;
             }
@@ -318,7 +328,8 @@ namespace ChattyBones
                 ChatterEvent.CompanionKilled,
                 _lastTargetPrefab,
                 _lastTargetName,
-                companion: Character);
+                companion: Character,
+                details: details);
         }
 
         /// <summary>Take everything we will want about a target while it still exists.</summary>
