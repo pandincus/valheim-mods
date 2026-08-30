@@ -257,10 +257,12 @@ namespace ChattyBones
 
         /// <summary>How many sweeps in a row it has looked to be outside.</summary>
         /// <remarks>
-        /// The hysteresis. A base area has an edge, and a skeleton milling about on it
-        /// crosses back and forth every sweep - so leaving takes agreeing with itself
+        /// The hysteresis, and it earns its keep more here than it would have against
+        /// a boundary. Being safe at home is a conjunction of five conditions, several
+        /// of which flicker - a creature wandering close enough to notice you drops
+        /// Resting for as long as it is looking. So leaving takes agreeing with itself
         /// several times while arriving takes one. Wrong in the forgiving direction:
-        /// the worst it does is call a skeleton home for a second longer than it was.
+        /// the worst it does is call a squad home a few seconds longer than they were.
         /// </remarks>
         private int _sweepsOutside;
 
@@ -285,33 +287,29 @@ namespace ChattyBones
         /// </remarks>
         private const int SweepsBetweenShelterChecks = 8;
 
-        /// <summary>How near your bed counts as home.</summary>
+        /// <summary>Notice when you are properly settled at home.</summary>
         /// <remarks>
-        /// Wide enough to cover a house and its yard rather than the bedroom, so the
-        /// remark lands as you arrive rather than as you lie down.
-        /// </remarks>
-        private const float HomeRadius = 20f;
-
-        /// <summary>Notice when it arrives at your home.</summary>
-        /// <remarks>
-        /// The first version of this asked whether the skeleton was inside an
-        /// EffectArea of type PlayerBase, which sounded right and is not: every
-        /// crafting bench projects one, so an outlying workbench in a field is "base"
-        /// as far as that query is concerned. Played, the squad announced they were
-        /// home while their owner was still a long walk from anywhere.
+        /// Vanilla's own answer, and it took two wrong ones to go and look for it.
+        /// <c>Player.IsSafeInHome()</c> is public, and the game trusts it enough to
+        /// bill your TimeInBase statistic against it.
         ///
-        /// Your bed is the thing that actually means home, and the game already tracks
-        /// it - the custom spawn point is where you last slept. A player who has not
-        /// slept anywhere has no home to arrive at, and gets no line, which is the
-        /// honest answer rather than a missing feature.
+        /// It unpacks to Resting, and under a roof, and standing in a base area -
+        /// where Resting is itself near a fire, sheltered or sitting, not cold, not
+        /// freezing, not wet unless somewhere cozy, and unnoticed by anything. So all
+        /// three of the signals worth having are in there, combined the way the game
+        /// combines them rather than the way I would have guessed.
         ///
-        /// Two other candidates were weighed and dropped. The Rested effect lingers
-        /// for five minutes after you leave, so the edge would be wrong in the worst
-        /// direction - you would "arrive home" and stay there for a walk across a
-        /// biome. And comfort needs to know whether you are under a roof, which the
-        /// game computes for the local player only; it is a much better answer to
-        /// "how nice is this place" than to "are we there", and that is what it is
-        /// held back for.
+        /// The two wrong answers are worth keeping because each was wrong differently.
+        /// An EffectArea of type PlayerBase is projected by every crafting bench, so a
+        /// squad announced they were home from the first outlying workbench. Distance
+        /// to your bed fixed that and replaced it with a number I had invented, which
+        /// would have been right for one base and wrong for the next.
+        ///
+        /// The cost is that this is about being settled rather than about arriving:
+        /// walk in, craft for ten minutes and walk out without ever standing by the
+        /// fire, and it never fires. That reads as the better moment - a skeleton
+        /// remarking on it once everyone has stopped moving is closer to what the line
+        /// is for than one triggered by crossing an invisible circle.
         /// </remarks>
         private void CheckShelter()
         {
@@ -322,7 +320,7 @@ namespace ChattyBones
 
             _untilShelterCheck = SweepsBetweenShelterChecks;
 
-            bool inside = Character != null && NearBed(Character.transform.position);
+            bool inside = Player.m_localPlayer != null && Player.m_localPlayer.IsSafeInHome();
 
             if (inside)
             {
@@ -347,21 +345,6 @@ namespace ChattyBones
             {
                 _atHome = false;
             }
-        }
-
-        /// <summary>Is this close enough to where you last slept?</summary>
-        /// <returns>False when there is no bed to be near, which is not an error.</returns>
-        /// <param name="position">Where the skeleton is standing.</param>
-        private static bool NearBed(Vector3 position)
-        {
-            PlayerProfile profile = Game.instance == null ? null : Game.instance.GetPlayerProfile();
-
-            if (profile == null || !profile.HaveCustomSpawnPoint())
-            {
-                return false;
-            }
-
-            return Vector3.Distance(position, profile.GetCustomSpawnPoint()) <= HomeRadius;
         }
 
         /// <summary>Work out what became of the target we were following, and say so.</summary>

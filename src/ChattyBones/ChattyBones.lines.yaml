@@ -82,7 +82,7 @@
 #   BiomeChanged         you crossed into a new land   .  .  .  .  .  .  B  .  .
 #   Raid                 something is coming           .  .  .  .  .  .  .  .  .
 #   RaidEnded            you saw it off                .  .  .  .  .  .  .  .  .
-#   AtHome               it reached your bed           .  .  .  .  .  .  .  .  .
+#   AtHome               you settled in safely         .  .  .  .  .  .  .  .  .
 #   Looted               you picked something up       .  .  .  .  .  .  .  I  .
 #   PlayerAte            you ate something             .  .  .  .  .  .  .  I  .
 #   PlayerSkilledUp      you got better at something   .  .  .  .  .  .  .  .  L
@@ -352,8 +352,8 @@ lines:
       - "We saw it off."
     AtHome:
       - "Home, then."
-      - "Walls. I like walls."
-      - "Back where we started."
+      - "Walls, a roof, a fire. Luxury."
+      - "Nothing is trying to eat us. Novel."
       - "Safe as anything."
     Looted:
       - "More {item}, then."
