@@ -120,6 +120,11 @@
 # an attack nobody filled in. Prefer {weapontype} where a mistake would read
 # badly, and expect the occasional well-armed greydwarf.
 #
+# {status} arrives capitalized, because that is how the game names it on your
+# status bar - "Burning", "Wet", "Tarred". Put it where a capital belongs, at
+# the start of a sentence or after a full stop. "My bones are {status}." comes
+# out as "My bones are Wet." and reads like a typo.
+#
 # {name} and {player} are always available. The rest are not, and that is useful
 # rather than a limitation: a line asking for something we do not know is quietly
 # passed over and a different one is chosen instead. So you can write
@@ -219,12 +224,12 @@ lines:
       - "Much obliged."
       - "{status}? Don't mind if I do."
     Afflicted:
-      - "Ow. Ow. Ow."
+      - "{status}. Right through to the bones."
       - "Ah. {status}. Wonderful."
       - "I do not care for this."
       - "{status}! Somebody do something!"
     Weather:
-      - "Hey, my bones are {status}."
+      - "{status}. Right through to the bones."
       - "{status}. Marvellous."
       - "This is why I stayed buried."
       - "Does anyone else feel that?"
@@ -303,13 +308,13 @@ lines:
       - "We're all going to die out here."
       - "That could have been me!"
     Afflicted:
-      - "{status}! {status}! It's {status}!"
+      - "{status}! {status}! Get it off!"
       - "I knew this would happen."
 
   # Convinced of its own legend.
   boastful:
     Afflicted:
-      - "A little {status} never troubled a legend."
+      - "{status}? A legend endures worse."
       - "I have had worse."
     Summoned:
       - "The legend returns!"
@@ -348,7 +353,7 @@ lines:
   # Has done this too many times.
   veteran:
     Weather:
-      - "Wet again. Naturally."
+      - "{status} again. Naturally."
     Afflicted:
       - "{status}. Naturally."
       - "Add it to the list."
