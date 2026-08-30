@@ -28,7 +28,7 @@ namespace ChattyBones.Patches
                 return null;
             }
 
-            string name = Localization.instance.Localize("$biome_" + biome.ToString().ToLower());
+            string name = Localization.instance.Localize("$biome_" + biome.ToString().ToLowerInvariant());
 
             return string.IsNullOrEmpty(name) ? null : name;
         }
@@ -41,8 +41,10 @@ namespace ChattyBones.Patches
     /// small talk to match.
     ///
     /// Both methods are handed the biome they are firing in, which is why
-    /// <c>{biome}</c> costs nothing here: a sunrise line can name what it is coming
-    /// up over without us going and asking.
+    /// <c>{biome}</c> costs nothing here. It is sampled at the camera rather than at
+    /// the player, so in third person near a border it can name the ground behind
+    /// you - which nobody will ever notice, and is worth knowing before somebody
+    /// reports it as a bug.
     ///
     /// These run wherever EnvMan updates, which is every client - but EnvMan is the
     /// local player's view of the sky, and the events go to the local squad, so
@@ -60,7 +62,7 @@ namespace ChattyBones.Patches
         {
             try
             {
-                World.Announce(ChatterEvent.Dawn, biome);
+                WorldEvents.Announce(ChatterEvent.Dawn, biome);
             }
             catch (Exception e)
             {
@@ -81,7 +83,7 @@ namespace ChattyBones.Patches
         {
             try
             {
-                World.Announce(ChatterEvent.Nightfall, biome);
+                WorldEvents.Announce(ChatterEvent.Nightfall, biome);
             }
             catch (Exception e)
             {
@@ -114,9 +116,16 @@ namespace ChattyBones.Patches
         {
             try
             {
-                if (__instance == Player.m_localPlayer)
+                // None is what Heightmap answers while a zone is still loading, which
+                // is every portal trip and every login - m_currentBiome starts there
+                // too. Announcing it spends the squad's quiet time on a line that
+                // cannot name where it is, and the real crossing a second later is
+                // then refused for arriving too soon after it.
+                if (biome != Heightmap.Biome.None
+                    && Player.m_localPlayer != null
+                    && __instance == Player.m_localPlayer)
                 {
-                    World.Announce(ChatterEvent.BiomeChanged, biome);
+                    WorldEvents.Announce(ChatterEvent.BiomeChanged, biome);
                 }
             }
             catch (Exception e)
@@ -132,13 +141,29 @@ namespace ChattyBones.Patches
     /// hooking it means the squad reacts at the moment you are told rather than a
     /// beat later.
     ///
-    /// <c>OnDeactivate</c> takes a flag saying whether the event ran its course or
-    /// was simply cancelled, and only the first is worth a line - a raid you walked
-    /// away from is not one you survived.
-    ///
     /// No token. <c>m_startMessage</c> is tempting and wrong: it is a whole localized
     /// sentence, so "{raid}" inside a line reads as one sentence wedged into another.
     /// The lines react to a raid rather than naming it.
+    ///
+    /// Both ends need guarding, and neither guard is obvious from the method names.
+    ///
+    /// RandEventSystem re-activates the event on every fixed update that finds you
+    /// inside its range and deactivates it on every one that does not, with no
+    /// hysteresis - so chasing something past the boundary and coming back re-runs
+    /// OnActivate. Vanilla is quiet about that because its own warning is behind a
+    /// <c>m_firstActivation</c> flag; ours needs the same, which is what
+    /// <see cref="Raids"/> keeps.
+    ///
+    /// And <c>end</c> does not mean "ran its course", which is what the first version
+    /// of this said. SetForcedEvent passes it too, and forced events include boss
+    /// fights - so walking far enough from a live boss to drop its health bar would
+    /// otherwise congratulate you on surviving something you ran away from. Requiring
+    /// that we announced the start first is what closes it.
+    ///
+    /// One consequence worth knowing rather than guarding: boss fights and event
+    /// zones reach this the same way a raid does. Engaging Eikthyr says "something is
+    /// coming" and killing it says "we saw it off", which the lines are general enough
+    /// to carry, and which is arguably the better behaviour anyway.
     /// </remarks>
     [HarmonyPatch(typeof(RandomEvent), "OnActivate")]
     internal static class RandomEventStartPatch
@@ -146,16 +171,66 @@ namespace ChattyBones.Patches
         /// <summary>
         /// Catch everything, so a failure here cannot stop vanilla starting the raid.
         /// </summary>
-        private static void Postfix()
+        /// <param name="__instance">The event starting.</param>
+        private static void Postfix(RandomEvent __instance)
         {
             try
             {
-                World.Announce(ChatterEvent.Raid, Heightmap.Biome.None);
+                if (Raids.Starting(__instance))
+                {
+                    WorldEvents.Announce(ChatterEvent.Raid, Heightmap.Biome.None);
+                }
             }
             catch (Exception e)
             {
                 ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over a raid: " + e);
             }
+        }
+    }
+
+    /// <summary>Remembers which raid we have already announced.</summary>
+    /// <remarks>
+    /// Vanilla keeps the equivalent as <c>m_firstActivation</c> on the event itself,
+    /// which is per-clone and therefore not ours to read. This is the same idea by
+    /// name, which survives the event object being rebuilt.
+    /// </remarks>
+    internal static class Raids
+    {
+        /// <summary>The raid we last said something about, or null.</summary>
+        private static string _announced;
+
+        /// <summary>Is this a raid we have not already announced?</summary>
+        /// <returns>True the first time a given raid activates.</returns>
+        /// <param name="raid">The event starting.</param>
+        internal static bool Starting(RandomEvent raid)
+        {
+            string name = raid?.m_name;
+
+            if (string.IsNullOrEmpty(name) || name == _announced)
+            {
+                return false;
+            }
+
+            _announced = name;
+            return true;
+        }
+
+        /// <summary>Is this the end of a raid we announced the start of?</summary>
+        /// <returns>True once, for a raid we spoke about.</returns>
+        /// <param name="raid">The event ending.</param>
+        /// <remarks>
+        /// Requiring that we announced the start is what keeps a boss walking off our
+        /// screen from reading as a raid survived.
+        /// </remarks>
+        internal static bool Ending(RandomEvent raid)
+        {
+            if (raid == null || raid.m_name != _announced)
+            {
+                return false;
+            }
+
+            _announced = null;
+            return true;
         }
     }
 
@@ -166,14 +241,15 @@ namespace ChattyBones.Patches
         /// <summary>
         /// Catch everything, for the same reason the start does.
         /// </summary>
-        /// <param name="end">True when the raid ran its course rather than being called off.</param>
-        private static void Postfix(bool end)
+        /// <param name="__instance">The event ending.</param>
+        /// <param name="end">False when you simply walked out of range, which is not an ending.</param>
+        private static void Postfix(RandomEvent __instance, bool end)
         {
             try
             {
-                if (end)
+                if (end && Raids.Ending(__instance))
                 {
-                    World.Announce(ChatterEvent.RaidEnded, Heightmap.Biome.None);
+                    WorldEvents.Announce(ChatterEvent.RaidEnded, Heightmap.Biome.None);
                 }
             }
             catch (Exception e)
@@ -184,16 +260,20 @@ namespace ChattyBones.Patches
     }
 
     /// <summary>The one place the world events go, so they all read the same.</summary>
-    internal static class World
+    /// <remarks>
+    /// Not called World, which is what it was: the game has a type of that name, and
+    /// inside this namespace ours would win - so a later patch wanting vanilla's
+    /// would get a baffling error rather than the type it asked for.
+    /// </remarks>
+    internal static class WorldEvents
     {
         /// <summary>Let somebody in the squad remark on something the world did.</summary>
         /// <param name="kind">What happened.</param>
         /// <param name="biome">Where, or None when the event is not about a place.</param>
         /// <remarks>
-        /// Subject 0 throughout, so the echo window never applies. These are about the
-        /// world rather than about a kind of thing, and there is only one world - two
-        /// sunrises are never the same sunrise, so there is nothing for the echo check
-        /// to usefully dedupe.
+        /// Subject 0 throughout, so the echo window never applies. It exists to stop
+        /// two skeletons both announcing the same greydwarf, and none of these events
+        /// is about a kind of thing in that way.
         /// </remarks>
         internal static void Announce(ChatterEvent kind, Heightmap.Biome biome)
         {

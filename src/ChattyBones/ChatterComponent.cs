@@ -205,7 +205,7 @@ namespace ChattyBones
                 return;
             }
 
-            CheckShelter();
+            CheckHome();
 
             Character target = _ai.GetTargetCreature();
 
@@ -258,11 +258,12 @@ namespace ChattyBones
         /// <summary>How many sweeps in a row it has looked to be outside.</summary>
         /// <remarks>
         /// The hysteresis, and it earns its keep more here than it would have against
-        /// a boundary. Being safe at home is a conjunction of five conditions, several
-        /// of which flicker - a creature wandering close enough to notice you drops
-        /// Resting for as long as it is looking. So leaving takes agreeing with itself
-        /// several times while arriving takes one. Wrong in the forgiving direction:
-        /// the worst it does is call a squad home a few seconds longer than they were.
+        /// a boundary. Being safe at home is a conjunction of several conditions and
+        /// some of them flicker - anything that targets you and can see or hear you
+        /// drops Resting until about a second after it stops. So leaving takes
+        /// agreeing with itself several times while arriving takes one. Wrong in the
+        /// forgiving direction: the worst it does is call a squad home a few seconds
+        /// longer than they were.
         /// </remarks>
         private int _sweepsOutside;
 
@@ -270,22 +271,21 @@ namespace ChattyBones
         private const int SweepsBeforeLeaving = 4;
 
         /// <summary>Sweeps still to skip before asking about shelter again.</summary>
-        private int _untilShelterCheck;
+        private int _untilHomeCheck;
 
         /// <summary>How many sweeps to skip between shelter checks.</summary>
         /// <remarks>
-        /// The sweep runs at 4 Hz for every skeleton you have out, and the check is a
-        /// physics overlap rather than a field read - so asking every time would be
-        /// twenty of them a second for a squad of five, to notice something that
-        /// changes when you walk through a door. Every eighth sweep is two seconds,
-        /// which is the cadence vanilla uses for its own version of this question in
-        /// Player.UpdateBaseValue.
+        /// Not for cost - IsSafeInHome is a bool field read, and vanilla recomputes it
+        /// every fixed update whether we ask or not. It is for the hysteresis, which
+        /// this is what sets the scale of: four consecutive misses at one check every
+        /// two seconds is eight seconds of being away before the squad stops calling
+        /// it home.
         ///
-        /// It stretches the hysteresis with it: four consecutive misses is now eight
-        /// seconds of being outside rather than one, which is if anything more
-        /// forgiving than intended and still far shorter than a walk anywhere.
+        /// An earlier version of this comment justified the throttle on the cost of a
+        /// physics overlap, which was true of the query it replaced and not of this
+        /// one.
         /// </remarks>
-        private const int SweepsBetweenShelterChecks = 8;
+        private const int SweepsBetweenHomeChecks = 8;
 
         /// <summary>Notice when you are properly settled at home.</summary>
         /// <remarks>
@@ -293,17 +293,16 @@ namespace ChattyBones
         /// <c>Player.IsSafeInHome()</c> is public, and the game trusts it enough to
         /// bill your TimeInBase statistic against it.
         ///
-        /// It unpacks to Resting, and under a roof, and standing in a base area -
-        /// where Resting is itself near a fire, sheltered or sitting, not cold, not
-        /// freezing, not wet unless somewhere cozy, and unnoticed by anything. So all
-        /// three of the signals worth having are in there, combined the way the game
-        /// combines them rather than the way I would have guessed.
+        /// It unpacks to Resting, and under a roof, and within twenty metres of a
+        /// base area - where Resting is itself near a fire, sheltered or sitting, not
+        /// cold, not freezing, not on fire, not wet unless somewhere cozy, and
+        /// unnoticed by anything.
         ///
-        /// The two wrong answers are worth keeping because each was wrong differently.
-        /// An EffectArea of type PlayerBase is projected by every crafting bench, so a
-        /// squad announced they were home from the first outlying workbench. Distance
-        /// to your bed fixed that and replaced it with a number I had invented, which
-        /// would have been right for one base and wrong for the next.
+        /// Worth reading that list once, because the base area in it is the same
+        /// workbench-projected area that made the first attempt at this fire from a
+        /// hundred metres out. It was never the wrong signal; it was the wrong signal
+        /// on its own. Conjoined with a fire and a roof and nothing hunting you, it
+        /// means what it looked like it meant.
         ///
         /// The cost is that this is about being settled rather than about arriving:
         /// walk in, craft for ten minutes and walk out without ever standing by the
@@ -311,14 +310,14 @@ namespace ChattyBones
         /// remarking on it once everyone has stopped moving is closer to what the line
         /// is for than one triggered by crossing an invisible circle.
         /// </remarks>
-        private void CheckShelter()
+        private void CheckHome()
         {
-            if (--_untilShelterCheck > 0)
+            if (--_untilHomeCheck > 0)
             {
                 return;
             }
 
-            _untilShelterCheck = SweepsBetweenShelterChecks;
+            _untilHomeCheck = SweepsBetweenHomeChecks;
 
             bool inside = Player.m_localPlayer != null && Player.m_localPlayer.IsSafeInHome();
 

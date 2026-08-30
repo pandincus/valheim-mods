@@ -207,57 +207,42 @@ namespace ChattyBones.Logic
 
         /// <summary>You crossed into a different biome.</summary>
         /// <remarks>
-        /// Every crossing, not only the first. The hook fires on the transition and
-        /// the game's own "new biome" banner is guarded separately inside it, so
-        /// walking back into the Meadows counts here and does not there.
+        /// Every crossing, not only the first - so lines for it must read on the
+        /// hundredth walk home through the Meadows, not just on discovering it.
         /// </remarks>
         BiomeChanged,
 
         /// <summary>Something is coming - a raid has started.</summary>
         /// <remarks>
-        /// Ranked above the kill events, which is unusual for something this rare.
-        /// A raid announces itself and then immediately supplies targets, so at any
-        /// lower rank the squad would call out the first greydwarf instead of the
-        /// thing that brought it - and the warning is the better line.
+        /// Boss fights and event zones reach this too, by the same route vanilla
+        /// routes them - so engaging Eikthyr counts as something coming.
         /// </remarks>
         Raid,
 
         /// <summary>The raid is over and everyone is still standing.</summary>
-        /// <remarks>
-        /// Ranked far below <see cref="Raid"/> on purpose. It fires when things have
-        /// gone quiet, so it has no competition and needs no standing.
-        /// </remarks>
         RaidEnded,
 
-        /// <summary>It has arrived at your home.</summary>
+        /// <summary>You have settled somewhere safe, and it has noticed.</summary>
         /// <remarks>
-        /// The only event with no hook behind it. There is nothing to patch - "are we
-        /// home" is a query, so it rides the sweep that already runs for
-        /// <see cref="TargetAcquired"/> and fires on the edge.
+        /// The only event with no hook behind it - "are we home" is a query rather
+        /// than a moment, so it rides the sweep that already runs for
+        /// <see cref="TargetAcquired"/>.
         ///
-        /// Called AtHome rather than Sheltered because the first version asked the
-        /// wrong question. It used EffectArea.Type.PlayerBase, which every crafting
-        /// bench projects - so a squad reached "base" at the first outlying workbench
-        /// and asked to stay while their owner was still a long walk from anywhere.
-        /// Home is where your bed is, and the game already knows where that is.
+        /// About being settled rather than arriving, which is worth knowing when
+        /// writing lines for it: you can walk in, craft for ten minutes and leave
+        /// without ever triggering it. It wants a fire and a roof and nothing hunting
+        /// you.
         /// </remarks>
         AtHome,
 
         /// <summary>You picked something up.</summary>
         /// <remarks>
-        /// Anything at all, with no judgement about what is worth mentioning. Ranked
-        /// one above Idle, so the squad gap decides how often you hear about it - and
-        /// what it happens to catch is therefore near enough random, which the lines
-        /// are written for.
+        /// Anything at all, with no judgement about what is worth mentioning - so what
+        /// it catches is near enough random, which the lines are written for.
         /// </remarks>
         Looted,
 
         /// <summary>You ate something.</summary>
-        /// <remarks>
-        /// Self-pacing, which is why it needs no threshold of its own: three food
-        /// slots on roughly twenty-minute timers means it comes round on the game's
-        /// schedule rather than ours.
-        /// </remarks>
         PlayerAte,
 
         /// <summary>You got better at something.</summary>

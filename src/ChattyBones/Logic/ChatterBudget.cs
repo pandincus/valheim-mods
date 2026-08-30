@@ -377,40 +377,42 @@ namespace ChattyBones.Logic
                 // is said into a quiet field with nothing to compete against.
                 ChatterEvent.RaidEnded => 35,
 
-                ChatterEvent.Buffed => 30,
-                ChatterEvent.Summoned => 20,
+                // Everything from here down is small talk, and it is spaced in twos
+                // rather than packed. The band ran out of free integers once already,
+                // and the next event to want a home in it would have had to renumber a
+                // neighbour - which is how two events end up sharing a rank and
+                // silently losing the ability to interrupt each other.
+                //
+                // Three tiers, coarsest first: what the squad is, then what you are
+                // doing, then what the world is doing.
+                ChatterEvent.Buffed => 32,
+                ChatterEvent.Summoned => 30,
+                ChatterEvent.CompanionSummoned => 28,
 
-                // Getting better at something is about you, so it sits above the
-                // places and the sky, and below anything that happens to a person.
-                ChatterEvent.PlayerSkilledUp => 19,
+                // About you rather than about the place, so above both.
+                ChatterEvent.PlayerSkilledUp => 26,
+                ChatterEvent.PlayerAte => 24,
 
-                // Arriving somewhere is worth more than the weather and less than
-                // anything that happens to a person. Both fire while travelling,
-                // which is when the squad has least to say.
-                ChatterEvent.BiomeChanged => 18,
-                ChatterEvent.AtHome => 17,
+                // Where you are. Arriving somewhere beats the sky doing its usual
+                // thing, because the sky comes round on its own every twenty minutes
+                // and the Plains do not.
+                ChatterEvent.AtHome => 22,
+                ChatterEvent.BiomeChanged => 20,
 
-                // Lunch is not urgent.
-                ChatterEvent.PlayerAte => 16,
-
-                ChatterEvent.CompanionSummoned => 15,
-
-                // The day cycle is twenty real minutes, so these are a rhythm rather
-                // than an occasion, and they sit with the small talk accordingly.
-                // Dawn above Nightfall because it is the one an undead thing has a
-                // view about.
-                ChatterEvent.Dawn => 14,
-                ChatterEvent.Nightfall => 13,
+                // The sky, and then the weather under it. Dawn above Nightfall
+                // because an undead thing has more of a view about sunrise.
+                ChatterEvent.Dawn => 18,
+                ChatterEvent.Nightfall => 16,
 
                 // Being rained on is small talk, and any water at all applies it - so
                 // anywhere higher and a skeleton crossing a stream talks over a kill.
-                ChatterEvent.Weather => 12,
+                ChatterEvent.Weather => 14,
 
                 // One above Idle, and doing the whole job of deciding how often you
-                // hear about loot - there is no filter on what is worth mentioning,
-                // because at this rank the squad gap already decides that better than
-                // any judgement about items could.
-                ChatterEvent.Looted => 11,
+                // hear about loot: emptying a chest of forty things produces about one
+                // remark, because at this rank Looted only speaks when the field is
+                // quiet and the squad gap has elapsed.
+                ChatterEvent.Looted => 12,
 
                 ChatterEvent.Idle => 10,
 

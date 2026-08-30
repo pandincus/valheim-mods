@@ -52,8 +52,9 @@
 # Thirty things a skeleton reacts to, and which tokens each one can fill in.
 # {name} and {player} are left out of the table because every event has them.
 #
-#     T {target}       W {weapon}        D {damage}    B {biome}   I {item}
-#     C {companion}    K {weapontype}    S {status}   L {skill}
+#     T {target}       W {weapon}        D {damage}
+#     C {companion}    K {weapontype}    S {status}
+#     B {biome}        I {item}          L {skill}
 #
 #                                                      T  C  W  K  D  S  B  I  L
 #   Summoned             you raised it                 .  .  .  .  .  .  .  .  .
@@ -79,7 +80,7 @@
 #   PlayerDodged         you rolled clear of a blow    .  .  .  .  .  .  .  .  .
 #   Dawn                 the sun came up               .  .  .  .  .  .  B  .  .
 #   Nightfall            the light went                .  .  .  .  .  .  B  .  .
-#   BiomeChanged         you crossed into a new land   .  .  .  .  .  .  B  .  .
+#   BiomeChanged         you crossed a biome border    .  .  .  .  .  .  B  .  .
 #   Raid                 something is coming           .  .  .  .  .  .  .  .  .
 #   RaidEnded            you saw it off                .  .  .  .  .  .  .  .  .
 #   AtHome               you settled in safely         .  .  .  .  .  .  .  .  .
@@ -117,7 +118,7 @@
 #   {target}      the creature it is reacting to
 #   {companion}   another of your skeletons
 #
-# ...and four describe what actually happened:
+# ...and seven describe what happened and where:
 #
 #   {weapon}      the weapon by name, e.g. "Mistwalker"
 #   {weapontype}  what kind it is, e.g. "sword"
@@ -135,6 +136,11 @@
 # a creature with no real weapon reports "sword", because that is the default on
 # an attack nobody filled in. Prefer {weapontype} where a mistake would read
 # badly, and expect the occasional well-armed greydwarf.
+#
+# {biome} and {item} arrive capitalized too - "Black Forest", "Carrot Soup",
+# "Wood". That is fine mid-sentence, because the game capitalizes them
+# everywhere else as well, so "More Wood, then." reads the way the rest of the
+# interface does. {status} is the exception, and this is why:
 #
 # {status} arrives capitalized, because that is how the game names it on your
 # status bar - "Burning", "Wet", "Tarred". Put it where a capital belongs, at
@@ -219,6 +225,8 @@ colors:
     PlayerParried: triumph
     StaggeredIt: triumph
     PlayerDodged: triumph
+    Raid: alarm
+    RaidEnded: triumph
 
 lines:
 
@@ -337,9 +345,9 @@ lines:
       - "Dark again. Good."
     BiomeChanged:
       - "The {biome}. Right."
-      - "So this is the {biome}."
+      - "Back in the {biome}, then."
       - "I have a bad feeling about the {biome}."
-      - "New ground."
+      - "This place again."
     Raid:
       - "Something is coming."
       - "Something is out there."
@@ -351,7 +359,7 @@ lines:
       - "Is that all of them?"
       - "We saw it off."
     AtHome:
-      - "Home, then."
+      - "Right. Feet up."
       - "Walls, a roof, a fire. Luxury."
       - "Nothing is trying to eat us. Novel."
       - "Safe as anything."
@@ -461,7 +469,7 @@ lines:
       - "Forming up."
     AtHome:
       - "Position secured."
-      - "Home reached. Standing by."
+      - "Standing down. For now."
     PlayerParried:
       - "Textbook, {player}."
       - "Correct form. Noted."

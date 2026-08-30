@@ -41,7 +41,7 @@ namespace ChattyBones.Patches
                 return null;
             }
 
-            string name = Localization.instance.Localize("$skill_" + skill.ToString().ToLower());
+            string name = Localization.instance.Localize("$skill_" + skill.ToString().ToLowerInvariant());
 
             return string.IsNullOrEmpty(name) ? null : name;
         }
@@ -56,22 +56,19 @@ namespace ChattyBones.Patches
     /// the same trap that made Character.OnDeath unusable as a postfix in phase 4.
     ///
     /// ShowPickupMessage sidesteps it entirely: vanilla calls it from inside Pickup
-    /// with the item data already in hand and already loaded, and only when the
-    /// picker is a player.
+    /// with the item data already in hand and already loaded, and only when the picker
+    /// is a player.
     ///
-    /// Nothing filters what is worth mentioning, and that is the design rather than
-    /// an omission. A first version sorted items into notable and not - trophies,
-    /// anything with a coin value, anything that does not stack - and it was wrong
-    /// twice over. Wrong in detail, because it counted trophies as treasure when a
-    /// chest of eleven greydwarf trophies is what most players actually have. And
-    /// wrong in kind, because the budget is already a rate limiter and a far better
-    /// one: Looted sits one rank above Idle, so it can only speak when nothing else
-    /// is happening, and the squad gap decides how often that is.
+    /// It has a second caller, though, and it is not a pickup: StoreGui.BuySelectedItem
+    /// uses the same message to tell you what you just bought. "Finders keepers" about
+    /// something you paid Haldor for is wrong, so the shop being open is a guard.
     ///
-    /// So every pickup is a candidate and almost none of them get through. The lines
-    /// are written to work for whatever it happens to catch, which is usually
-    /// something dull - and a skeleton being unimpressed by your fortieth piece of
-    /// wood is funnier than one enthusing about a ruby.
+    /// Nothing filters what is worth mentioning. Every pickup is a candidate and the
+    /// budget decides: at rank 12 Looted only speaks when the field is quiet, so
+    /// emptying a chest of forty things produces about one remark. The lines are
+    /// written for whatever that happens to catch, which is usually something dull -
+    /// a skeleton unimpressed by your fortieth piece of wood is funnier than one
+    /// enthusing about a ruby, and needs no notion of what a ruby is.
     /// </remarks>
     [HarmonyPatch(typeof(Character), "ShowPickupMessage")]
     internal static class CharacterPickupPatch
@@ -105,6 +102,20 @@ namespace ChattyBones.Patches
             }
 
             if (Player.m_localPlayer == null || picker != Player.m_localPlayer)
+            {
+                return;
+            }
+
+            if (StoreGui.IsVisible())
+            {
+                return;
+            }
+
+            // Auto-pickup routes through here, so this is the busiest path the mod
+            // has. Localizing the name before asking whether anybody can speak would
+            // do that work on every stick and stone - see the ordering note on
+            // Chatter.TrySpeak, which this is the one place that could get wrong.
+            if (ChatterComponent.All.Count == 0)
             {
                 return;
             }
@@ -166,11 +177,21 @@ namespace ChattyBones.Patches
 
     /// <summary>Reacts to you getting better at something.</summary>
     /// <remarks>
-    /// The game puts its own small message top-left when this fires, so the squad is
-    /// talking over something rather than filling a silence. It survives that because
-    /// a HUD number and somebody congratulating you are different registers - but it
-    /// is the one event in the set where that is true, and worth remembering if it
-    /// ever reads as redundant in play.
+    /// Records through <see cref="Blow"/> rather than speaking, and that is not
+    /// optional. Blocking is raised from inside <c>Humanoid.BlockAttack</c>, which
+    /// RPC_Damage calls - so a parry that levels Blocking fires this mid-blow, and
+    /// speaking there would take the moment from the parry, the injury and the kill
+    /// alike, at rank 19. Blocking levels on your first block, so it is not a corner
+    /// case. Recording lets the rank decide instead, which is what the ranks are for.
+    ///
+    /// A level-up outside a fight has no blow to end it, and is picked up by
+    /// <see cref="Blow.FlushStale"/> on the next tick.
+    ///
+    /// The game shows its own message when a skill goes up, so the squad is talking
+    /// over something rather than filling a silence - centre-screen for the first
+    /// level of a skill, top-left after that. It survives because a number and a
+    /// compliment are different registers, and it is the only event here of which
+    /// that is true.
     /// </remarks>
     [HarmonyPatch(typeof(Player), "OnSkillLevelup")]
     internal static class PlayerSkillPatch
@@ -195,12 +216,12 @@ namespace ChattyBones.Patches
                     return;
                 }
 
-                _ = Chatter.SpeakAny(
+                Blow.Note(
+                    __instance,
                     ChatterEvent.PlayerSkilledUp,
                     subject: 0,
                     targetName: null,
-                    companion: null,
-                    details: new LineDetails(skill: Doings.NameOf(skill)));
+                    new LineDetails(skill: Doings.NameOf(skill)));
             }
             catch (Exception e)
             {

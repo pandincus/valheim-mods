@@ -266,6 +266,12 @@ namespace ChattyBones.Tests
 
                 if (match.Success)
                 {
+                    // The header is aligned to the character, and a row that drifts
+                    // still matches the pattern - the leading .*? absorbs it. So the
+                    // width is asserted rather than assumed, or the one thing a reader
+                    // checks this grid for by eye can rot unnoticed.
+                    Assert.Equal(80, match.Value.Length);
+
                     rows[match.Groups[1].Value] = string.Concat(
                         match.Groups[2].Value, match.Groups[3].Value, match.Groups[4].Value,
                         match.Groups[5].Value, match.Groups[6].Value, match.Groups[7].Value,

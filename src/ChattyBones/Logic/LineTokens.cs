@@ -8,7 +8,7 @@ namespace ChattyBones.Logic
     /// <remarks>
     /// A pack author writes "Get lost, {target}!" and we turn that into "Get lost,
     /// Greydwarf!" at the moment it is said. Eleven tokens, all optional - four for
-    /// the people involved, four for the event itself:
+    /// the people involved, seven for the event itself:
     ///
     /// - {target} is whatever the skeleton is reacting to, already localized
     /// - {player} is you, whoever summoned it
@@ -176,7 +176,7 @@ namespace ChattyBones.Logic
 
         /// <summary>Is this one of the tokens we understand?</summary>
         /// <param name="token">The text between the braces, with the braces removed.</param>
-        /// <returns>True for target, player, name and companion. False for anything else.</returns>
+        /// <returns>True for any of the eleven. False for anything else.</returns>
         /// <remarks>
         /// Case-sensitive on purpose. The pack is a file people edit by hand, and I
         /// would rather "{Target}" show up in game looking wrong than quietly work.
@@ -190,7 +190,7 @@ namespace ChattyBones.Logic
         }
 
         /// <summary>The value for a known token, or null when we do not have one.</summary>
-        /// <param name="token">One of target, player, name or companion.</param>
+        /// <param name="token">One of the eleven token names.</param>
         /// <returns>The value, or null if it was not supplied.</returns>
         private string ValueOf(string token)
         {

@@ -418,6 +418,11 @@ namespace ChattyBones
                 return;
             }
 
+            // Anything recorded during a blow is said by the postfix that ends it.
+            // A skill can also go up while you are chopping a tree, where there is no
+            // blow to end - so a record that outlives its frame is said here instead.
+            Patches.Blow.FlushStale();
+
             _untilSweep -= dt;
             if (_untilSweep > 0f)
             {

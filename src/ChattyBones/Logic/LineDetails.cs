@@ -63,9 +63,8 @@ namespace ChattyBones.Logic
         /// it - and two fields holding an item name would only ever differ in which
         /// event filled them.
         ///
-        /// Called item rather than food, which it was at first. Looted does not filter
-        /// what it fires on, so this names a stone far more often than a stew, and a
-        /// pack author reading {food} would reasonably expect otherwise.
+        /// Item rather than food: Looted fires on anything, so this names a stone far
+        /// more often than a stew.
         /// </remarks>
         internal string Item { get; }
 

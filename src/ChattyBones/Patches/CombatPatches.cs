@@ -116,6 +116,27 @@ namespace ChattyBones.Patches
             _frame = Time.frameCount;
         }
 
+        /// <summary>Say anything left over from a frame that has already finished.</summary>
+        /// <remarks>
+        /// Most records are consumed by the RPC_Damage postfix that ends the blow they
+        /// belong to. Not all of them: a skill can go up during a blow *or* while you
+        /// are chopping a tree, and the hook cannot tell which. So it always records,
+        /// and anything still sitting here a frame later had no blow to end it and is
+        /// said now.
+        ///
+        /// A tick late is imperceptible for the events that reach this - nobody can
+        /// tell a level-up remark arrived a sixtieth of a second after the level.
+        /// </remarks>
+        internal static void FlushStale()
+        {
+            if (_victim == null || _frame == Time.frameCount)
+            {
+                return;
+            }
+
+            Flush(_victim);
+        }
+
         /// <summary>Say whatever was set aside for this victim, if it is still worth saying.</summary>
         /// <param name="victim">Whoever the finished blow landed on.</param>
         /// <remarks>
@@ -139,7 +160,12 @@ namespace ChattyBones.Patches
             int subject = _subject;
             string targetName = _targetName;
             LineDetails details = _details;
-            bool fresh = _frame == Time.frameCount;
+
+            // One frame of grace rather than none. The blow that recorded this ends in
+            // the same frame, and FlushStale deliberately picks records up in the next
+            // one - so anything older than that was orphaned by an exception and is
+            // dropped rather than attached to whatever is happening now.
+            bool fresh = Time.frameCount - _frame <= 1;
 
             _victim = null;
             _targetName = null;
