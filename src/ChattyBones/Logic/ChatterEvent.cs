@@ -149,5 +149,48 @@ namespace ChattyBones.Logic
         /// swamp talking over its own kills.
         /// </remarks>
         Weather,
+
+        /// <summary>You turned a blow at the last moment.</summary>
+        /// <remarks>
+        /// A parry, not any old block. The game distinguishes them and pays double
+        /// Blocking XP for the good one, so the test we use is its own rather than
+        /// ours.
+        ///
+        /// Narrowing it to the parry is the whole point. A skeleton that said "nice
+        /// block" every time you raised a shield would be saying it several times a
+        /// fight, and you would stop hearing it.
+        /// </remarks>
+        PlayerParried,
+
+        /// <summary>Something knocked you off balance.</summary>
+        /// <remarks>
+        /// Not the same moment as <see cref="PlayerHurt"/> and worth having both. That
+        /// one is gated on a share of your health, so a run of small hits never
+        /// reaches it - while the stagger bar fills from exactly that run. So this
+        /// tends to fire when PlayerHurt has stayed quiet, which is the half of a bad
+        /// fight the squad currently says nothing about.
+        /// </remarks>
+        PlayerStaggered,
+
+        /// <summary>You knocked something off balance.</summary>
+        /// <remarks>
+        /// The other side of <see cref="PlayerStaggered"/>, and a different sentence -
+        /// being knocked about and watching you knock something about are not the
+        /// same remark.
+        ///
+        /// Carries the limitation <see cref="PlayerGotAKill"/> has, for the same
+        /// reason: the stagger resolves on whoever owns the victim, so staggering
+        /// somebody else's greydwarf happens on their machine and we hear nothing.
+        /// </remarks>
+        StaggeredIt,
+
+        /// <summary>You rolled clear of something that would have landed.</summary>
+        /// <remarks>
+        /// Only the good ones. The hook is the game's own perfect-dodge handler - the
+        /// one that spawns the effect, refunds stamina and raises the skill - so this
+        /// fires on a dodge that actually turned a blow, never on a roll into open
+        /// air. Same argument as <see cref="PlayerParried"/>.
+        /// </remarks>
+        PlayerDodged,
     }
 }

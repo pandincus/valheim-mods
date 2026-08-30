@@ -51,7 +51,7 @@ namespace ChattyBones.Logic
         /// Only set for the Companion* events, where one skeleton is reacting to
         /// another. Everywhere else this is null, so a "{companion}" written into an
         /// idle line quietly refuses rather than producing a sentence with a hole in
-        /// it. DefaultPackTests keeps the authoritative list of which events get what.
+        /// it. <see cref="EventTokens.PromisedFor"/> is the list of which events get what.
         /// </remarks>
         internal string Companion { get; }
 

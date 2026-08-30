@@ -308,8 +308,13 @@ namespace ChattyBones.Logic
         /// idle chatter outranked death cries you would probably just conclude the
         /// mod was broken. If somebody genuinely wants to reorder it, that is a good
         /// reason to revisit, but I would rather not invite the mistake by default.
+        ///
+        /// Internal rather than private because the combat hooks need it too. Two
+        /// texture events can land on one blow and only one of them gets held for the
+        /// end of it, so something has to say which - and the answer has to be this
+        /// table rather than a second opinion beside it.
         /// </remarks>
-        private static int PriorityOf(ChatterEvent kind)
+        internal static int PriorityOf(ChatterEvent kind)
         {
             return kind switch
             {
@@ -332,6 +337,14 @@ namespace ChattyBones.Logic
                 ChatterEvent.Afflicted => 102,
 
                 ChatterEvent.Hurt => 100,
+
+                // Below PlayerHurt, which is the same moment told better when both
+                // fire. Above CompanionHurt, because you being knocked flat matters
+                // more than a skeleton being scratched. It earns its place by firing
+                // when PlayerHurt does not - the stagger bar fills from a run of small
+                // hits, none of which clears HurtFraction on its own.
+                ChatterEvent.PlayerStaggered => 95,
+
                 ChatterEvent.CompanionHurt => 90,
 
                 // Outcomes above intentions, which they were not at first. See
@@ -341,6 +354,17 @@ namespace ChattyBones.Logic
                 ChatterEvent.CompanionKilled => 60,
 
                 ChatterEvent.TargetAcquired => 50,
+
+                // The texture of a fight, all of it below TargetAcquired on purpose:
+                // these three fire several times an encounter, so letting them
+                // interrupt the narration would mean hearing about footwork instead
+                // of about the troll. Ordered by how hard the thing is - a dodge that
+                // turned a blow beats a parry beats knocking something about, and all
+                // three beat landing an ordinary heavy hit.
+                ChatterEvent.PlayerDodged => 48,
+                ChatterEvent.PlayerParried => 45,
+                ChatterEvent.StaggeredIt => 42,
+
                 ChatterEvent.PlayerLandedABigHit => 40,
                 ChatterEvent.Buffed => 30,
                 ChatterEvent.Summoned => 20,

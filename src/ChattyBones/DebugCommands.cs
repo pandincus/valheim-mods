@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ChattyBones.Logic;
 using UnityEngine;
 
 namespace ChattyBones
@@ -36,6 +37,42 @@ namespace ChattyBones
                 isNetwork: false,
                 onlyServer: false,
                 isSecret: true);
+
+            _ = new Terminal.ConsoleCommand(
+                "cb_tokens",
+                "what each event promises, against what it has actually supplied",
+                Tokens,
+                isCheat: false,
+                isNetwork: false,
+                onlyServer: false,
+                isSecret: true);
+        }
+
+        /// <summary>Show what the hooks have really been handing over.</summary>
+        /// <param name="args">Ignored.</param>
+        /// <remarks>
+        /// The one thing no test can check: the tests hold the table and the pack
+        /// header's grid together, and neither of them can see whether a call site
+        /// still passes what it used to. Delete a token from a hook and every test
+        /// stays green while the lines using it are quietly skipped in game.
+        ///
+        /// A command rather than a warning, and that was decided the hard way. The
+        /// earlier version logged the disagreement by itself, and could not tell a
+        /// hook that had stopped passing something from a token that simply never
+        /// exists for that event - a lone skeleton's Idle has no companion to name,
+        /// and plenty of things that kill a skeleton are not holding a weapon. Both
+        /// read as drift, both were reported as drift, and both are documented in the
+        /// pack header as normal. Asking a person, who knows what they were just
+        /// doing, is the version that works.
+        /// </remarks>
+        private static void Tokens(Terminal.ConsoleEventArgs args)
+        {
+            IReadOnlyList<string> report = EventTokens.Report();
+
+            for (int i = 0; i < report.Count; i++)
+            {
+                args.Context.AddString(report[i]);
+            }
         }
 
         /// <summary>Make the nearest skeleton say whatever you typed.</summary>

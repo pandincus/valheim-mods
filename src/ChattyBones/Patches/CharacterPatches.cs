@@ -92,6 +92,18 @@ namespace ChattyBones.Patches
             {
                 ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over a hit: " + e);
             }
+
+            try
+            {
+                // Last, and that is the point. The block and stagger hooks run early
+                // inside RPC_Damage, so anything they said where they were detected
+                // would beat the events they are ranked below - see Blow.
+                Blow.Flush(__instance);
+            }
+            catch (Exception e)
+            {
+                ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over a blow: " + e);
+            }
         }
 
         /// <summary>Work out whether this hit is worth saying anything about.</summary>
@@ -198,12 +210,17 @@ namespace ChattyBones.Patches
                 return;
             }
 
-            _ = Chatter.SpeakAny(
+            // Held rather than said, for the same reason the combat hooks are. This
+            // runs before Blow.Flush, and anything that speaks first takes the moment
+            // whatever its rank - so saying it here would put a big hit at 40 ahead of
+            // a stagger at 42, inverting the table that ranks them. Routed through Blow
+            // the two are compared properly.
+            Blow.Note(
+                victim,
                 ChatterEvent.PlayerLandedABigHit,
                 Summons.PrefabOf(victim),
                 Summons.CreatureName(victim),
-                companion: null,
-                details: Hits.Of(hit, damage));
+                Hits.Of(hit, damage));
         }
     }
 

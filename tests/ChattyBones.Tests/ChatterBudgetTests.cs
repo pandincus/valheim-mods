@@ -279,6 +279,66 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void TheTextureOfAFightNeverTalksOverTheFightItself()
+        {
+            // These three fire several times an encounter, which is what makes them
+            // worth having and also what makes them dangerous. Ranked any higher and
+            // a squad would spend a troll fight admiring your footwork instead of
+            // calling out what is happening.
+            ChatterEvent[] texture =
+            [
+                ChatterEvent.PlayerDodged,
+                ChatterEvent.PlayerParried,
+                ChatterEvent.StaggeredIt,
+            ];
+
+            foreach (ChatterEvent kind in texture)
+            {
+                Assert.False(
+                    CanInterrupt(kind, ChatterEvent.TargetAcquired),
+                    kind + " should not have cut in on TargetAcquired");
+
+                Assert.False(
+                    CanInterrupt(kind, ChatterEvent.Killed),
+                    kind + " should not have cut in on a kill");
+
+                // But they are still worth more than an idle mutter, or nobody would
+                // ever hear one.
+                Assert.True(
+                    CanInterrupt(kind, ChatterEvent.Idle),
+                    kind + " should have been able to cut in on Idle");
+            }
+        }
+
+        [Fact]
+        public void SkillBeatsBruteForceAmongTheCombatRemarks()
+        {
+            // The ordering inside the cluster, and it is a judgement rather than a
+            // fact: turning a blow is harder than landing one, and rolling clear of it
+            // is harder still. Pinned so that adding a fifth combat event has to think
+            // about where it goes rather than landing on a free number.
+            Assert.True(CanInterrupt(ChatterEvent.PlayerDodged, ChatterEvent.PlayerParried));
+            Assert.True(CanInterrupt(ChatterEvent.PlayerParried, ChatterEvent.StaggeredIt));
+            Assert.True(CanInterrupt(ChatterEvent.StaggeredIt, ChatterEvent.PlayerLandedABigHit));
+
+            Assert.False(CanInterrupt(ChatterEvent.PlayerLandedABigHit, ChatterEvent.StaggeredIt));
+        }
+
+        [Fact]
+        public void BeingKnockedAboutIsAboutYouRatherThanAboutTheFight()
+        {
+            // PlayerStaggered sits with the events about you, not with the combat
+            // texture, because it means you are losing. It gives way to you actually
+            // being hurt - the same moment, told better - and beats a skeleton being
+            // scratched.
+            Assert.False(CanInterrupt(ChatterEvent.PlayerStaggered, ChatterEvent.PlayerHurt));
+            Assert.True(CanInterrupt(ChatterEvent.PlayerStaggered, ChatterEvent.CompanionHurt));
+
+            // And it is emphatically not one of the three above, which are good news.
+            Assert.True(CanInterrupt(ChatterEvent.PlayerStaggered, ChatterEvent.PlayerParried));
+        }
+
+        [Fact]
         public void CatchingFireOutranksTheBlowThatCausedIt()
         {
             // Uniqueness alone left this rank free to move either way. Why it is above

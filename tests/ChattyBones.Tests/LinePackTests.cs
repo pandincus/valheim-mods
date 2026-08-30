@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using ChattyBones.Logic;
 
@@ -14,6 +15,43 @@ namespace ChattyBones.Tests
     /// </remarks>
     public class LinePackTests
     {
+        [Fact]
+        public void APackMissingAnEventEntirelyReportsIt()
+        {
+            // The case that made this worth having: a pack written before an event
+            // existed. The hook fires, the budget approves, the pack has nothing, and
+            // the skeleton stays quiet - which is indistinguishable from a broken hook
+            // unless something says so at load.
+            LinePack.Builder builder = new();
+            builder.Add(LinePack.SharedPersonality, ChatterEvent.Idle, "Quiet, isn't it.");
+
+            LinePack pack = builder.Build();
+            IReadOnlyList<ChatterEvent> missing = pack.EventsWithNoLines();
+
+            Assert.DoesNotContain(ChatterEvent.Idle, missing);
+            Assert.Contains(ChatterEvent.PlayerParried, missing);
+            Assert.Equal(Enum.GetValues(typeof(ChatterEvent)).Length - 1, missing.Count);
+        }
+
+        [Fact]
+        public void AnEventCoveredByOnlyOnePersonalityIsNotReportedMissing()
+        {
+            // Leaving an event to one personality is odd but not silent, and leaving
+            // it to the shared lines is the documented way to fill a pack in
+            // gradually. Warning about either would be warning about the normal case.
+            LinePack.Builder builder = new();
+            builder.Add("veteran", ChatterEvent.PlayerDodged, "Lucky.");
+
+            Assert.DoesNotContain(ChatterEvent.PlayerDodged, builder.Build().EventsWithNoLines());
+        }
+
+        [Fact]
+        public void TheShippedPackIsMissingNothing()
+        {
+            // The one that would have caught this before it reached a live session.
+            Assert.Empty(DefaultPack.Build().EventsWithNoLines());
+        }
+
         private const string Cowardly = "cowardly";
         private const string Boastful = "boastful";
 

@@ -49,7 +49,7 @@
 #
 # EVENTS
 #
-# Seventeen things a skeleton reacts to, and which tokens each one can fill in.
+# Twenty-one things a skeleton reacts to, and which tokens each one can fill in.
 # {name} and {player} are left out of the table because every event has them.
 #
 #     T {target}       W {weapon}        D {damage}
@@ -73,6 +73,10 @@
 #   CompanionKilled      another skeleton got a kill   T  C  W  K  .  .
 #   CompanionDied        another skeleton died         .  C  .  .  .  .
 #   CompanionSummoned    another was just raised       .  C  .  .  .  .
+#   PlayerParried        you turned a blow in time     T  .  .  .  .  .
+#   PlayerStaggered      something knocked you about   T  .  .  .  .  .
+#   StaggeredIt          you knocked something about   T  .  .  .  .  .
+#   PlayerDodged         you rolled clear of a blow    .  .  .  .  .  .
 #
 # The D column is the one worth a second look. {damage} only reaches the events
 # that catch a blow as it lands, because that is the only moment the numbers
@@ -89,7 +93,7 @@
 # sometimes be wrong. "My bones are wet" travels better than "it is raining".
 #
 # Spelling counts, capitals included: "idle" is not "Idle", and a name that is
-# not exactly one of the seventeen above is reported in the log and skipped.
+# not exactly one of the twenty-one above is reported in the log and skipped.
 #
 # An event you leave out entirely is simply never commented on, which is a fine
 # way to switch off the idle chatter.
@@ -199,6 +203,10 @@ colors:
     Killed: triumph
     PlayerGotAKill: triumph
     CompanionKilled: triumph
+    PlayerStaggered: alarm
+    PlayerParried: triumph
+    StaggeredIt: triumph
+    PlayerDodged: triumph
 
 lines:
 
@@ -285,9 +293,37 @@ lines:
       - "Welcome to the party, {companion}."
       - "Look who's up."
       - "Budge up, {companion}."
+    PlayerParried:
+      - "Oh, that was clean."
+      - "Turned it! Straight back at it."
+      - "That {target} did not expect that."
+      - "Beautiful, {player}."
+    PlayerStaggered:
+      - "{player}! Stay on your feet!"
+      - "Steady, {player}!"
+      - "That {target} is winning."
+      - "Up, up, up!"
+    StaggeredIt:
+      - "The {target} is reeling!"
+      - "Now! While it is down!"
+      - "It did not care for that."
+      - "Its guard is all over the place."
+    PlayerDodged:
+      - "Nimble!"
+      - "Nothing touched you."
+      - "How did you even do that?"
+      - "I could never do that. No knees, see."
 
   # Would rather be somewhere else.
   cowardly:
+    PlayerStaggered:
+      - "We are losing! We are losing!"
+      - "Get up! Please get up!"
+      - "This was a terrible idea!"
+    PlayerDodged:
+      - "Do that again! Do that every time!"
+      - "Teach me that. Teach me that now."
+      - "I would have just been hit. Every time."
     Summoned:
       - "Do I have to?"
       - "I was having a lovely rest."
@@ -313,6 +349,13 @@ lines:
 
   # Convinced of its own legend.
   boastful:
+    PlayerParried:
+      - "I taught you that."
+      - "Nearly as good as me."
+    StaggeredIt:
+      - "Finish it, and I will say I helped."
+      - "I loosened it up for you."
+      - "Textbook. My technique, obviously."
     Afflicted:
       - "{status}? A legend endures worse."
       - "I have had worse."
@@ -334,6 +377,14 @@ lines:
 
   # Takes the job seriously.
   dutiful:
+    PlayerParried:
+      - "Textbook, {player}."
+      - "Correct form. Noted."
+      - "That is how the drill goes."
+    StaggeredIt:
+      - "{target} destabilised. Press the advantage."
+      - "Opening. Take it."
+      - "It is on the back foot."
     Summoned:
       - "Reporting for duty."
       - "Orders, {player}?"
@@ -352,8 +403,17 @@ lines:
 
   # Has done this too many times.
   veteran:
+    PlayerDodged:
+      - "Lucky."
+      - "Do not make a habit of relying on that."
+      - "Saw a man try that once."
+    PlayerStaggered:
+      - "Happens to everyone. Get up."
+      - "You will feel that tomorrow."
+      - "Walk it off."
     Weather:
       - "{status} again. Naturally."
+      - "It was like this the last time, too."
     Afflicted:
       - "{status}. Naturally."
       - "Add it to the list."

@@ -14,10 +14,12 @@ react to the same greydwarf very differently.
 
 ## What it does
 
-- Reacts to sixteen things: being raised, picking a target, getting hurt, gaining
-  a status effect, catching fire or poison, killing something, dying, being
-  unsummoned, and idling — plus the same happening to you, and to the skeleton
-  standing next to it
+- Reacts to twenty-one things: being raised, picking a target, getting hurt,
+  gaining a status effect, catching fire or poison, killing something, dying,
+  being unsummoned, and idling — plus the same happening to you, and to the
+  skeleton standing next to it
+- Notices how a fight is going rather than only how it ends: a parry, a dodge
+  that turned a blow, and either of you being knocked off balance
 - Lines can name the weapon that hit them, what kind it was, the damage type, the
   status effect, and the skeleton standing next to them
 - A personality per skeleton, assigned at summon and remembered in your save

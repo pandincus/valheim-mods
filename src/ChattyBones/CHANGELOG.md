@@ -6,10 +6,15 @@ Summoned skeletons talk. They react to being raised, to picking a fight, to
 winning or losing one, to being hurt or shielded, and to you doing any of the same
 — and they react to each other, by name.
 
-Sixteen things they notice, across four personalities (cowardly, boastful,
+Twenty-one things they notice, across four personalities (cowardly, boastful,
 dutiful, veteran) assigned at summon and remembered in the save. They will tell
 you what hit them and what it was made of, complain specifically about being on
 fire, and rib each other by name when nothing is happening.
+
+They also watch how a fight is going, not just how it ends — a parry, a dodge
+that actually turned a blow, and either of you being knocked off balance. Only
+the good version of each: a skeleton that praised every raised shield would be
+one you stopped listening to.
 
 Every line lives in `BepInEx/config/ChattyBones.lines.yaml`, written for you on
 first run and yours to rewrite. Edit it while the game is running and the change

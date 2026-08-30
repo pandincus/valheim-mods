@@ -185,6 +185,42 @@ namespace ChattyBones.Tests
             Assert.True(own > 0, personality + " has no lines of its own for any event.");
         }
 
+        [Theory]
+        [InlineData("cowardly")]
+        [InlineData("boastful")]
+        [InlineData("dutiful")]
+        [InlineData("veteran")]
+        public void NoPersonalityOverridesTheSharedLinesWithASingleOne(string personality)
+        {
+            // A personality group *replaces* the shared one rather than adding to it -
+            // TryGetGroup returns one or the other and never merges - so a group with
+            // one line in it means that personality says that line and nothing else,
+            // for that event, forever. The shared lines beside it become unreachable.
+            //
+            // Easy to write and impossible to see on the page, which is why it is a
+            // rule: six of these went in at once, and the review caught them rather
+            // than a test. The pack header's own advice is that a group of three
+            // audibly cycles.
+            LinePack pack = DefaultPack.Build();
+
+            foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
+            {
+                _ = pack.TryGetGroup(LinePack.SharedPersonality, kind, out IReadOnlyList<string> shared);
+
+                if (!pack.TryGetGroup(personality, kind, out IReadOnlyList<string> lines)
+                    || ReferenceEquals(lines, shared))
+                {
+                    continue;
+                }
+
+                Assert.True(
+                    lines.Count > 1,
+                    personality + "/" + kind + " has one line of its own, so it will say \""
+                    + lines[0] + "\" every time and never reach the " + (shared?.Count ?? 0)
+                    + " shared ones.");
+            }
+        }
+
         [Fact]
         public void EveryLineRendersWithTheTokensItsEventActuallyGets()
         {
@@ -217,8 +253,9 @@ namespace ChattyBones.Tests
         public void ThePackHeadersTokenGridMatchesWhatTheEventsActuallySupply()
         {
             // A row promising a token the event never supplies means lines that
-            // silently never fire, and the log says nothing about it. TokensFor is
-            // itself still a hand-copy of the call sites.
+            // silently never fire, and the log says nothing about it. This pins the
+            // grid against EventTokens; the call sites are the hop neither this nor
+            // TokensFor can see, and only the cb_tokens report watches those.
             Dictionary<string, string> rows = [];
 
             foreach (string raw in DefaultPack.Yaml.Split('\n'))
@@ -268,57 +305,35 @@ namespace ChattyBones.Tests
         /// <param name="kind">The event being fired.</param>
         /// <remarks>
         /// Name and player are always known: one is the skeleton doing the talking and
-        /// the other is whoever is playing.
-        ///
-        /// Target is only there when the event is about a creature, which rules out the
-        /// ones that are about the skeleton itself or about you. Companion is narrower
-        /// still - the three events where one skeleton is reacting to another - though
-        /// supplying it on Idle so they can rib each other is the best content idea
-        /// anyone has had for this mod.
-        ///
-        /// CompanionKilled gets both, and is the only event that does: the line can
-        /// name the killer and what it killed in the same breath.
+        /// the other is whoever is playing. Everything else comes from
+        /// <see cref="EventTokens.PromisedFor"/> rather than being restated here, so
+        /// the table has one home and these tests check the pack against it instead of
+        /// against a copy of it.
         /// </remarks>
         private static LineTokens TokensFor(ChatterEvent kind)
         {
-            bool hasTarget = kind is ChatterEvent.TargetAcquired
-                or ChatterEvent.Killed
-                or ChatterEvent.CompanionKilled
-                or ChatterEvent.PlayerLandedABigHit
-                or ChatterEvent.PlayerGotAKill;
-
-            // Idle is in the list on purpose - they rib each other by name.
-            bool hasCompanion = kind is ChatterEvent.CompanionHurt
-                or ChatterEvent.CompanionKilled
-                or ChatterEvent.CompanionDied
-                or ChatterEvent.CompanionSummoned
-                or ChatterEvent.Idle;
-
-            // A live blow, caught as it lands, so it can be described in full.
-            bool hasHit = kind is ChatterEvent.Hurt
-                or ChatterEvent.PlayerHurt
-                or ChatterEvent.CompanionHurt
-                or ChatterEvent.PlayerLandedABigHit;
-
-            // Kills and deaths know only what the killer was holding - see
-            // Hits.WieldedBy.
-            bool hasWeaponOnly = kind is ChatterEvent.Killed
-                or ChatterEvent.CompanionKilled
-                or ChatterEvent.Died
-                or ChatterEvent.PlayerGotAKill;
-
-            bool hasStatus = kind is ChatterEvent.Buffed or ChatterEvent.Afflicted or ChatterEvent.Weather;
+            TokenSet promised = EventTokens.PromisedFor(kind);
 
             return new LineTokens(
-                target: hasTarget ? "Greydwarf" : null,
+                target: Fill(promised, TokenSet.Target, "Greydwarf"),
                 player: "Ragnar",
                 name: "Botvid",
-                companion: hasCompanion ? "Gunnar" : null,
+                companion: Fill(promised, TokenSet.Companion, "Gunnar"),
                 details: new LineDetails(
-                    weapon: hasHit || hasWeaponOnly ? "Mistwalker" : null,
-                    weaponType: hasHit || hasWeaponOnly ? "sword" : null,
-                    damage: hasHit ? "slash" : null,
-                    status: hasStatus ? "Burning" : null));
+                    weapon: Fill(promised, TokenSet.Weapon, "Mistwalker"),
+                    weaponType: Fill(promised, TokenSet.WeaponType, "sword"),
+                    damage: Fill(promised, TokenSet.Damage, "slash"),
+                    status: Fill(promised, TokenSet.Status, "Burning")));
+        }
+
+        /// <summary>A fixture value when the event promises that token, null when it does not.</summary>
+        /// <returns>The value, or null.</returns>
+        /// <param name="promised">What the event undertakes to supply.</param>
+        /// <param name="one">The token being asked about.</param>
+        /// <param name="value">What to use when it is supplied.</param>
+        private static string Fill(TokenSet promised, TokenSet one, string value)
+        {
+            return (promised & one) == 0 ? null : value;
         }
     }
 }

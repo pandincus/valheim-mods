@@ -49,6 +49,8 @@ namespace ChattyBones
 
             ChattyBonesPlugin.Log.LogInfo(
                 "Line pack loaded with " + _pack.Personalities.Count + " personalities.");
+
+            ReportUncoveredEvents();
         }
 
         /// <summary>The personalities a skeleton can be assigned, in a stable order.</summary>
@@ -76,6 +78,36 @@ namespace ChattyBones
 
             ChattyBonesPlugin.Log.LogInfo(
                 "Line pack reloaded with " + _pack.Personalities.Count + " personalities.");
+
+            ReportUncoveredEvents();
+        }
+
+        /// <summary>Mention which events the pack has no lines for, because nothing else will.</summary>
+        /// <remarks>
+        /// Not behind <see cref="ModConfig.LogChatter"/>, unlike the rest of the
+        /// tracing: this is about the player's own file rather than our diagnostics,
+        /// and the symptom is otherwise invisible. A pack written before an event
+        /// existed leaves that event silent, which looks exactly like a hook that does
+        /// not work - which is how the combat events came to be completely inaudible
+        /// in a session, while being correct.
+        ///
+        /// Worded as a statement rather than a complaint, and that matters. The pack
+        /// header offers deleting an event as the way to switch off a kind of chatter,
+        /// so a player who has done that deliberately must not be told off for it on
+        /// every save while they are editing.
+        /// </remarks>
+        private static void ReportUncoveredEvents()
+        {
+            IReadOnlyList<ChatterEvent> missing = _pack.EventsWithNoLines();
+            if (missing.Count == 0)
+            {
+                return;
+            }
+
+            ChattyBonesPlugin.Log.LogInfo(
+                "Silent by omission - your pack has no lines for " + string.Join(", ", missing)
+                + ". That is fine if you meant it. If you did not, " + PackFile.ReferenceFileName
+                + " next to your own pack is what this version shipped with.");
         }
 
         /// <summary>Read the current config into a fresh settings object.</summary>
@@ -188,6 +220,12 @@ namespace ChattyBones
                 name: Summons.NameOf(character),
                 companion: companionName ?? (companion == null ? null : Summons.NameOf(companion)),
                 details: details);
+
+            // Keep a note of what this hook actually handed over, for cb_tokens. One
+            // array write, and it runs whether or not logging is on: the report is for
+            // asking after something looked wrong, which is too late to start
+            // collecting.
+            EventTokens.Note(kind, tokens.Target, tokens.Companion, details);
 
             if (!_chooser.TryChoose(_pack, speaker.Personality, kind, tokens, _random, out int lineRef, out string line))
             {

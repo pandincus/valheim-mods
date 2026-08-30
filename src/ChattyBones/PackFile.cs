@@ -21,7 +21,7 @@ namespace ChattyBones
         internal const string FileName = "ChattyBones.lines.yaml";
 
         /// <summary>The untouched copy of what we shipped, for reference.</summary>
-        private const string ReferenceFileName = "ChattyBones.lines.default.yaml";
+        internal const string ReferenceFileName = "ChattyBones.lines.default.yaml";
 
         /// <summary>How long to wait after a change before reading the file.</summary>
         /// <remarks>

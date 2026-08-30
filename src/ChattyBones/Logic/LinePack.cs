@@ -132,6 +132,45 @@ namespace ChattyBones.Logic
             return false;
         }
 
+        /// <summary>Which events this pack has nothing at all to say about.</summary>
+        /// <returns>The uncovered events, in enum order. Empty for a pack covering everything.</returns>
+        /// <remarks>
+        /// For the warning at load. When the mod gains an event, every pack written
+        /// before it goes quiet for that event and there is no symptom - the hook
+        /// fires, the budget approves, and the pack has no line, which looks exactly
+        /// like a hook that does not work. That is how the combat events landed: they
+        /// were correct, and silent for anyone who had ever touched their file.
+        ///
+        /// A refreshed copy of the shipped pack is written alongside on every launch,
+        /// which is the fix in principle and useless in practice, because nobody
+        /// diffs four hundred lines of YAML against a file they have edited.
+        ///
+        /// Only events nothing covers are reported. A personality that leaves an event
+        /// to the shared lines is the documented way to write a pack gradually, so
+        /// counting that as missing would warn about the normal case.
+        /// </remarks>
+        internal IReadOnlyList<ChatterEvent> EventsWithNoLines()
+        {
+            List<ChatterEvent> missing = [];
+
+            foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
+            {
+                bool covered = TryGetLines(SharedPersonality, kind, out _);
+
+                for (int i = 0; !covered && i < Personalities.Count; i++)
+                {
+                    covered = TryGetLines(Personalities[i], kind, out _);
+                }
+
+                if (!covered)
+                {
+                    missing.Add(kind);
+                }
+            }
+
+            return missing;
+        }
+
         /// <summary>Choose the line a given line ref points at.</summary>
         /// <returns>False when there is nothing to say. See <see cref="TryGetGroup"/>.</returns>
         /// <param name="personality">Which personality type is speaking.</param>
