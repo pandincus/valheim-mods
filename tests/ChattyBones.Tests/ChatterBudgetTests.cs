@@ -356,7 +356,7 @@ namespace ChattyBones.Tests
             // getting better at something is about you, arriving somewhere is about
             // where you are, and lunch is about neither urgently.
             Assert.True(CanInterrupt(ChatterEvent.PlayerSkilledUp, ChatterEvent.BiomeChanged));
-            Assert.True(CanInterrupt(ChatterEvent.Sheltered, ChatterEvent.PlayerAte));
+            Assert.True(CanInterrupt(ChatterEvent.AtHome, ChatterEvent.PlayerAte));
             Assert.True(CanInterrupt(ChatterEvent.PlayerAte, ChatterEvent.Dawn));
 
             // And none of them gets to talk over a fight.
@@ -397,7 +397,7 @@ namespace ChattyBones.Tests
             ChatterEvent[] travelling =
             [
                 ChatterEvent.BiomeChanged,
-                ChatterEvent.Sheltered,
+                ChatterEvent.AtHome,
                 ChatterEvent.Dawn,
                 ChatterEvent.Nightfall,
             ];
@@ -425,7 +425,7 @@ namespace ChattyBones.Tests
             // own; crossing into the Plains does not. So the sky sits below the ground
             // underfoot, and both sit above the weather.
             Assert.True(CanInterrupt(ChatterEvent.BiomeChanged, ChatterEvent.Dawn));
-            Assert.True(CanInterrupt(ChatterEvent.Sheltered, ChatterEvent.Nightfall));
+            Assert.True(CanInterrupt(ChatterEvent.AtHome, ChatterEvent.Nightfall));
             Assert.True(CanInterrupt(ChatterEvent.Dawn, ChatterEvent.Weather));
         }
 

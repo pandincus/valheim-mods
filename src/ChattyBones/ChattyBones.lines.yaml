@@ -82,7 +82,7 @@
 #   BiomeChanged         you crossed into a new land   .  .  .  .  .  .  B  .  .
 #   Raid                 something is coming           .  .  .  .  .  .  .  .  .
 #   RaidEnded            you saw it off                .  .  .  .  .  .  .  .  .
-#   Sheltered            it reached one of your bases  .  .  .  .  .  .  .  .  .
+#   AtHome               it reached your bed           .  .  .  .  .  .  .  .  .
 #   Looted               you picked something up       .  .  .  .  .  .  .  I  .
 #   PlayerAte            you ate something             .  .  .  .  .  .  .  I  .
 #   PlayerSkilledUp      you got better at something   .  .  .  .  .  .  .  .  L
@@ -350,10 +350,10 @@ lines:
       - "Well. That happened."
       - "Is that all of them?"
       - "We saw it off."
-    Sheltered:
+    AtHome:
       - "Home, then."
       - "Walls. I like walls."
-      - "This will do nicely."
+      - "Back where we started."
       - "Safe as anything."
     Looted:
       - "More {item}, then."
@@ -380,7 +380,7 @@ lines:
       - "I want to go inside!"
       - "Can we not be here?"
       - "Whatever that is, it is not worth it."
-    Sheltered:
+    AtHome:
       - "Oh thank goodness."
       - "We are staying, yes? We are staying."
     PlayerStaggered:
@@ -459,9 +459,9 @@ lines:
     Raid:
       - "Perimeter. Now."
       - "Forming up."
-    Sheltered:
+    AtHome:
       - "Position secured."
-      - "Base reached. Standing by."
+      - "Home reached. Standing by."
     PlayerParried:
       - "Textbook, {player}."
       - "Correct form. Noted."

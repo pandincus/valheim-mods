@@ -252,8 +252,8 @@ namespace ChattyBones
             }
         }
 
-        /// <summary>Whether it was standing in one of your bases last time we looked.</summary>
-        private bool _sheltered;
+        /// <summary>Whether it was near your bed last time we looked.</summary>
+        private bool _atHome;
 
         /// <summary>How many sweeps in a row it has looked to be outside.</summary>
         /// <remarks>
@@ -285,15 +285,33 @@ namespace ChattyBones
         /// </remarks>
         private const int SweepsBetweenShelterChecks = 8;
 
-        /// <summary>Notice when it arrives somewhere you have built.</summary>
+        /// <summary>How near your bed counts as home.</summary>
         /// <remarks>
-        /// The only event with no hook behind it, and it needs none: "is this skeleton
-        /// standing in your base" is a query rather than a moment, so it rides the
-        /// sweep that is already running and fires on the edge.
+        /// Wide enough to cover a house and its yard rather than the bedroom, so the
+        /// remark lands as you arrive rather than as you lie down.
+        /// </remarks>
+        private const float HomeRadius = 20f;
+
+        /// <summary>Notice when it arrives at your home.</summary>
+        /// <remarks>
+        /// The first version of this asked whether the skeleton was inside an
+        /// EffectArea of type PlayerBase, which sounded right and is not: every
+        /// crafting bench projects one, so an outlying workbench in a field is "base"
+        /// as far as that query is concerned. Played, the squad announced they were
+        /// home while their owner was still a long walk from anywhere.
         ///
-        /// EffectArea.Type.PlayerBase is the game's own marker, projected by
-        /// workbenches and base pieces - so this is the same notion of "your base"
-        /// that the game uses for its own purposes, rather than one we invented.
+        /// Your bed is the thing that actually means home, and the game already tracks
+        /// it - the custom spawn point is where you last slept. A player who has not
+        /// slept anywhere has no home to arrive at, and gets no line, which is the
+        /// honest answer rather than a missing feature.
+        ///
+        /// Two other candidates were weighed and dropped. The Rested effect lingers
+        /// for five minutes after you leave, so the edge would be wrong in the worst
+        /// direction - you would "arrive home" and stay there for a walk across a
+        /// biome. And comfort needs to know whether you are under a roof, which the
+        /// game computes for the local player only; it is a much better answer to
+        /// "how nice is this place" than to "are we there", and that is what it is
+        /// held back for.
         /// </remarks>
         private void CheckShelter()
         {
@@ -304,23 +322,22 @@ namespace ChattyBones
 
             _untilShelterCheck = SweepsBetweenShelterChecks;
 
-            bool inside = Character != null
-                && EffectArea.IsPointInsideArea(Character.transform.position, EffectArea.Type.PlayerBase) != null;
+            bool inside = Character != null && NearBed(Character.transform.position);
 
             if (inside)
             {
                 _sweepsOutside = 0;
 
-                if (!_sheltered)
+                if (!_atHome)
                 {
-                    _sheltered = true;
-                    _ = Chatter.TrySpeak(this, ChatterEvent.Sheltered, subject: 0, targetName: null, companion: null);
+                    _atHome = true;
+                    _ = Chatter.TrySpeak(this, ChatterEvent.AtHome, subject: 0, targetName: null, companion: null);
                 }
 
                 return;
             }
 
-            if (!_sheltered)
+            if (!_atHome)
             {
                 return;
             }
@@ -328,8 +345,23 @@ namespace ChattyBones
             _sweepsOutside++;
             if (_sweepsOutside >= SweepsBeforeLeaving)
             {
-                _sheltered = false;
+                _atHome = false;
             }
+        }
+
+        /// <summary>Is this close enough to where you last slept?</summary>
+        /// <returns>False when there is no bed to be near, which is not an error.</returns>
+        /// <param name="position">Where the skeleton is standing.</param>
+        private static bool NearBed(Vector3 position)
+        {
+            PlayerProfile profile = Game.instance == null ? null : Game.instance.GetPlayerProfile();
+
+            if (profile == null || !profile.HaveCustomSpawnPoint())
+            {
+                return false;
+            }
+
+            return Vector3.Distance(position, profile.GetCustomSpawnPoint()) <= HomeRadius;
         }
 
         /// <summary>Work out what became of the target we were following, and say so.</summary>

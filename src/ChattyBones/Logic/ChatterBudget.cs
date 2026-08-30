@@ -388,7 +388,7 @@ namespace ChattyBones.Logic
                 // anything that happens to a person. Both fire while travelling,
                 // which is when the squad has least to say.
                 ChatterEvent.BiomeChanged => 18,
-                ChatterEvent.Sheltered => 17,
+                ChatterEvent.AtHome => 17,
 
                 // Lunch is not urgent.
                 ChatterEvent.PlayerAte => 16,

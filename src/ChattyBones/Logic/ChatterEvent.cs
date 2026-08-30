@@ -229,14 +229,19 @@ namespace ChattyBones.Logic
         /// </remarks>
         RaidEnded,
 
-        /// <summary>It has arrived somewhere you have built.</summary>
+        /// <summary>It has arrived at your home.</summary>
         /// <remarks>
-        /// The only event with no hook behind it. There is nothing to patch - the
-        /// question "is this skeleton standing in your base" is a query, so it rides
-        /// the sweep that already runs for <see cref="TargetAcquired"/> and fires on
-        /// the edge.
+        /// The only event with no hook behind it. There is nothing to patch - "are we
+        /// home" is a query, so it rides the sweep that already runs for
+        /// <see cref="TargetAcquired"/> and fires on the edge.
+        ///
+        /// Called AtHome rather than Sheltered because the first version asked the
+        /// wrong question. It used EffectArea.Type.PlayerBase, which every crafting
+        /// bench projects - so a squad reached "base" at the first outlying workbench
+        /// and asked to stay while their owner was still a long walk from anywhere.
+        /// Home is where your bed is, and the game already knows where that is.
         /// </remarks>
-        Sheltered,
+        AtHome,
 
         /// <summary>You picked something up.</summary>
         /// <remarks>
