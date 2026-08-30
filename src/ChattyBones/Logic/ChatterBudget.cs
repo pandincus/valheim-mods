@@ -380,11 +380,18 @@ namespace ChattyBones.Logic
                 ChatterEvent.Buffed => 30,
                 ChatterEvent.Summoned => 20,
 
+                // Getting better at something is about you, so it sits above the
+                // places and the sky, and below anything that happens to a person.
+                ChatterEvent.PlayerSkilledUp => 19,
+
                 // Arriving somewhere is worth more than the weather and less than
                 // anything that happens to a person. Both fire while travelling,
                 // which is when the squad has least to say.
                 ChatterEvent.BiomeChanged => 18,
                 ChatterEvent.Sheltered => 17,
+
+                // Lunch is not urgent.
+                ChatterEvent.PlayerAte => 16,
 
                 ChatterEvent.CompanionSummoned => 15,
 
@@ -398,6 +405,11 @@ namespace ChattyBones.Logic
                 // Being rained on is small talk, and any water at all applies it - so
                 // anywhere higher and a skeleton crossing a stream talks over a kill.
                 ChatterEvent.Weather => 12,
+
+                // One above Idle, which is the whole reason LootKind is allowed to be
+                // four blunt tests: at this rank a wrong answer costs a loot mutter in
+                // place of an idle one and nothing else.
+                ChatterEvent.Looted => 11,
 
                 ChatterEvent.Idle => 10,
 

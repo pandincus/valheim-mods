@@ -22,18 +22,24 @@ namespace ChattyBones.Logic
         /// <param name="damage">The dominant damage type, e.g. "fire".</param>
         /// <param name="status">A status effect's name, e.g. "Burning".</param>
         /// <param name="biome">Where it is, e.g. "Black Forest".</param>
+        /// <param name="food">Something you ate or picked up, e.g. "Grilled Neck Tail".</param>
+        /// <param name="skill">A skill by name, e.g. "Blocking".</param>
         internal LineDetails(
             string weapon = null,
             string weaponType = null,
             string damage = null,
             string status = null,
-            string biome = null)
+            string biome = null,
+            string food = null,
+            string skill = null)
         {
             Weapon = weapon;
             WeaponType = weaponType;
             Damage = damage;
             Status = status;
             Biome = biome;
+            Food = food;
+            Skill = skill;
         }
 
         /// <summary>The weapon's own name, or null. Can name the wrong one - see Hits.WeaponName.</summary>
@@ -50,5 +56,16 @@ namespace ChattyBones.Logic
 
         /// <summary>The biome it is standing in, already localized, or null.</summary>
         internal string Biome { get; }
+
+        /// <summary>An item you ate or picked up, already localized, or null.</summary>
+        /// <remarks>
+        /// Shared by Looted and PlayerAte because it is the same question - what was
+        /// it - and two fields holding an item name would only ever differ in which
+        /// event filled them.
+        /// </remarks>
+        internal string Food { get; }
+
+        /// <summary>The skill that went up, already localized, or null.</summary>
+        internal string Skill { get; }
     }
 }

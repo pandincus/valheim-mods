@@ -7,15 +7,15 @@ namespace ChattyBones.Logic
     /// </summary>
     /// <remarks>
     /// A pack author writes "Get lost, {target}!" and we turn that into "Get lost,
-    /// Greydwarf!" at the moment it is said. Nine tokens, all optional - four for
+    /// Greydwarf!" at the moment it is said. Eleven tokens, all optional - four for
     /// the people involved, four for the event itself:
     ///
     /// - {target} is whatever the skeleton is reacting to, already localized
     /// - {player} is you, whoever summoned it
     /// - {name} is the skeleton's own name
     /// - {companion} is another of your skeletons, for lines about each other
-    /// - {weapon}, {weapontype}, {damage}, {status} and {biome} describe what
-    ///   happened and where, and live on <see cref="LineDetails"/>
+    /// - {weapon}, {weapontype}, {damage}, {status}, {biome}, {food} and {skill}
+    ///   describe what happened and where, and live on <see cref="LineDetails"/>
     ///
     /// Every client fills these in for itself rather than being sent the words. For
     /// {target} that means a German player reads "Grauzwerg" while you read
@@ -185,7 +185,8 @@ namespace ChattyBones.Logic
         private static bool IsKnown(string token)
         {
             return token is "target" or "player" or "name" or "companion"
-                or "weapon" or "weapontype" or "damage" or "status" or "biome";
+                or "weapon" or "weapontype" or "damage" or "status" or "biome"
+                or "food" or "skill";
         }
 
         /// <summary>The value for a known token, or null when we do not have one.</summary>
@@ -204,6 +205,8 @@ namespace ChattyBones.Logic
                 "damage" => Details.Damage,
                 "status" => Details.Status,
                 "biome" => Details.Biome,
+                "food" => Details.Food,
+                "skill" => Details.Skill,
                 _ => null,
             };
         }

@@ -339,6 +339,32 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void PickingThingsUpSitsRightAtTheBottom()
+        {
+            // The rank that lets LootKind be four blunt tests. Looted may interrupt an
+            // idle mutter and nothing else, so a filter that lets a stick through
+            // costs one mutter rather than talking over a fight.
+            Assert.True(CanInterrupt(ChatterEvent.Looted, ChatterEvent.Idle));
+            Assert.False(CanInterrupt(ChatterEvent.Looted, ChatterEvent.Weather));
+            Assert.False(CanInterrupt(ChatterEvent.Looted, ChatterEvent.TargetAcquired));
+        }
+
+        [Fact]
+        public void ThingsAboutYouOutrankThingsAboutThePlace()
+        {
+            // The low end is crowded now, so the ordering inside it is worth pinning:
+            // getting better at something is about you, arriving somewhere is about
+            // where you are, and lunch is about neither urgently.
+            Assert.True(CanInterrupt(ChatterEvent.PlayerSkilledUp, ChatterEvent.BiomeChanged));
+            Assert.True(CanInterrupt(ChatterEvent.Sheltered, ChatterEvent.PlayerAte));
+            Assert.True(CanInterrupt(ChatterEvent.PlayerAte, ChatterEvent.Dawn));
+
+            // And none of them gets to talk over a fight.
+            Assert.False(CanInterrupt(ChatterEvent.PlayerSkilledUp, ChatterEvent.TargetAcquired));
+            Assert.False(CanInterrupt(ChatterEvent.PlayerAte, ChatterEvent.Hurt));
+        }
+
+        [Fact]
         public void ARaidAnnouncingItselfBeatsTheFightItBrings()
         {
             // The reason Raid is ranked oddly high for something this rare. It arrives

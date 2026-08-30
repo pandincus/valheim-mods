@@ -237,5 +237,25 @@ namespace ChattyBones.Logic
         /// the edge.
         /// </remarks>
         Sheltered,
+
+        /// <summary>You picked up something worth mentioning.</summary>
+        /// <remarks>
+        /// Ranked just above Idle, which is what makes the filter in
+        /// <see cref="LootKind"/> a small decision rather than a load-bearing one: it
+        /// can only speak when nothing else is happening, so a wrong answer costs you
+        /// a loot mutter in place of an idle one.
+        /// </remarks>
+        Looted,
+
+        /// <summary>You ate something.</summary>
+        /// <remarks>
+        /// Self-pacing, which is why it needs no threshold of its own: three food
+        /// slots on roughly twenty-minute timers means it comes round on the game's
+        /// schedule rather than ours.
+        /// </remarks>
+        PlayerAte,
+
+        /// <summary>You got better at something.</summary>
+        PlayerSkilledUp,
     }
 }
