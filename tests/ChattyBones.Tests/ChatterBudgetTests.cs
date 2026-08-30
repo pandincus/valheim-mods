@@ -339,6 +339,71 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void ARaidAnnouncingItselfBeatsTheFightItBrings()
+        {
+            // The reason Raid is ranked oddly high for something this rare. It arrives
+            // and immediately supplies things to fight, so at any lower rank the squad
+            // would announce the first greydwarf and never the raid - and "something is
+            // coming" is the better line and the one that only gets said once.
+            Assert.True(CanInterrupt(ChatterEvent.Raid, ChatterEvent.TargetAcquired));
+            Assert.True(CanInterrupt(ChatterEvent.Raid, ChatterEvent.PlayerGotAKill));
+
+            // But not over somebody actually being hurt. A warning about what is
+            // coming loses to what has already arrived.
+            Assert.False(CanInterrupt(ChatterEvent.Raid, ChatterEvent.PlayerHurt));
+        }
+
+        [Fact]
+        public void SurvivingARaidIsSaidIntoAQuietField()
+        {
+            // RaidEnded deliberately does not inherit Raid's standing. It fires when
+            // the fighting has stopped, so it has nothing to compete with and does not
+            // need to win anything.
+            Assert.False(CanInterrupt(ChatterEvent.RaidEnded, ChatterEvent.TargetAcquired));
+            Assert.True(CanInterrupt(ChatterEvent.RaidEnded, ChatterEvent.Idle));
+        }
+
+        [Fact]
+        public void TravellingRemarksNeverTalkOverAFight()
+        {
+            // All four fire while you are going somewhere, which is when the squad has
+            // least to say - and they must stay out of the way when that changes.
+            ChatterEvent[] travelling =
+            [
+                ChatterEvent.BiomeChanged,
+                ChatterEvent.Sheltered,
+                ChatterEvent.Dawn,
+                ChatterEvent.Nightfall,
+            ];
+
+            foreach (ChatterEvent kind in travelling)
+            {
+                Assert.False(
+                    CanInterrupt(kind, ChatterEvent.TargetAcquired),
+                    kind + " should not have cut in on TargetAcquired");
+
+                Assert.False(
+                    CanInterrupt(kind, ChatterEvent.Hurt),
+                    kind + " should not have cut in on an injury");
+
+                Assert.True(
+                    CanInterrupt(kind, ChatterEvent.Idle),
+                    kind + " should have been able to cut in on Idle");
+            }
+        }
+
+        [Fact]
+        public void ArrivingSomewhereOutranksTheSkyDoingItsUsualThing()
+        {
+            // A twenty-minute day cycle means Dawn and Nightfall come round on their
+            // own; crossing into the Plains does not. So the sky sits below the ground
+            // underfoot, and both sit above the weather.
+            Assert.True(CanInterrupt(ChatterEvent.BiomeChanged, ChatterEvent.Dawn));
+            Assert.True(CanInterrupt(ChatterEvent.Sheltered, ChatterEvent.Nightfall));
+            Assert.True(CanInterrupt(ChatterEvent.Dawn, ChatterEvent.Weather));
+        }
+
+        [Fact]
         public void CatchingFireOutranksTheBlowThatCausedIt()
         {
             // Uniqueness alone left this rank free to move either way. Why it is above

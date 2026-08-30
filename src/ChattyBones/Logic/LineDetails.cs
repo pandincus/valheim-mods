@@ -21,16 +21,19 @@ namespace ChattyBones.Logic
         /// <param name="weaponType">What kind of weapon it is, e.g. "sword".</param>
         /// <param name="damage">The dominant damage type, e.g. "fire".</param>
         /// <param name="status">A status effect's name, e.g. "Burning".</param>
+        /// <param name="biome">Where it is, e.g. "Black Forest".</param>
         internal LineDetails(
             string weapon = null,
             string weaponType = null,
             string damage = null,
-            string status = null)
+            string status = null,
+            string biome = null)
         {
             Weapon = weapon;
             WeaponType = weaponType;
             Damage = damage;
             Status = status;
+            Biome = biome;
         }
 
         /// <summary>The weapon's own name, or null. Can name the wrong one - see Hits.WeaponName.</summary>
@@ -44,5 +47,8 @@ namespace ChattyBones.Logic
 
         /// <summary>The status effect involved, already localized, or null.</summary>
         internal string Status { get; }
+
+        /// <summary>The biome it is standing in, already localized, or null.</summary>
+        internal string Biome { get; }
     }
 }

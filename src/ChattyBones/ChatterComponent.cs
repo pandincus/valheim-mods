@@ -205,6 +205,8 @@ namespace ChattyBones
                 return;
             }
 
+            CheckShelter();
+
             Character target = _ai.GetTargetCreature();
 
             // Two questions, and they have to be asked with two different operators.
@@ -247,6 +249,86 @@ namespace ChattyBones
                     subject: 0,
                     targetName: null,
                     companion: Chatter.AnotherOf(this));
+            }
+        }
+
+        /// <summary>Whether it was standing in one of your bases last time we looked.</summary>
+        private bool _sheltered;
+
+        /// <summary>How many sweeps in a row it has looked to be outside.</summary>
+        /// <remarks>
+        /// The hysteresis. A base area has an edge, and a skeleton milling about on it
+        /// crosses back and forth every sweep - so leaving takes agreeing with itself
+        /// several times while arriving takes one. Wrong in the forgiving direction:
+        /// the worst it does is call a skeleton home for a second longer than it was.
+        /// </remarks>
+        private int _sweepsOutside;
+
+        /// <summary>How many sweeps outside before we believe it has actually left.</summary>
+        private const int SweepsBeforeLeaving = 4;
+
+        /// <summary>Sweeps still to skip before asking about shelter again.</summary>
+        private int _untilShelterCheck;
+
+        /// <summary>How many sweeps to skip between shelter checks.</summary>
+        /// <remarks>
+        /// The sweep runs at 4 Hz for every skeleton you have out, and the check is a
+        /// physics overlap rather than a field read - so asking every time would be
+        /// twenty of them a second for a squad of five, to notice something that
+        /// changes when you walk through a door. Every eighth sweep is two seconds,
+        /// which is the cadence vanilla uses for its own version of this question in
+        /// Player.UpdateBaseValue.
+        ///
+        /// It stretches the hysteresis with it: four consecutive misses is now eight
+        /// seconds of being outside rather than one, which is if anything more
+        /// forgiving than intended and still far shorter than a walk anywhere.
+        /// </remarks>
+        private const int SweepsBetweenShelterChecks = 8;
+
+        /// <summary>Notice when it arrives somewhere you have built.</summary>
+        /// <remarks>
+        /// The only event with no hook behind it, and it needs none: "is this skeleton
+        /// standing in your base" is a query rather than a moment, so it rides the
+        /// sweep that is already running and fires on the edge.
+        ///
+        /// EffectArea.Type.PlayerBase is the game's own marker, projected by
+        /// workbenches and base pieces - so this is the same notion of "your base"
+        /// that the game uses for its own purposes, rather than one we invented.
+        /// </remarks>
+        private void CheckShelter()
+        {
+            if (--_untilShelterCheck > 0)
+            {
+                return;
+            }
+
+            _untilShelterCheck = SweepsBetweenShelterChecks;
+
+            bool inside = Character != null
+                && EffectArea.IsPointInsideArea(Character.transform.position, EffectArea.Type.PlayerBase) != null;
+
+            if (inside)
+            {
+                _sweepsOutside = 0;
+
+                if (!_sheltered)
+                {
+                    _sheltered = true;
+                    _ = Chatter.TrySpeak(this, ChatterEvent.Sheltered, subject: 0, targetName: null, companion: null);
+                }
+
+                return;
+            }
+
+            if (!_sheltered)
+            {
+                return;
+            }
+
+            _sweepsOutside++;
+            if (_sweepsOutside >= SweepsBeforeLeaving)
+            {
+                _sheltered = false;
             }
         }
 

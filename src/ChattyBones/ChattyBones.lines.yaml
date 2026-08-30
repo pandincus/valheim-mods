@@ -49,34 +49,41 @@
 #
 # EVENTS
 #
-# Twenty-one things a skeleton reacts to, and which tokens each one can fill in.
+# Twenty-seven things a skeleton reacts to, and which tokens each one can fill
+# in.
 # {name} and {player} are left out of the table because every event has them.
 #
-#     T {target}       W {weapon}        D {damage}
+#     T {target}       W {weapon}        D {damage}    B {biome}
 #     C {companion}    K {weapontype}    S {status}
 #
-#                                                      T  C  W  K  D  S
-#   Summoned             you raised it                 .  .  .  .  .  .
-#   TargetAcquired       it picked something           T  .  .  .  .  .
-#   Hurt                 something hit it              .  .  W  K  D  .
-#   Buffed               it gained a helpful effect    .  .  .  .  .  S
-#   Afflicted            it caught fire or poison      .  .  .  .  .  S
-#   Weather              rain, water, or the swamp     .  .  .  .  .  S
-#   Killed               it killed something           T  .  W  K  .  .
-#   Died                 it died                       .  .  W  K  .  .
-#   Unsummoned           it timed out or strayed       .  .  .  .  .  .
-#   Idle                 nothing is happening          .  C  .  .  .  .
-#   PlayerHurt           you took a hit                .  .  W  K  D  .
-#   PlayerLandedABigHit  you hit something hard        T  .  W  K  D  .
-#   PlayerGotAKill       you killed something          T  .  W  K  .  .
-#   CompanionHurt        another skeleton was hit      .  C  W  K  D  .
-#   CompanionKilled      another skeleton got a kill   T  C  W  K  .  .
-#   CompanionDied        another skeleton died         .  C  .  .  .  .
-#   CompanionSummoned    another was just raised       .  C  .  .  .  .
-#   PlayerParried        you turned a blow in time     T  .  .  .  .  .
-#   PlayerStaggered      something knocked you about   T  .  .  .  .  .
-#   StaggeredIt          you knocked something about   T  .  .  .  .  .
-#   PlayerDodged         you rolled clear of a blow    .  .  .  .  .  .
+#                                                      T  C  W  K  D  S  B
+#   Summoned             you raised it                 .  .  .  .  .  .  .
+#   TargetAcquired       it picked something           T  .  .  .  .  .  .
+#   Hurt                 something hit it              .  .  W  K  D  .  .
+#   Buffed               it gained a helpful effect    .  .  .  .  .  S  .
+#   Afflicted            it caught fire or poison      .  .  .  .  .  S  .
+#   Weather              rain, water, or the swamp     .  .  .  .  .  S  .
+#   Killed               it killed something           T  .  W  K  .  .  .
+#   Died                 it died                       .  .  W  K  .  .  .
+#   Unsummoned           it timed out or strayed       .  .  .  .  .  .  .
+#   Idle                 nothing is happening          .  C  .  .  .  .  .
+#   PlayerHurt           you took a hit                .  .  W  K  D  .  .
+#   PlayerLandedABigHit  you hit something hard        T  .  W  K  D  .  .
+#   PlayerGotAKill       you killed something          T  .  W  K  .  .  .
+#   CompanionHurt        another skeleton was hit      .  C  W  K  D  .  .
+#   CompanionKilled      another skeleton got a kill   T  C  W  K  .  .  .
+#   CompanionDied        another skeleton died         .  C  .  .  .  .  .
+#   CompanionSummoned    another was just raised       .  C  .  .  .  .  .
+#   PlayerParried        you turned a blow in time     T  .  .  .  .  .  .
+#   PlayerStaggered      something knocked you about   T  .  .  .  .  .  .
+#   StaggeredIt          you knocked something about   T  .  .  .  .  .  .
+#   PlayerDodged         you rolled clear of a blow    .  .  .  .  .  .  .
+#   Dawn                 the sun came up               .  .  .  .  .  .  B
+#   Nightfall            the light went                .  .  .  .  .  .  B
+#   BiomeChanged         you crossed into a new land   .  .  .  .  .  .  B
+#   Raid                 something is coming           .  .  .  .  .  .  .
+#   RaidEnded            you saw it off                .  .  .  .  .  .  .
+#   Sheltered            it reached one of your bases  .  .  .  .  .  .  .
 #
 # The D column is the one worth a second look. {damage} only reaches the events
 # that catch a blow as it lands, because that is the only moment the numbers
@@ -93,7 +100,7 @@
 # sometimes be wrong. "My bones are wet" travels better than "it is raining".
 #
 # Spelling counts, capitals included: "idle" is not "Idle", and a name that is
-# not exactly one of the twenty-one above is reported in the log and skipped.
+# not exactly one of the twenty-seven above is reported in the log and skipped.
 #
 # An event you leave out entirely is simply never commented on, which is a fine
 # way to switch off the idle chatter.
@@ -101,7 +108,7 @@
 #
 # TOKENS
 #
-# Eight things a line can drop into itself. Four are about the people involved:
+# Nine things a line can drop into itself. Four are about the people involved:
 #
 #   {name}        the skeleton speaking
 #   {player}      you
@@ -115,6 +122,7 @@
 #   {damage}      the main damage type: blunt, slash, pierce, fire, frost,
 #                 lightning, poison or spirit
 #   {status}      a status effect by name, e.g. "Burning"
+#   {biome}       where it is standing, e.g. "Black Forest"
 #
 # Neither weapon token is exact, in different ways. {weapon} is read from the
 # attacker's hands a moment after the blow, so an arrow still in the air, a
@@ -313,9 +321,46 @@ lines:
       - "Nothing touched you."
       - "How did you even do that?"
       - "I could never do that. No knees, see."
+    Dawn:
+      - "Ugh. Daylight."
+      - "Morning over the {biome}. Joy."
+      - "Is it always this bright?"
+      - "Another day of this, then."
+    Nightfall:
+      - "Ah. Better."
+      - "Night over the {biome}. That is more like it."
+      - "Now we are in our element."
+      - "Dark again. Good."
+    BiomeChanged:
+      - "The {biome}. Right."
+      - "So this is the {biome}."
+      - "I have a bad feeling about the {biome}."
+      - "New ground."
+    Raid:
+      - "Something is coming."
+      - "Something is out there."
+      - "That does not sound good."
+      - "Stand ready."
+    RaidEnded:
+      - "Still standing."
+      - "Well. That happened."
+      - "Is that all of them?"
+      - "We saw it off."
+    Sheltered:
+      - "Home, then."
+      - "Walls. I like walls."
+      - "This will do nicely."
+      - "Safe as anything."
 
   # Would rather be somewhere else.
   cowardly:
+    Raid:
+      - "I want to go inside!"
+      - "Can we not be here?"
+      - "Whatever that is, it is not worth it."
+    Sheltered:
+      - "Oh thank goodness."
+      - "We are staying, yes? We are staying."
     PlayerStaggered:
       - "We are losing! We are losing!"
       - "Get up! Please get up!"
@@ -349,6 +394,12 @@ lines:
 
   # Convinced of its own legend.
   boastful:
+    Raid:
+      - "Let them come."
+      - "Finally, something worth my time."
+    RaidEnded:
+      - "Barely a warm-up."
+      - "You are all welcome."
     PlayerParried:
       - "I taught you that."
       - "Nearly as good as me."
@@ -377,6 +428,12 @@ lines:
 
   # Takes the job seriously.
   dutiful:
+    Raid:
+      - "Perimeter. Now."
+      - "Forming up."
+    Sheltered:
+      - "Position secured."
+      - "Base reached. Standing by."
     PlayerParried:
       - "Textbook, {player}."
       - "Correct form. Noted."
@@ -403,6 +460,12 @@ lines:
 
   # Has done this too many times.
   veteran:
+    Dawn:
+      - "Sunrise. Seen a few."
+      - "Still coming up, then."
+    RaidEnded:
+      - "That is the fourth one this month."
+      - "Nothing new."
     PlayerDodged:
       - "Lucky."
       - "Do not make a habit of relying on that."

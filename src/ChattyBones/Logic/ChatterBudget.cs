@@ -347,6 +347,12 @@ namespace ChattyBones.Logic
 
                 ChatterEvent.CompanionHurt => 90,
 
+                // Above the kill events, which is unusual for something this rare.
+                // A raid announces itself and then immediately supplies things to
+                // fight, so at any lower rank the squad would call out the first
+                // greydwarf instead of the thing that brought it.
+                ChatterEvent.Raid => 85,
+
                 // Outcomes above intentions, which they were not at first. See
                 // HowAFightEndedOutranksNoticingItStarted for what that cost.
                 ChatterEvent.PlayerGotAKill => 80,
@@ -366,9 +372,28 @@ namespace ChattyBones.Logic
                 ChatterEvent.StaggeredIt => 42,
 
                 ChatterEvent.PlayerLandedABigHit => 40,
+
+                // Far below Raid, and it does not need the standing: surviving one
+                // is said into a quiet field with nothing to compete against.
+                ChatterEvent.RaidEnded => 35,
+
                 ChatterEvent.Buffed => 30,
                 ChatterEvent.Summoned => 20,
+
+                // Arriving somewhere is worth more than the weather and less than
+                // anything that happens to a person. Both fire while travelling,
+                // which is when the squad has least to say.
+                ChatterEvent.BiomeChanged => 18,
+                ChatterEvent.Sheltered => 17,
+
                 ChatterEvent.CompanionSummoned => 15,
+
+                // The day cycle is twenty real minutes, so these are a rhythm rather
+                // than an occasion, and they sit with the small talk accordingly.
+                // Dawn above Nightfall because it is the one an undead thing has a
+                // view about.
+                ChatterEvent.Dawn => 14,
+                ChatterEvent.Nightfall => 13,
 
                 // Being rained on is small talk, and any water at all applies it - so
                 // anywhere higher and a skeleton crossing a stream talks over a kill.

@@ -192,5 +192,50 @@ namespace ChattyBones.Logic
         /// air. Same argument as <see cref="PlayerParried"/>.
         /// </remarks>
         PlayerDodged,
+
+        /// <summary>The sun came up.</summary>
+        /// <remarks>
+        /// A twenty-minute day cycle, so this and <see cref="Nightfall"/> are a
+        /// rhythm rather than a ceremony - which is most of why they are worth
+        /// having. The rest of it is that an undead thing has opinions about
+        /// daylight, and they write themselves.
+        /// </remarks>
+        Dawn,
+
+        /// <summary>The sun went down.</summary>
+        Nightfall,
+
+        /// <summary>You crossed into a different biome.</summary>
+        /// <remarks>
+        /// Every crossing, not only the first. The hook fires on the transition and
+        /// the game's own "new biome" banner is guarded separately inside it, so
+        /// walking back into the Meadows counts here and does not there.
+        /// </remarks>
+        BiomeChanged,
+
+        /// <summary>Something is coming - a raid has started.</summary>
+        /// <remarks>
+        /// Ranked above the kill events, which is unusual for something this rare.
+        /// A raid announces itself and then immediately supplies targets, so at any
+        /// lower rank the squad would call out the first greydwarf instead of the
+        /// thing that brought it - and the warning is the better line.
+        /// </remarks>
+        Raid,
+
+        /// <summary>The raid is over and everyone is still standing.</summary>
+        /// <remarks>
+        /// Ranked far below <see cref="Raid"/> on purpose. It fires when things have
+        /// gone quiet, so it has no competition and needs no standing.
+        /// </remarks>
+        RaidEnded,
+
+        /// <summary>It has arrived somewhere you have built.</summary>
+        /// <remarks>
+        /// The only event with no hook behind it. There is nothing to patch - the
+        /// question "is this skeleton standing in your base" is a query, so it rides
+        /// the sweep that already runs for <see cref="TargetAcquired"/> and fires on
+        /// the edge.
+        /// </remarks>
+        Sheltered,
     }
 }
