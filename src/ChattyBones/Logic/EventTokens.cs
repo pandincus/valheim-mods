@@ -138,7 +138,7 @@ namespace ChattyBones.Logic
             }
 
             // The same question either way - what was it - so one token serves both.
-            if (kind is ChatterEvent.Looted or ChatterEvent.PlayerAte)
+            if (kind is ChatterEvent.Looted or ChatterEvent.PlayerAte or ChatterEvent.PlayerCooked)
             {
                 set |= TokenSet.Item;
             }

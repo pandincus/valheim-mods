@@ -49,7 +49,7 @@
 #
 # EVENTS
 #
-# Thirty things a skeleton reacts to, and which tokens each one can fill in.
+# Thirty-one things a skeleton reacts to, and which tokens each one can fill in.
 # {name} and {player} are left out of the table because every event has them.
 #
 #     T {target}       W {weapon}        D {damage}
@@ -86,6 +86,7 @@
 #   AtHome               you settled in safely         .  .  .  .  .  .  .  .  .
 #   Looted               you picked something up       .  .  .  .  .  .  .  I  .
 #   PlayerAte            you ate something             .  .  .  .  .  .  .  I  .
+#   PlayerCooked         you made food or mead         .  .  .  .  .  .  .  I  .
 #   PlayerSkilledUp      you got better at something   .  .  .  .  .  .  .  .  L
 #
 # The D column is the one worth a second look. {damage} only reaches the events
@@ -103,7 +104,7 @@
 # sometimes be wrong. "My bones are wet" travels better than "it is raining".
 #
 # Spelling counts, capitals included: "idle" is not "Idle", and a name that is
-# not exactly one of the thirty above is reported in the log and skipped.
+# not exactly one of the thirty-one above is reported in the log and skipped.
 #
 # An event you leave out entirely is simply never commented on, which is a fine
 # way to switch off the idle chatter.
@@ -373,6 +374,11 @@ lines:
       - "It goes straight through me these days."
       - "Enjoy the {item}. Truly."
       - "I remember tasting things."
+    PlayerCooked:
+      - "{item}. That takes me back."
+      - "Making {item}, are we."
+      - "The smell does nothing for me. It used to."
+      - "All that work, and you will have it swallowed in a moment."
     PlayerSkilledUp:
       - "Better at {skill} now, are you."
       - "Your {skill} improves, {player}."
@@ -381,6 +387,10 @@ lines:
 
   # Would rather be somewhere else.
   cowardly:
+    PlayerCooked:
+      - "Is that for me? ...No. Of course not."
+      - "Must you do that so near the fire?"
+      - "{item}. Lovely. Can we go inside now?"
     Looted:
       - "Is that safe to carry?"
       - "Do not touch anything else."
@@ -424,6 +434,10 @@ lines:
 
   # Convinced of its own legend.
   boastful:
+    PlayerCooked:
+      - "{item}! Now that is a batch."
+      - "I made better, when my hands still worked."
+      - "Cooking. A fine use of a warrior's afternoon."
     PlayerSkilledUp:
       - "You learn from the best."
       - "I said you had promise."
@@ -461,6 +475,10 @@ lines:
 
   # Takes the job seriously.
   dutiful:
+    PlayerCooked:
+      - "{item} prepared. Noted."
+      - "Rations secured."
+      - "Provisioning is half a campaign."
     Looted:
       - "{item}. Logged."
       - "Recovered and accounted for."
@@ -496,6 +514,10 @@ lines:
 
   # Has done this too many times.
   veteran:
+    PlayerCooked:
+      - "{item}. Seen better. Seen far worse."
+      - "Eat it while it is hot."
+      - "Food is food."
     PlayerAte:
       - "Eat while you can."
       - "That will not keep out the cold."

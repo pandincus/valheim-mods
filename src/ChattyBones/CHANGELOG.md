@@ -6,7 +6,7 @@ Summoned skeletons talk. They react to being raised, to picking a fight, to
 winning or losing one, to being hurt or shielded, and to you doing any of the same
 — and they react to each other, by name.
 
-Thirty things they notice, across four personalities (cowardly, boastful,
+Thirty-one things they notice, across four personalities (cowardly, boastful,
 dutiful, veteran) assigned at summon and remembered in the save. They will tell
 you what hit them and what it was made of, complain specifically about being on
 fire, and rib each other by name when nothing is happening.
@@ -20,7 +20,8 @@ And they notice the world you are walking through. Sunrise and nightfall,
 crossing into a new biome, a raid arriving and then being seen off, something
 much larger than a raid turning up, and the moment you finally settle somewhere
 with a roof and a fire and nothing hunting you. They will remark on what you pick
-up, what you eat, and what you are getting better at.
+up, what you eat, what you brew or cook at a cauldron, and what you are getting
+better at.
 
 Every line lives in `BepInEx/config/ChattyBones.lines.yaml`, written for you on
 first run and yours to rewrite. Edit it while the game is running and the change

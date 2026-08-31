@@ -393,6 +393,12 @@ namespace ChattyBones.Logic
                 ChatterEvent.PlayerSkilledUp => 26,
                 ChatterEvent.PlayerAte => 24,
 
+                // Just under eating, because a cauldron is usually emptied in a burst -
+                // ten sausages is ten of these - and the rank is what turns that into
+                // one remark. Slotting in here cost no renumbering, which is the gap
+                // spacing above earning its keep for the first time.
+                ChatterEvent.PlayerCooked => 23,
+
                 // Where you are. Arriving somewhere beats the sky doing its usual
                 // thing, because the sky comes round on its own every twenty minutes
                 // and the Plains do not.
