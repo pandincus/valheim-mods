@@ -137,124 +137,84 @@ namespace ChattyBones.Patches
 
     /// <summary>Reacts to a raid starting and to surviving one.</summary>
     /// <remarks>
-    /// <c>OnActivate</c> is where vanilla shows its own centre-screen warning, so
-    /// hooking it means the squad reacts at the moment you are told rather than a
-    /// beat later.
+    /// A question rather than a hook, which is the third answer here and much the
+    /// smallest. <c>GetCurrentRandomEvent()</c> is public and returns the raid that
+    /// currently exists, so "is there a raid on" is a field read and the two events
+    /// are the two edges of it.
+    ///
+    /// I hooked OnActivate and OnDeactivate first, because OnActivate is where vanilla
+    /// puts its own centre-screen warning and reacting on the same frame seemed worth
+    /// having. It is not: those two are about the raid being *near you*, not about it
+    /// existing, so they fire again every time you cross the boundary, and OnDeactivate
+    /// is handed an <c>end</c> flag that does not mean what it reads as - SetForcedEvent
+    /// passes it too. Both then needed a guard, and each guard needed the other, which
+    /// is when the bookkeeping started to cost more than the quarter second it saved.
+    ///
+    /// Three bugs came out with it, and they are worth listing because all three were
+    /// state going stale rather than logic being wrong: a raid you walked away from
+    /// could leave the tracking wedged so no raid of that name was ever announced
+    /// again; walking away from a live boss said "we saw it off"; and the tracking
+    /// committed before knowing whether anyone had actually spoken.
+    ///
+    /// A boss gets the arrival and not the departure, and that asymmetry is the whole
+    /// point of it. <c>m_randomEvent</c> is only ever a raid, so bosses need their own
+    /// question, and the honest one to ask is the health bar: <c>GetActiveBoss</c> is
+    /// public and says whether one is up. But a health bar going away means either that
+    /// you killed it or that you walked off, and nothing separates those without
+    /// holding on to the boss and interrogating it afterwards - which is the stale-state
+    /// bookkeeping this class was just rid of. So we say "something is coming" and let
+    /// the kill events carry the other end, which they already do rather well.
     ///
     /// No token. <c>m_startMessage</c> is tempting and wrong: it is a whole localized
     /// sentence, so "{raid}" inside a line reads as one sentence wedged into another.
     /// The lines react to a raid rather than naming it.
-    ///
-    /// Both ends need guarding, and neither guard is obvious from the method names.
-    ///
-    /// RandEventSystem re-activates the event on every fixed update that finds you
-    /// inside its range and deactivates it on every one that does not, with no
-    /// hysteresis - so chasing something past the boundary and coming back re-runs
-    /// OnActivate. Vanilla is quiet about that because its own warning is behind a
-    /// <c>m_firstActivation</c> flag; ours needs the same, which is what
-    /// <see cref="Raids"/> keeps.
-    ///
-    /// And <c>end</c> does not mean "ran its course", which is what the first version
-    /// of this said. SetForcedEvent passes it too, and forced events include boss
-    /// fights - so walking far enough from a live boss to drop its health bar would
-    /// otherwise congratulate you on surviving something you ran away from. Requiring
-    /// that we announced the start first is what closes it.
-    ///
-    /// One consequence worth knowing rather than guarding: boss fights and event
-    /// zones reach this the same way a raid does. Engaging Eikthyr says "something is
-    /// coming" and killing it says "we saw it off", which the lines are general enough
-    /// to carry, and which is arguably the better behaviour anyway.
-    /// </remarks>
-    [HarmonyPatch(typeof(RandomEvent), "OnActivate")]
-    internal static class RandomEventStartPatch
-    {
-        /// <summary>
-        /// Catch everything, so a failure here cannot stop vanilla starting the raid.
-        /// </summary>
-        /// <param name="__instance">The event starting.</param>
-        private static void Postfix(RandomEvent __instance)
-        {
-            try
-            {
-                if (Raids.Starting(__instance))
-                {
-                    WorldEvents.Announce(ChatterEvent.Raid, Heightmap.Biome.None);
-                }
-            }
-            catch (Exception e)
-            {
-                ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over a raid: " + e);
-            }
-        }
-    }
-
-    /// <summary>Remembers which raid we have already announced.</summary>
-    /// <remarks>
-    /// Vanilla keeps the equivalent as <c>m_firstActivation</c> on the event itself,
-    /// which is per-clone and therefore not ours to read. This is the same idea by
-    /// name, which survives the event object being rebuilt.
     /// </remarks>
     internal static class Raids
     {
-        /// <summary>The raid we last said something about, or null.</summary>
-        private static string _announced;
+        /// <summary>Whether a raid was on the last time anybody looked.</summary>
+        private static bool _underway;
 
-        /// <summary>Is this a raid we have not already announced?</summary>
-        /// <returns>True the first time a given raid activates.</returns>
-        /// <param name="raid">The event starting.</param>
-        internal static bool Starting(RandomEvent raid)
-        {
-            string name = raid?.m_name;
+        /// <summary>Whether a boss had a health bar up the last time anybody looked.</summary>
+        private static bool _bossUp;
 
-            if (string.IsNullOrEmpty(name) || name == _announced)
-            {
-                return false;
-            }
-
-            _announced = name;
-            return true;
-        }
-
-        /// <summary>Is this the end of a raid we announced the start of?</summary>
-        /// <returns>True once, for a raid we spoke about.</returns>
-        /// <param name="raid">The event ending.</param>
+        /// <summary>Notice a raid arriving or finishing, and a boss arriving.</summary>
         /// <remarks>
-        /// Requiring that we announced the start is what keeps a boss walking off our
-        /// screen from reading as a raid survived.
+        /// Driven from the sweep rather than a patch, so it is late by up to a quarter
+        /// of a second. Nobody can tell.
+        ///
+        /// Deliberately says nothing about whether the line was heard. If the budget
+        /// refuses the arrival the departure still speaks, which is a squad seeing off
+        /// a raid they never mentioned - mild, and much better than the alternative,
+        /// because a flag derived from a live question cannot get stuck the way one we
+        /// maintain ourselves can.
         /// </remarks>
-        internal static bool Ending(RandomEvent raid)
+        internal static void Poll()
         {
-            if (raid == null || raid.m_name != _announced)
+            bool underway = RandEventSystem.instance != null
+                && RandEventSystem.instance.GetCurrentRandomEvent() != null;
+
+            if (underway != _underway)
             {
-                return false;
+                _underway = underway;
+
+                WorldEvents.Announce(
+                    underway ? ChatterEvent.Raid : ChatterEvent.RaidEnded,
+                    Heightmap.Biome.None);
             }
 
-            _announced = null;
-            return true;
-        }
-    }
+            // Walking back into range says it again, because the bar came back and this
+            // is all the state there is. Rare, harmless, and the price of not keeping a
+            // record of every boss you have ever met.
+            bool bossUp = EnemyHud.instance != null && EnemyHud.instance.GetActiveBoss() != null;
 
-    /// <summary>Reacts to the raid being over.</summary>
-    [HarmonyPatch(typeof(RandomEvent), "OnDeactivate")]
-    internal static class RandomEventEndPatch
-    {
-        /// <summary>
-        /// Catch everything, for the same reason the start does.
-        /// </summary>
-        /// <param name="__instance">The event ending.</param>
-        /// <param name="end">False when you simply walked out of range, which is not an ending.</param>
-        private static void Postfix(RandomEvent __instance, bool end)
-        {
-            try
+            if (bossUp != _bossUp)
             {
-                if (end && Raids.Ending(__instance))
+                _bossUp = bossUp;
+
+                if (bossUp)
                 {
-                    WorldEvents.Announce(ChatterEvent.RaidEnded, Heightmap.Biome.None);
+                    WorldEvents.Announce(ChatterEvent.Raid, Heightmap.Biome.None);
                 }
-            }
-            catch (Exception e)
-            {
-                ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over the end of a raid: " + e);
             }
         }
     }

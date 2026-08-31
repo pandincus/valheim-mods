@@ -212,10 +212,12 @@ namespace ChattyBones.Logic
         /// </remarks>
         BiomeChanged,
 
-        /// <summary>Something is coming - a raid has started.</summary>
+        /// <summary>Something is coming - a raid has started, or a boss has a health bar up.</summary>
         /// <remarks>
-        /// Boss fights and event zones reach this too, by the same route vanilla
-        /// routes them - so engaging Eikthyr counts as something coming.
+        /// Both, and on purpose - "something is coming" carries Eikthyr perfectly well,
+        /// so a boss needs no event of its own. Only <see cref="RaidEnded"/> is choosy:
+        /// a raid finishing is a fact we can ask about, while a boss health bar going
+        /// away could be a kill or could be you leaving.
         /// </remarks>
         Raid,
 

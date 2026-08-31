@@ -17,10 +17,10 @@ the good version of each: a skeleton that praised every raised shield would be
 one you stopped listening to.
 
 And they notice the world you are walking through. Sunrise and nightfall,
-crossing into a new biome, a raid arriving and then being seen off, and the
-moment you finally settle somewhere with a roof and a fire and nothing hunting
-you. They will remark on what you pick up, what you eat, and what you are
-getting better at.
+crossing into a new biome, a raid arriving and then being seen off, something
+much larger than a raid turning up, and the moment you finally settle somewhere
+with a roof and a fire and nothing hunting you. They will remark on what you pick
+up, what you eat, and what you are getting better at.
 
 Every line lives in `BepInEx/config/ChattyBones.lines.yaml`, written for you on
 first run and yours to rewrite. Edit it while the game is running and the change

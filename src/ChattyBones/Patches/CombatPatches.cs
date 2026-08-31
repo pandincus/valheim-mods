@@ -61,12 +61,24 @@ namespace ChattyBones.Patches
         /// </remarks>
         private static Character _selfStaggered;
 
+        /// <summary>Which frame that happened in.</summary>
+        /// <remarks>
+        /// Its own stamp rather than sharing <see cref="_frame"/>, which it did at
+        /// first. The two are answering different questions with different lifetimes -
+        /// this one is only ever read inside the blow that set it, while a pending
+        /// record can outlive its frame and wait for <see cref="FlushStale"/>. Sharing
+        /// meant a stagger could push the freshness of an unrelated record forward and
+        /// keep it waiting, and a record held that way still counted as fresh when it
+        /// finally spoke.
+        /// </remarks>
+        private static int _selfStaggeredFrame;
+
         /// <summary>Note that this character's own bar filled while absorbing a blow.</summary>
         /// <param name="victim">Whoever was staggered.</param>
         internal static void NoteSelfStagger(Character victim)
         {
             _selfStaggered = victim;
-            _frame = Time.frameCount;
+            _selfStaggeredFrame = Time.frameCount;
         }
 
         /// <summary>Was this character staggered by the blow it is about to be asked about?</summary>
@@ -76,7 +88,7 @@ namespace ChattyBones.Patches
         {
             return victim != null
                 && ReferenceEquals(victim, _selfStaggered)
-                && _frame == Time.frameCount;
+                && _selfStaggeredFrame == Time.frameCount;
         }
 
         /// <summary>Set aside something worth saying once this blow has finished landing.</summary>

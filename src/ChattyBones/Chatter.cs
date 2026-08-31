@@ -432,6 +432,17 @@ namespace ChattyBones
             float elapsed = SweepSeconds - _untilSweep;
             _untilSweep = SweepSeconds;
 
+            // Asked once for the squad rather than once per skeleton: it is a question
+            // about the world, and the answer does not vary between them.
+            try
+            {
+                Patches.Raids.Poll();
+            }
+            catch (System.Exception e)
+            {
+                ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over a raid: " + e);
+            }
+
             // Guarded per skeleton rather than around the loop, so one of them failing
             // costs its own turn rather than the rest of the squad's. This is the only
             // way into our code that is not a Harmony patch - the patches carry their
