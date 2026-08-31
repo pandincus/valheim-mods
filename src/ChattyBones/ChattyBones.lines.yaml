@@ -328,16 +328,6 @@ lines:
       - "Hmm."
       - "{companion}, your insides are showing."
       - "Do you ever think about it, {companion}? Being alive?"
-    Idle[biome=Swamp]:
-      - "Something down there is older than us."
-      - "My feet have gone. Well. More gone."
-      - "Do not drink it, {companion}."
-      - "This place was somebody's, once."
-    Idle[biome=Mistlands]:
-      - "What's that sound?"
-      - "I can't see anything."
-      - "Stay where I can hear you, {companion}."
-      - "Something is up there."
     PlayerHurt:
       - "{player}! Watch it!"
       - "They got you!"
@@ -535,6 +525,14 @@ lines:
     Idle:
       - "They'll sing about me, you know."
       - "Ask me about the ballad."
+    Idle[biome=Swamp]:
+      - "I have fought worse than whatever is in that water."
+      - "Stand behind me. The mud is the dangerous part."
+      - "I took a draugr once. Ask me how."
+    Idle[biome=Mistlands]:
+      - "Let it come. I will find it by sound."
+      - "I am not lost. I am scouting."
+      - "Whatever is up there has not met me yet."
 
   # Takes the job seriously.
   dutiful:
@@ -574,6 +572,14 @@ lines:
     Idle:
       - "Holding position."
       - "Perimeter clear."
+    Idle[biome=Swamp]:
+      - "Footing is poor. Watch your step, {player}."
+      - "Visibility down. Closing up."
+      - "This ground was a road once."
+    Idle[biome=Mistlands]:
+      - "Visibility nil. Staying close."
+      - "Report it if you hear that again."
+      - "Holding formation. Such as it is."
 
   # Has done this too many times.
   veteran:
@@ -619,6 +625,14 @@ lines:
     Idle:
       - "I've stood in worse fields."
       - "Wake me when it's interesting."
+    Idle[biome=Swamp]:
+      - "Swamp. Of course it is."
+      - "Nothing good was ever buried anywhere dry."
+      - "Stay out of the water and you keep your feet."
+    Idle[biome=Mistlands]:
+      - "I have been somewhere like this. I did not care for it either."
+      - "Don't chase what you can't see."
+      - "The quiet is the bad part."
     CompanionSummoned:
       - "Another one. Marvellous."
       - "Don't get comfortable, {companion}."

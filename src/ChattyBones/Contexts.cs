@@ -100,7 +100,14 @@ namespace ChattyBones
                 string what = context.Substring(0, equals);
                 string value = context.Substring(equals + 1);
 
-                if (what == "biome" && !Enum.IsDefined(typeof(Heightmap.Biome), value))
+                // None is excluded on purpose, and it is not a special case so much as
+                // the same rule: For() returns null rather than "biome=None" while a
+                // zone loads, so nothing ever satisfies it. Enum.IsDefined would say
+                // yes - it is a real member - and pass a group that can never fire,
+                // which is the exact thing this walk exists to catch.
+                if (what == "biome"
+                    && (value == nameof(Heightmap.Biome.None)
+                        || !Enum.IsDefined(typeof(Heightmap.Biome), value)))
                 {
                     bad.Add(context);
                 }

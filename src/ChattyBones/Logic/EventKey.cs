@@ -111,10 +111,6 @@ namespace ChattyBones.Logic
                 return true;
             }
 
-            // Written out by hand rather than as name[^1] and name[..open]. The test
-            // project compiles these same files against net10 and offers the range
-            // syntax; the mod is net472 and has no System.Index, so taking the
-            // suggestion builds there and breaks here.
             if (name[name.Length - 1] != ']')
             {
                 problem = "'" + name + "' opens a [ that is never closed";
@@ -195,7 +191,6 @@ namespace ChattyBones.Logic
                 return false;
             }
 
-            // Substring rather than a range, for the net472 reason above.
             string what = inside.Substring(0, equals).Trim();
             string value = inside.Substring(equals + 1).Trim();
 

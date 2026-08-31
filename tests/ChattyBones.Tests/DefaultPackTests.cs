@@ -230,6 +230,55 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void NoSharedContextGroupIsWrittenWhereNobodyCanReachIt()
+        {
+            // Personality beats context, so a personality with plain lines of its own
+            // for an event never falls through to a shared group tagged for where it is
+            // standing. If every personality has plain lines for that event, a shared
+            // context group is unreachable - it reads perfectly and nothing can ever
+            // say it.
+            //
+            // Eight lines shipped that way before a review caught it, which is why the
+            // rule is here rather than in somebody's head. The atmosphere belongs in
+            // the personalities; common is the boring baseline.
+            LinePack pack = DefaultPack.Build();
+
+            if (!pack.TryGetSpace(LinePack.SharedPersonality, ChatterEvent.Idle, out _))
+            {
+                return;
+            }
+
+            foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
+            {
+                if (!pack.TryGetSpace(LinePack.SharedPersonality, kind, out LineSpace shared))
+                {
+                    continue;
+                }
+
+                bool anyoneFallsThrough = false;
+
+                for (int i = 0; !anyoneFallsThrough && i < pack.Personalities.Count; i++)
+                {
+                    anyoneFallsThrough = !pack.HasOwnLines(pack.Personalities[i], kind);
+                }
+
+                if (anyoneFallsThrough)
+                {
+                    continue;
+                }
+
+                foreach (LineSpace.Group group in shared.Groups)
+                {
+                    Assert.True(
+                        group.Context == null,
+                        "common/" + kind + "[" + group.Context + "] can never be reached: every "
+                        + "personality has its own plain " + kind + " lines, and those win. "
+                        + "Put these lines in the personalities instead.");
+                }
+            }
+        }
+
+        [Fact]
         public void EveryLineRendersWithTheTokensItsEventActuallyGets()
         {
             LinePack pack = DefaultPack.Build();
@@ -241,12 +290,16 @@ namespace ChattyBones.Tests
 
                 foreach (string personality in personalities)
                 {
-                    if (!pack.TryGetGroup(personality, kind, out IReadOnlyList<string> lines))
+                    // The whole numbering rather than the group in force, because with
+                    // no context resolved the window is only the plain group - which
+                    // would leave every Idle[biome=...] line unchecked, and a token an
+                    // event never supplies makes a line silently unsayable.
+                    if (!pack.TryGetSpace(personality, kind, out LineSpace space))
                     {
                         continue;
                     }
 
-                    foreach (string template in lines)
+                    foreach (string template in space.All)
                     {
                         Assert.True(
                             tokens.TryRender(template, out _),
