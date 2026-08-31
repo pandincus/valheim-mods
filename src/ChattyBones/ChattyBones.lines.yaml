@@ -110,6 +110,51 @@
 # way to switch off the idle chatter.
 #
 #
+# LINES THAT ONLY SUIT ONE PLACE
+#
+# An event can be tagged with where the skeleton is standing, and then those lines
+# are used only there:
+#
+#   cowardly:
+#     Idle:
+#       - "It's very open out here."
+#     Idle[biome=Swamp]:
+#       - "I do not like it here."
+#
+# In the Swamp that skeleton draws from the tagged group; anywhere else it draws
+# from the plain one. This is the thing {biome} cannot do for you - a token puts a
+# word in a line, but it cannot stop a line being said in the wrong place.
+#
+# The rule for which group wins, in order:
+#
+#   1. your personality's lines for this exact place
+#   2. your personality's plain lines
+#   3. the shared lines for this exact place
+#   4. the shared plain lines
+#
+# So a personality with plain lines of its own uses those before it will touch a
+# shared group tagged for where it is standing. Personality first, place second.
+#
+# One tag per group. "Idle[biome=Swamp,time=night]" is refused rather than
+# guessed at, and reported in the log.
+#
+# The place names are the game's own spellings, capitals and all:
+#
+#   Meadows   BlackForest   Swamp   Mountain   Plains
+#   Mistlands   AshLands   DeepNorth   Ocean
+#
+# A name that is not one of those is reported in the log at load. It has to be,
+# because a group tagged with a place that does not exist reads perfectly and is
+# silent forever, which is the least helpful kind of mistake a file can contain.
+#
+# The same warning about short groups applies here and bites harder. A tagged
+# group with one line in it means that skeleton says that one line every single
+# time it is in that place, and the lines beside it are never reached.
+#
+# Only "biome" for now. More kinds of place, and things that are not places at
+# all, are meant to follow.
+#
+#
 # TOKENS
 #
 # Eleven things a line can drop into itself. Four are about the people involved:
@@ -283,6 +328,16 @@ lines:
       - "Hmm."
       - "{companion}, your insides are showing."
       - "Do you ever think about it, {companion}? Being alive?"
+    Idle[biome=Swamp]:
+      - "Something down there is older than us."
+      - "My feet have gone. Well. More gone."
+      - "Do not drink it, {companion}."
+      - "This place was somebody's, once."
+    Idle[biome=Mistlands]:
+      - "What's that sound?"
+      - "I can't see anything."
+      - "Stay where I can hear you, {companion}."
+      - "Something is up there."
     PlayerHurt:
       - "{player}! Watch it!"
       - "They got you!"
@@ -425,6 +480,14 @@ lines:
     Idle:
       - "Can we go home?"
       - "It's very open out here."
+    Idle[biome=Swamp]:
+      - "I do not like it here."
+      - "Can we go back to the open bit?"
+      - "Every one of these trees is looking at me."
+    Idle[biome=Mistlands]:
+      - "I would like to state that I am against this."
+      - "{companion}? Are you still there?"
+      - "I heard that too. Do not say you did not."
     CompanionDied:
       - "We're all going to die out here."
       - "That could have been me!"

@@ -52,6 +52,12 @@ namespace ChattyBones.Logic
         /// </param>
         /// <param name="lineRef">The line ref to broadcast, so others reach this same line.</param>
         /// <param name="line">The finished line, tokens filled in.</param>
+        /// <param name="contexts">
+        /// Where this skeleton is, as the pack spells it, or null for nowhere in
+        /// particular. Optional because the great majority of callers - and every test
+        /// written before contexts existed - have no context to offer and want the
+        /// plain groups, which is exactly what null gives them.
+        /// </param>
         /// <remarks>
         /// Start at a random offset, walk the group, take the first line that renders
         /// and is not the one just said. Every line is examined at most once, so if a
@@ -68,26 +74,32 @@ namespace ChattyBones.Logic
             LineTokens tokens,
             Random random,
             out int lineRef,
-            out string line)
+            out string line,
+            IReadOnlyList<string> contexts = null)
         {
             lineRef = 0;
             line = null;
 
-            if (!pack.TryGetGroup(personality, kind, out IReadOnlyList<string> lines))
+            if (!pack.TrySelect(personality, kind, contexts, out LineSpace space, out int start, out int count))
             {
                 return false;
             }
 
-            int count = lines.Count;
-            int start = random.Next(0, count);
+            IReadOnlyList<string> all = space.All;
+            int total = space.Count;
+            int from = random.Next(0, count);
 
             string repeatLine = null;
-            int repeatIndex = -1;
+            int repeatAt = -1;
 
             for (int offset = 0; offset < count; offset++)
             {
-                int index = (start + offset) % count;
-                string template = lines[index];
+                // Walking the window the context chose, but numbering against the whole
+                // space - a listener folds the ref against every line this personality
+                // could reach for this event, because working out which window applied
+                // would mean resolving a context it may not be able to see.
+                int index = start + ((from + offset) % count);
+                string template = all[index];
 
                 if (!tokens.TryRender(template, out string rendered))
                 {
@@ -98,27 +110,27 @@ namespace ChattyBones.Logic
                 {
                     // Hold on to it in case it turns out to be the only thing we can
                     // say, but keep looking first.
-                    if (repeatIndex < 0)
+                    if (repeatAt < 0)
                     {
                         repeatLine = rendered;
-                        repeatIndex = index;
+                        repeatAt = index;
                     }
 
                     continue;
                 }
 
                 _lastSaid = template;
-                lineRef = LineRefFor(index, count, random);
+                lineRef = LineRefFor(index, total, random);
                 line = rendered;
                 return true;
             }
 
-            if (repeatIndex < 0)
+            if (repeatAt < 0)
             {
                 return false;
             }
 
-            lineRef = LineRefFor(repeatIndex, count, random);
+            lineRef = LineRefFor(repeatAt, total, random);
             line = repeatLine;
             return true;
         }

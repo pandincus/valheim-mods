@@ -164,8 +164,8 @@ namespace ChattyBones.Tests
         public void EveryPersonalitySoundsLikeItselfSomewhere(string personality)
         {
             // Asserting that a personality can react to every event proves nothing:
-            // TryGetGroup falls back to the shared group, which EveryEventHasSomething
-            // ToSay already covers, so it comes back true whatever the personality
+            // the lookups fall back to the shared group, which EveryEventHasSomething
+            // ToSay already covers, so they come back true whatever the personality
             // contains - including nothing at all. What is worth checking is that each
             // one has lines of its own somewhere, or it is a name with no character.
             LinePack pack = DefaultPack.Build();
@@ -173,10 +173,7 @@ namespace ChattyBones.Tests
 
             foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
             {
-                _ = pack.TryGetGroup(LinePack.SharedPersonality, kind, out IReadOnlyList<string> shared);
-
-                if (pack.TryGetGroup(personality, kind, out IReadOnlyList<string> lines)
-                    && !ReferenceEquals(lines, shared))
+                if (pack.HasOwnLines(personality, kind))
                 {
                     own++;
                 }
@@ -192,32 +189,43 @@ namespace ChattyBones.Tests
         [InlineData("veteran")]
         public void NoPersonalityOverridesTheSharedLinesWithASingleOne(string personality)
         {
-            // A personality group *replaces* the shared one rather than adding to it -
-            // TryGetGroup returns one or the other and never merges - so a group with
-            // one line in it means that personality says that line and nothing else,
-            // for that event, forever. The shared lines beside it become unreachable.
+            // A personality group *shadows* the shared one rather than adding to it -
+            // selection picks one window and stays in it - so a group with one line in
+            // it means that personality says that line and nothing else, for that
+            // event, forever. The shared lines beside it become unreachable.
             //
             // Easy to write and impossible to see on the page, which is why it is a
             // rule: six of these went in at once, and the review caught them rather
             // than a test. The pack header's own advice is that a group of three
             // audibly cycles.
+            //
+            // Every group of the personality's is checked, not only the one in force
+            // with no context resolved. A one-line Idle[biome=Swamp] shadows exactly
+            // the same way and would otherwise be invisible here - which is the second
+            // way to make this mistake that the context work introduced.
             LinePack pack = DefaultPack.Build();
 
             foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
             {
-                _ = pack.TryGetGroup(LinePack.SharedPersonality, kind, out IReadOnlyList<string> shared);
-
-                if (!pack.TryGetGroup(personality, kind, out IReadOnlyList<string> lines)
-                    || ReferenceEquals(lines, shared))
+                if (!pack.HasOwnLines(personality, kind)
+                    || !pack.TryGetSpace(personality, kind, out LineSpace space))
                 {
                     continue;
                 }
 
-                Assert.True(
-                    lines.Count > 1,
-                    personality + "/" + kind + " has one line of its own, so it will say \""
-                    + lines[0] + "\" every time and never reach the " + (shared?.Count ?? 0)
-                    + " shared ones.");
+                foreach (LineSpace.Group group in space.Groups)
+                {
+                    if (!group.Personal || group.Length > 1)
+                    {
+                        continue;
+                    }
+
+                    string where = group.Context == null ? "" : "[" + group.Context + "]";
+
+                    Assert.Fail(
+                        personality + "/" + kind + where + " has one line of its own, so it will say \""
+                        + space.All[group.Offset] + "\" every time and never reach anything beside it.");
+                }
             }
         }
 

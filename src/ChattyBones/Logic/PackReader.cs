@@ -173,10 +173,11 @@ namespace ChattyBones.Logic
                 {
                     string what = NameOf(group.Key);
 
-                    if (!TryEvent(what, out ChatterEvent kind))
+                    if (!EventKey.TryParse(what, out EventKey key, out string problem))
                     {
-                        problems.Add(At(group.Key) + "'" + what + "' is not an event. "
-                            + "The fifteen there are is listed in the comments at the top of the pack.");
+                        problems.Add(At(group.Key) + problem
+                            + ". The events, and the contexts a group can be tagged with,"
+                            + " are listed in the comments at the top of the pack.");
                         continue;
                     }
 
@@ -190,7 +191,7 @@ namespace ChattyBones.Logic
                     {
                         if (line is YamlScalarNode scalar)
                         {
-                            _ = builder.Add(who, kind, scalar.Value);
+                            _ = builder.Add(who, key, scalar.Value);
                         }
                         else
                         {

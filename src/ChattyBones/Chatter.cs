@@ -51,6 +51,7 @@ namespace ChattyBones
                 "Line pack loaded with " + _pack.Personalities.Count + " personalities.");
 
             ReportUncoveredEvents();
+            ReportUnusableContexts();
         }
 
         /// <summary>The personalities a skeleton can be assigned, in a stable order.</summary>
@@ -80,6 +81,7 @@ namespace ChattyBones
                 "Line pack reloaded with " + _pack.Personalities.Count + " personalities.");
 
             ReportUncoveredEvents();
+            ReportUnusableContexts();
         }
 
         /// <summary>Mention which events the pack has no lines for, because nothing else will.</summary>
@@ -108,6 +110,29 @@ namespace ChattyBones
                 "Silent by omission - your pack has no lines for " + string.Join(", ", missing)
                 + ". That is fine if you meant it. If you did not, " + PackFile.ReferenceFileName
                 + " next to your own pack is what this version shipped with.");
+        }
+
+        /// <summary>Complain about context values that name nothing the game has.</summary>
+        /// <remarks>
+        /// A warning rather than a statement, which is the opposite of the call above,
+        /// and deliberately so: leaving an event out is something a player may have
+        /// meant, while <c>Idle[biome=Swamps]</c> is not something anybody means. It
+        /// parses, it matches nothing, and it is silent forever.
+        /// </remarks>
+        private static void ReportUnusableContexts()
+        {
+            IReadOnlyList<string> bad = Contexts.Unusable(_pack);
+
+            if (bad.Count == 0)
+            {
+                return;
+            }
+
+            ChattyBonesPlugin.Log.LogWarning(
+                "These groups are tagged with something that is not a real value, so nothing"
+                + " will ever match them: " + string.Join(", ", bad)
+                + ". Biome names are the game's own spellings, like Meadows, BlackForest,"
+                + " Swamp, Mountain, Plains, Mistlands, AshLands and DeepNorth.");
         }
 
         /// <summary>Read the current config into a fresh settings object.</summary>
@@ -227,7 +252,9 @@ namespace ChattyBones
             // collecting.
             EventTokens.Note(kind, tokens.Target, tokens.Companion, details);
 
-            if (!_chooser.TryChoose(_pack, speaker.Personality, kind, tokens, _random, out int lineRef, out string line))
+            if (!_chooser.TryChoose(
+                    _pack, speaker.Personality, kind, tokens, _random,
+                    out int lineRef, out string line, Contexts.For(character)))
             {
                 Trace(speaker, kind, "nothing it could say as " + (speaker.Personality ?? "no personality yet"));
                 return false;

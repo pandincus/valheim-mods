@@ -8,11 +8,16 @@ namespace ChattyBones.Logic
     /// </summary>
     /// <remarks>
     /// Lines are grouped by personality and then by event, so a cowardly skeleton
-    /// and a boastful one react to the same greydwarf quite differently.
+    /// and a boastful one react to the same greydwarf quite differently. An event may
+    /// also carry a context - <c>Idle[biome=Swamp]</c> - so the same skeleton reacts
+    /// differently to standing in different places.
     ///
     /// No state, and <see cref="TryPick"/> is a pure function. The client owning a
     /// skeleton broadcasts a line ref; everyone else folds it against their own
-    /// pack. Same pack, same line, with nobody comparing notes.
+    /// pack. Same pack, same line, with nobody comparing notes - and, since context
+    /// arrived, with nobody but the owner even asking where the skeleton is. What
+    /// makes that work is <see cref="LineSpace"/>, which numbers every line a
+    /// personality could reach for an event as one list.
     ///
     /// <see cref="Builder"/> is the only way to make one, so a pack in memory always
     /// has no empty groups - which <see cref="TryPick"/> would divide by - and a
@@ -40,10 +45,10 @@ namespace ChattyBones.Logic
         /// </remarks>
         internal const string SharedPersonality = "common";
 
-        private readonly Dictionary<string, Dictionary<ChatterEvent, string[]>> _byPersonality;
+        private readonly Dictionary<string, Dictionary<ChatterEvent, LineSpace>> _spaces;
 
         /// <summary>Wrap what the builder assembled.</summary>
-        /// <param name="byPersonality">Personality to event to lines. Every group non-empty.</param>
+        /// <param name="spaces">Personality to event to its numbering. Every space non-empty.</param>
         /// <param name="personalities">The personality types, sorted, without the shared fallback.</param>
         /// <param name="colors">What color each event is drawn in.</param>
         /// <remarks>
@@ -51,11 +56,11 @@ namespace ChattyBones.Logic
         /// what lets everything downstream stop checking for empty groups.
         /// </remarks>
         private LinePack(
-            Dictionary<string, Dictionary<ChatterEvent, string[]>> byPersonality,
+            Dictionary<string, Dictionary<ChatterEvent, LineSpace>> spaces,
             IReadOnlyList<string> personalities,
             Palette colors)
         {
-            _byPersonality = byPersonality;
+            _spaces = spaces;
             Personalities = personalities;
             Colors = colors;
         }
@@ -90,9 +95,9 @@ namespace ChattyBones.Logic
         /// <see cref="SharedPersonality"/> lines has none and works fine. This asks
         /// whether the squad would be mute.
         /// </remarks>
-        internal bool IsEmpty => _byPersonality.Count == 0;
+        internal bool IsEmpty => _spaces.Count == 0;
 
-        /// <summary>Find the lines available for one personality and event.</summary>
+        /// <summary>Find the numbering one personality counts against for one event.</summary>
         /// <returns>
         /// False when there is nothing to say, in which case the skeleton stays quiet.
         /// That happens when neither the personality nor
@@ -102,34 +107,118 @@ namespace ChattyBones.Logic
         /// </returns>
         /// <param name="personality">Which personality type is speaking. Null and unknown names are both fine, and fall back.</param>
         /// <param name="kind">What just happened.</param>
-        /// <param name="lines">The group, never empty when we return true.</param>
+        /// <param name="space">The numbering, never empty when we return true.</param>
         /// <remarks>
-        /// Exposed for <see cref="LineChooser"/>, which needs to know how many lines
-        /// there are so that it can walk them deliberately rather than rolling dice
-        /// and hoping. That is what lets "never say the same thing twice running" be
-        /// a guarantee rather than a very likely outcome.
+        /// Takes no context, and that is the whole point of it. A client that did not
+        /// choose the line has to reach the same numbering knowing only who is speaking
+        /// and what happened, because working out anything more would mean resolving a
+        /// context it may have no way to see.
         ///
         /// Falling back to <see cref="SharedPersonality"/> is per event, not per
         /// personality. A cowardly skeleton with its own idle lines but no death
         /// lines uses its own idle lines and the shared death ones, which is the
         /// behavior you would want when filling a pack in gradually.
         /// </remarks>
-        internal bool TryGetGroup(string personality, ChatterEvent kind, out IReadOnlyList<string> lines)
+        internal bool TryGetSpace(string personality, ChatterEvent kind, out LineSpace space)
         {
-            if (TryGetLines(personality, kind, out string[] own))
+            space = null;
+
+            if (personality != null
+                && _spaces.TryGetValue(personality, out Dictionary<ChatterEvent, LineSpace> own)
+                && own.TryGetValue(kind, out space))
             {
-                lines = own;
                 return true;
             }
 
-            if (TryGetLines(SharedPersonality, kind, out string[] shared))
-            {
-                lines = shared;
-                return true;
-            }
+            return _spaces.TryGetValue(SharedPersonality, out Dictionary<ChatterEvent, LineSpace> shared)
+                && shared.TryGetValue(kind, out space);
+        }
 
+        /// <summary>Does this personality write any of its own lines for this event?</summary>
+        /// <returns>False when it leaves the event entirely to the shared lines.</returns>
+        /// <param name="personality">The personality type to ask about.</param>
+        /// <param name="kind">The event.</param>
+        /// <remarks>
+        /// Worth having as a question of its own because it cannot be inferred from
+        /// what the other methods hand back. They all fall back to the shared lines and
+        /// answer the same either way, which is right for saying something and useless
+        /// for asking whose lines they were.
+        ///
+        /// Comparing the returned lists used to serve instead. That stopped working the
+        /// moment a space merged the two, and it stopped *loudly* only because someone
+        /// looked - a reference comparison against a freshly built list is silently
+        /// false forever, so the tests relying on it passed while checking nothing.
+        /// </remarks>
+        internal bool HasOwnLines(string personality, ChatterEvent kind)
+        {
+            return personality != null
+                && personality != SharedPersonality
+                && _spaces.TryGetValue(personality, out Dictionary<ChatterEvent, LineSpace> own)
+                && own.ContainsKey(kind);
+        }
+
+        /// <summary>Find the lines a skeleton in these contexts should draw from.</summary>
+        /// <returns>False when there is nothing to say. See <see cref="TryGetSpace"/>.</returns>
+        /// <param name="personality">Which personality type is speaking.</param>
+        /// <param name="kind">What just happened.</param>
+        /// <param name="contexts">What the skeleton currently satisfies, or null for none.</param>
+        /// <param name="space">The whole numbering, which the chosen window is part of.</param>
+        /// <param name="offset">Where the window starts in it.</param>
+        /// <param name="length">How many lines the window holds.</param>
+        /// <remarks>
+        /// The window is what may be *said*; the space is what the line ref counts
+        /// against. Handing back both is the whole shape of the thing - a caller that
+        /// only had the window would have no way to name its choice in a way anybody
+        /// else could follow.
+        /// </remarks>
+        internal bool TrySelect(
+            string personality,
+            ChatterEvent kind,
+            IReadOnlyList<string> contexts,
+            out LineSpace space,
+            out int offset,
+            out int length)
+        {
+            offset = 0;
+            length = 0;
+
+            return TryGetSpace(personality, kind, out space)
+                && space.TrySelect(contexts, out offset, out length);
+        }
+
+        /// <summary>The lines a skeleton in these contexts would draw from, as a list.</summary>
+        /// <returns>False when there is nothing to say.</returns>
+        /// <param name="personality">Which personality type is speaking.</param>
+        /// <param name="kind">What just happened.</param>
+        /// <param name="lines">The window, never empty when we return true.</param>
+        /// <param name="contexts">What the skeleton satisfies, or null for the plain groups.</param>
+        /// <remarks>
+        /// A convenience over <see cref="TrySelect"/> for tests and diagnostics, which
+        /// want to look at a group rather than walk one. It copies, so the chooser does
+        /// not use it - that runs per utterance and has no reason to allocate.
+        /// </remarks>
+        internal bool TryGetGroup(
+            string personality,
+            ChatterEvent kind,
+            out IReadOnlyList<string> lines,
+            IReadOnlyList<string> contexts = null)
+        {
             lines = null;
-            return false;
+
+            if (!TrySelect(personality, kind, contexts, out LineSpace space, out int offset, out int length))
+            {
+                return false;
+            }
+
+            string[] window = new string[length];
+
+            for (int i = 0; i < length; i++)
+            {
+                window[i] = space.All[offset + i];
+            }
+
+            lines = window;
+            return true;
         }
 
         /// <summary>Which events this pack has nothing at all to say about.</summary>
@@ -155,24 +244,61 @@ namespace ChattyBones.Logic
 
             foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
             {
-                bool covered = TryGetLines(SharedPersonality, kind, out _);
-
-                for (int i = 0; !covered && i < Personalities.Count; i++)
+                if (!TryGetSpace(null, kind, out _))
                 {
-                    covered = TryGetLines(Personalities[i], kind, out _);
-                }
+                    bool covered = false;
 
-                if (!covered)
-                {
-                    missing.Add(kind);
+                    for (int i = 0; !covered && i < Personalities.Count; i++)
+                    {
+                        covered = TryGetSpace(Personalities[i], kind, out _);
+                    }
+
+                    if (!covered)
+                    {
+                        missing.Add(kind);
+                    }
                 }
             }
 
             return missing;
         }
 
+        /// <summary>Every context any group in the pack is tagged with.</summary>
+        /// <returns>The contexts as "name=value", each once, in no particular order.</returns>
+        /// <remarks>
+        /// For the check at load that the values name things the game actually has.
+        /// <see cref="EventKey"/> can tell that <c>biome</c> is a context this version
+        /// understands, but not that <c>Swamps</c> is not a biome - the list of those
+        /// is a Unity type, and this half of the mod cannot see one.
+        ///
+        /// So a misspelled value parses perfectly and then matches nothing, which is
+        /// the silent failure this mod keeps paying for. The mod side walks these
+        /// against the real enum and says so.
+        /// </remarks>
+        internal IReadOnlyList<string> Contexts()
+        {
+            HashSet<string> seen = [];
+            List<string> all = [];
+
+            foreach (KeyValuePair<string, Dictionary<ChatterEvent, LineSpace>> byPersonality in _spaces)
+            {
+                foreach (KeyValuePair<ChatterEvent, LineSpace> byEvent in byPersonality.Value)
+                {
+                    foreach (string context in byEvent.Value.Contexts())
+                    {
+                        if (seen.Add(context))
+                        {
+                            all.Add(context);
+                        }
+                    }
+                }
+            }
+
+            return all;
+        }
+
         /// <summary>Choose the line a given line ref points at.</summary>
-        /// <returns>False when there is nothing to say. See <see cref="TryGetGroup"/>.</returns>
+        /// <returns>False when there is nothing to say. See <see cref="TryGetSpace"/>.</returns>
         /// <param name="personality">Which personality type is speaking.</param>
         /// <param name="kind">What just happened.</param>
         /// <param name="lineRef">
@@ -183,11 +309,12 @@ namespace ChattyBones.Logic
         /// <param name="template">The raw line, tokens unfilled. See <see cref="LineTokens"/>.</param>
         /// <remarks>
         /// This is what a client that did *not* choose the line runs: a line ref arrives
-        /// over the network and this turns it into words, with no state involved.
+        /// over the network and this turns it into words, with no state involved and no
+        /// question asked about where anybody is standing.
         /// </remarks>
         internal bool TryPick(string personality, ChatterEvent kind, int lineRef, out string template)
         {
-            if (!TryGetGroup(personality, kind, out IReadOnlyList<string> lines))
+            if (!TryGetSpace(personality, kind, out LineSpace space))
             {
                 template = null;
                 return false;
@@ -196,32 +323,8 @@ namespace ChattyBones.Logic
             // Modulo of a negative line ref is negative in C#, and a negative index
             // throws. LineRefs reaching us from another client are whatever that client
             // put in a ZDO, so this is not a theoretical worry.
-            template = lines[(int)((uint)lineRef % (uint)lines.Count)];
+            template = space.All[(int)((uint)lineRef % (uint)space.Count)];
             return true;
-        }
-
-        /// <summary>Look up one personality's lines for one event, with no fallback.</summary>
-        /// <param name="personality">Which personality type. An unknown name is fine, and finds nothing.</param>
-        /// <param name="kind">What happened.</param>
-        /// <param name="lines">
-        /// The lines, guaranteed non-empty when we return true, and null when false.
-        /// Null rather than an empty list because the bool is the contract - a caller
-        /// that checks it never sees this at all.
-        /// </param>
-        /// <returns>True when there is at least one line to choose from.</returns>
-        /// <remarks>
-        /// The builder drops empty groups, so anything in the dictionary has content.
-        /// That saves callers from having to tell "no lines" apart from "an empty list
-        /// of lines", which would otherwise be two ways of saying the same thing and
-        /// one of them would eventually divide by zero.
-        /// </remarks>
-        private bool TryGetLines(string personality, ChatterEvent kind, out string[] lines)
-        {
-            lines = null;
-
-            return personality != null
-                && _byPersonality.TryGetValue(personality, out Dictionary<ChatterEvent, string[]> byEvent)
-                && byEvent.TryGetValue(kind, out lines);
         }
 
         /// <summary>
@@ -231,25 +334,42 @@ namespace ChattyBones.Logic
         /// Nested so that it can reach the private constructor, which is the whole
         /// point - if it sat alongside as its own class, the constructor would have
         /// to be internal and anybody could build a pack that breaks the guarantees
-        /// the pack's own comments promise.
-        ///
-        /// The real mod drives this from a YAML file, via PackReader. The tests drive it by hand,
-        /// which is exactly why the pack does not read files itself - a test that
-        /// needs four lines can just say so in four lines.
+        /// everything downstream relies on.
         /// </remarks>
         internal sealed class Builder
         {
-            private readonly Dictionary<string, Dictionary<ChatterEvent, List<string>>> _lines = [];
+            /// <summary>Personality, then event, then its groups in the order they arrived.</summary>
+            /// <remarks>
+            /// A list rather than a dictionary at the innermost level, because the order
+            /// groups are added in is the order they get numbered in, and that is a
+            /// promise made to pack authors: the group higher up your file is the one
+            /// that wins a tie. A Dictionary would hand that decision to a hash.
+            /// </remarks>
+            private readonly Dictionary<string, Dictionary<ChatterEvent, List<KeyValuePair<string, List<string>>>>> _lines = [];
+
             private readonly Dictionary<ChatterEvent, string> _colors = [];
             private string _fallbackColor;
 
-            /// <summary>Add some lines for one personality reacting to one event.</summary>
+            /// <summary>Add some lines for one personality reacting to one event, anywhere.</summary>
             /// <returns>This builder, so calls can be chained.</returns>
             /// <param name="personality">
             /// The personality type speaking, or <see cref="SharedPersonality"/> for
             /// lines anyone may fall back on.
             /// </param>
             /// <param name="kind">What the lines are a reaction to.</param>
+            /// <param name="lines">The lines themselves, tokens and all.</param>
+            internal Builder Add(string personality, ChatterEvent kind, params string[] lines)
+            {
+                return Add(personality, EventKey.Plain(kind), lines);
+            }
+
+            /// <summary>Add some lines for one personality, event and context.</summary>
+            /// <returns>This builder, so calls can be chained.</returns>
+            /// <param name="personality">
+            /// The personality type speaking, or <see cref="SharedPersonality"/> for
+            /// lines anyone may fall back on.
+            /// </param>
+            /// <param name="key">What the lines are a reaction to, and where.</param>
             /// <param name="lines">
             /// The lines themselves, tokens and all. Nulls and blanks are skipped
             /// rather than rejected - a hand-edited file will eventually contain a
@@ -257,28 +377,46 @@ namespace ChattyBones.Logic
             /// kindness.
             /// </param>
             /// <remarks>
-            /// Calling this twice for the same personality and event adds to that
-            /// group rather than replacing it. No pack file can reach that - YAML
+            /// Calling this twice for the same personality, event and context adds to
+            /// that group rather than replacing it. No pack file can reach that - YAML
             /// refuses a duplicate key outright - so it is really a convenience for
             /// the tests, which build groups up a line at a time.
             /// </remarks>
-            internal Builder Add(string personality, ChatterEvent kind, params string[] lines)
+            internal Builder Add(string personality, EventKey key, params string[] lines)
             {
                 if (string.IsNullOrWhiteSpace(personality) || lines == null)
                 {
                     return this;
                 }
 
-                if (!_lines.TryGetValue(personality, out Dictionary<ChatterEvent, List<string>> byEvent))
+                if (!_lines.TryGetValue(personality, out Dictionary<ChatterEvent, List<KeyValuePair<string, List<string>>>> byEvent))
                 {
                     byEvent = [];
                     _lines[personality] = byEvent;
                 }
 
-                if (!byEvent.TryGetValue(kind, out List<string> group))
+                if (!byEvent.TryGetValue(key.Kind, out List<KeyValuePair<string, List<string>>> groups))
+                {
+                    groups = [];
+                    byEvent[key.Kind] = groups;
+                }
+
+                string context = key.Context ?? LineSpace.PlainKey;
+                List<string> group = null;
+
+                for (int i = 0; i < groups.Count; i++)
+                {
+                    if (string.Equals(groups[i].Key, context, StringComparison.Ordinal))
+                    {
+                        group = groups[i].Value;
+                        break;
+                    }
+                }
+
+                if (group == null)
                 {
                     group = [];
-                    byEvent[kind] = group;
+                    groups.Add(new KeyValuePair<string, List<string>>(context, group));
                 }
 
                 for (int i = 0; i < lines.Length; i++)
@@ -301,41 +439,64 @@ namespace ChattyBones.Logic
                 return this;
             }
 
-            /// <summary>Set the color for one event.</summary>
+            /// <summary>Set the color one event is drawn in.</summary>
             /// <returns>This builder, so calls can be chained.</returns>
-            /// <param name="kind">The event to color.</param>
-            /// <param name="hex">A hex code like #F0A9A0.</param>
+            /// <param name="kind">The event.</param>
+            /// <param name="hex">A hex code like #E8E4DC.</param>
             internal Builder SetColor(ChatterEvent kind, string hex)
             {
-                _colors[kind] = hex;
+                if (!string.IsNullOrWhiteSpace(hex))
+                {
+                    _colors[kind] = hex;
+                }
+
                 return this;
             }
 
-            /// <summary>Freeze what has been added into a pack.</summary>
+            /// <summary>Turn everything added so far into a pack.</summary>
             /// <returns>
-            /// A pack holding only the groups that ended up with lines in them. A
-            /// personality whose every line was blank does not appear at all, and
-            /// will not turn up in <see cref="Personalities"/> to be assigned to some
-            /// unfortunate skeleton who then never speaks.
+            /// A pack with no empty groups and a stable personality order. Possibly an
+            /// empty one, if nothing usable was ever added.
             /// </returns>
             /// <remarks>
-            /// The lists become arrays here. Nothing after this point ever adds a
-            /// line, and an array is the cheaper thing to index into over and over.
+            /// This is where the numbering is worked out, once, rather than per
+            /// utterance - a space is a couple of arrays and there are only ever a few
+            /// dozen of them.
+            ///
+            /// A space is built for every personality that has anything for an event,
+            /// plus one per event for the shared lines. A known personality with nothing
+            /// for some event has no space of its own and falls back to the shared one
+            /// in <see cref="TryGetSpace"/>, which is the same list the sender used.
             /// </remarks>
             internal LinePack Build()
             {
-                Dictionary<string, Dictionary<ChatterEvent, string[]>> byPersonality = [];
+                Dictionary<ChatterEvent, List<KeyValuePair<string, string[]>>> shared = Frozen(SharedPersonality);
+
+                Dictionary<string, Dictionary<ChatterEvent, LineSpace>> spaces = [];
                 List<string> personalities = [];
 
-                foreach (KeyValuePair<string, Dictionary<ChatterEvent, List<string>>> entry in _lines)
+                foreach (KeyValuePair<string, Dictionary<ChatterEvent, List<KeyValuePair<string, List<string>>>>> entry in _lines)
                 {
-                    Dictionary<ChatterEvent, string[]> byEvent = [];
+                    Dictionary<ChatterEvent, LineSpace> byEvent = [];
 
-                    foreach (KeyValuePair<ChatterEvent, List<string>> group in entry.Value)
+                    foreach (KeyValuePair<ChatterEvent, List<KeyValuePair<string, List<string>>>> group in entry.Value)
                     {
-                        if (group.Value.Count > 0)
+                        List<KeyValuePair<string, string[]>> own = Freeze(group.Value);
+
+                        if (own.Count == 0)
                         {
-                            byEvent[group.Key] = [.. group.Value];
+                            continue;
+                        }
+
+                        _ = shared.TryGetValue(group.Key, out List<KeyValuePair<string, string[]>> fallback);
+
+                        LineSpace space = entry.Key == SharedPersonality
+                            ? LineSpace.Build(own, own)
+                            : LineSpace.Build(own, fallback);
+
+                        if (space != null)
+                        {
+                            byEvent[group.Key] = space;
                         }
                     }
 
@@ -344,7 +505,7 @@ namespace ChattyBones.Logic
                         continue;
                     }
 
-                    byPersonality[entry.Key] = byEvent;
+                    spaces[entry.Key] = byEvent;
 
                     if (entry.Key != SharedPersonality)
                     {
@@ -357,7 +518,55 @@ namespace ChattyBones.Logic
                 // every restart.
                 personalities.Sort(StringComparer.Ordinal);
 
-                return new LinePack(byPersonality, personalities, new Palette(_fallbackColor, _colors));
+                return new LinePack(spaces, personalities, new Palette(_fallbackColor, _colors));
+            }
+
+            /// <summary>One personality's groups, per event, with the lists turned into arrays.</summary>
+            /// <returns>Event to that event's groups in order. Empty when the personality has nothing.</returns>
+            /// <param name="personality">Whose groups to take.</param>
+            /// <remarks>
+            /// Taken once and reused for every personality's fallback, rather than
+            /// rebuilt per personality - the shared lines are the same lines each time.
+            /// </remarks>
+            private Dictionary<ChatterEvent, List<KeyValuePair<string, string[]>>> Frozen(string personality)
+            {
+                Dictionary<ChatterEvent, List<KeyValuePair<string, string[]>>> frozen = [];
+
+                if (!_lines.TryGetValue(personality, out Dictionary<ChatterEvent, List<KeyValuePair<string, List<string>>>> byEvent))
+                {
+                    return frozen;
+                }
+
+                foreach (KeyValuePair<ChatterEvent, List<KeyValuePair<string, List<string>>>> group in byEvent)
+                {
+                    List<KeyValuePair<string, string[]>> lines = Freeze(group.Value);
+
+                    if (lines.Count > 0)
+                    {
+                        frozen[group.Key] = lines;
+                    }
+                }
+
+                return frozen;
+            }
+
+            /// <summary>Turn one event's groups into arrays, dropping any that ended up empty.</summary>
+            /// <returns>The groups, in the order they were added.</returns>
+            /// <param name="groups">The groups as the builder holds them.</param>
+            private static List<KeyValuePair<string, string[]>> Freeze(
+                List<KeyValuePair<string, List<string>>> groups)
+            {
+                List<KeyValuePair<string, string[]>> frozen = [];
+
+                for (int i = 0; i < groups.Count; i++)
+                {
+                    if (groups[i].Value.Count > 0)
+                    {
+                        frozen.Add(new KeyValuePair<string, string[]>(groups[i].Key, [.. groups[i].Value]));
+                    }
+                }
+
+                return frozen;
             }
         }
     }
