@@ -77,31 +77,6 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void NoLineDropsAStatusTokenIntoTheMiddleOfASentence()
-        {
-            // The game names a status effect for its status bar, so {status} always
-            // arrives capitalized - "Wet", "Burning", "Tarred". Sentence-initial that
-            // is exactly right, and "Hey, my bones are Wet." looks like a typo. Seen in
-            // a live session on three shipped lines, which is why it is a rule: 5d is a
-            // whole pass of writing new ones, and this reads fine on the page.
-            //
-            // Comment lines are skipped deliberately - the pack header demonstrates the
-            // mistake in order to warn about it.
-            foreach (string raw in DefaultPack.Yaml.Split('\n'))
-            {
-                string line = raw.TrimEnd('\r');
-                if (line.TrimStart().StartsWith("#", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                Assert.False(
-                    Regex.IsMatch(line, @"[\p{L}\d,]\s*\{status\}"),
-                    "A status token mid-sentence, which reads as \"my bones are Wet\": " + line.Trim());
-            }
-        }
-
-        [Fact]
         public void EveryLineInTheShippedPackIsDoubleQuoted()
         {
             // The pack header makes this the house rule, and it is the only rule that

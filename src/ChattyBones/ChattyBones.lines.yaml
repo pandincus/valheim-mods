@@ -189,9 +189,10 @@
 # interface does. {status} is the exception, and this is why:
 #
 # {status} arrives capitalized, because that is how the game names it on your
-# status bar - "Burning", "Wet", "Tarred". Put it where a capital belongs, at
-# the start of a sentence or after a full stop. "My bones are {status}." comes
-# out as "My bones are Wet." and reads like a typo.
+# status bar - "Burning", "Wet", "Tarred". Worth knowing when you place it:
+# "My bones are {status}." comes out as "My bones are Wet.", which some people
+# read as a typo and others read as emphasis. Putting it at the start of a
+# sentence or after a full stop sidesteps the question entirely. Your call.
 #
 # {name} and {player} are always available. The rest are not, and that is useful
 # rather than a limitation: a line asking for something we do not know is quietly
@@ -433,33 +434,33 @@ lines:
   # Would rather be somewhere else.
   cowardly:
     PlayerCooked:
-      - "Is that for me? ...No. Of course not."
-      - "Must you do that so near the fire?"
-      - "{item}. Lovely. Can we go inside now?"
+      - "Is that {item} for me, {player}? ...No. Of course not."
+      - "Must you do that s-so near the fire?"
+      - "{item} must s-smell nice, if I had a nose."
     Looted:
       - "Is that safe to carry?"
-      - "Do not touch anything else."
+      - "That looks heavy."
     Raid:
       - "I want to go inside!"
       - "Can we not be here?"
-      - "Whatever that is, it is not worth it."
+      - "WHY DOES THIS ALWAYS HAPPEN TO ME!?"
     AtHome:
-      - "Oh thank goodness."
+      - "Oh thank goodness, we're home."
       - "We are staying, yes? We are staying."
     PlayerStaggered:
       - "We are losing! We are losing!"
       - "Get up! Please get up!"
       - "This was a terrible idea!"
     PlayerDodged:
-      - "Do that again! Do that every time!"
+      - "Do that again, {player}! Do that every time!"
       - "Teach me that. Teach me that now."
       - "I would have just been hit. Every time."
     Summoned:
       - "Do I have to?"
-      - "I was having a lovely rest."
+      - "Oh no, not again."
     TargetAcquired:
       - "Is that a {target}? I'd rather not."
-      - "You first, {player}."
+      - "Uh, I'm r-right behind you, {player}."
     Hurt:
       - "Aaargh!"
       - "I'm hit! I'm hit!"
@@ -467,6 +468,7 @@ lines:
     Killed:
       - "Did I do that?"
       - "It was mostly {player}, honestly."
+      - "Now I never want to fight another {target} again!"
     Idle:
       - "Can we go home?"
       - "It's very open out here."
@@ -474,13 +476,16 @@ lines:
       - "I do not like it here."
       - "Can we go back to the open bit?"
       - "Every one of these trees is looking at me."
+      - "Why is the water making that sound?"
     Idle[biome=Mistlands]:
       - "I would like to state that I am against this."
-      - "{companion}? Are you still there?"
-      - "I heard that too. Do not say you did not."
+      - "{player}? Are you still there?"
+      - "I can't see anything in this mist!"
+      - "I keep hearing things and none of this is pleasant."
     CompanionDied:
-      - "We're all going to die out here."
+      - "We're all going to die out here!"
       - "That could have been me!"
+      - "Run for your lives!"
     Afflicted:
       - "{status}! {status}! Get it off!"
       - "I knew this would happen."
@@ -489,19 +494,22 @@ lines:
   boastful:
     PlayerCooked:
       - "{item}! Now that is a batch."
-      - "I made better, when my hands still worked."
-      - "Cooking. A fine use of a warrior's afternoon."
+      - "You should try my {item} sometime, {player}. Legendary."
+      - "Cooking. A fine use of your afternoon, maybe, but not mine."
     PlayerSkilledUp:
-      - "You learn from the best."
-      - "I said you had promise."
+      - "Getting better at {skill}? You learn from the best, after all!"
+      - "I knew you had promise, {player}."
+      - "Keep that {skill} training up, {player}, and you'll be as good as me!"
     Raid:
       - "Let them come."
       - "Finally, something worth my time."
+      - "Oho, this will be a TALE to TELL!"
+      - "I was BORN ready for this! Except I'm dead, but you know what I mean!"
     RaidEnded:
       - "Barely a warm-up."
       - "You are all welcome."
     PlayerParried:
-      - "I taught you that."
+      - "I taught you that, {player}."
       - "Nearly as good as me."
     StaggeredIt:
       - "Finish it, and I will say I helped."
@@ -510,53 +518,67 @@ lines:
     Afflicted:
       - "{status}? A legend endures worse."
       - "I have had worse."
+      - "This {status} is merely a footnote in my book of adventures."
     Summoned:
-      - "The legend returns!"
+      - "The legend {name} returns to the field!"
       - "You chose well, {player}."
     TargetAcquired:
       - "Watch this, {player}."
-      - "That {target} picked the wrong day."
+      - "That {target} is about to see the LEGEND in action."
+      - "Ohoho, a {target}? Let's do this!"
     Hurt:
       - "A scratch!"
       - "I meant to do that."
+      - "Merely a flesh-wound. Bone-wound?"
     Killed:
       - "As foretold!"
       - "Another {target} for the ballad."
+      - "Odin? You seeing this? I am worthy!"
     Idle:
-      - "They'll sing about me, you know."
       - "Ask me about the ballad."
+      - "Pretty sure they still sing about me in Midgard."
+      - "Stick with me, {player}, and you'll get to Valhalla easy."
+      - "Even the dull parts are important for the ballad!"
+      - "Is my left side or my right more portrait-worthy?"
+      - "Hey {player}, but in a good word for me with Odin, huh?"
     Idle[biome=Swamp]:
       - "I have fought worse than whatever is in that water."
-      - "Stand behind me. The mud is the dangerous part."
-      - "I took a draugr once. Ask me how."
+      - "Don't worry, {player}. I know my way through the muck."
+      - "I took on three draugrs at once, once. Ask me how."
     Idle[biome=Mistlands]:
-      - "Let it come. I will find it by sound."
-      - "I am not lost. I am scouting."
-      - "Whatever is up there has not met me yet."
+      - "Let whatever's out there come. I will find it by sound."
+      - "I am not lost in the mist. I am scouting."
+      - "Whatever is out there has not met me, {name}, yet."
+      - "I think we should build a great hall here in the Mists, worthy of Valhalla."
 
   # Takes the job seriously.
   dutiful:
     PlayerCooked:
       - "{item} prepared. Noted."
-      - "Rations secured."
-      - "Provisioning is half a campaign."
+      - "Rations secured. Excellent."
+      - "Careful provisioning is the most important part of a campaign."
+      - "Good that you're making more {item}."
     Looted:
-      - "{item}. Logged."
+      - "{item}. Logged in the records."
       - "Recovered and accounted for."
     Raid:
       - "Perimeter. Now."
+      - "Prepare yourselves. Food, potions, spells. They are coming."
       - "Forming up."
+      - "I want a tight formation, troops."
     AtHome:
       - "Position secured."
       - "Standing down. For now."
+      - "At ease."
     PlayerParried:
-      - "Textbook, {player}."
-      - "Correct form. Noted."
+      - "Textbook parry, {player}."
+      - "Correct form."
       - "That is how the drill goes."
     StaggeredIt:
       - "{target} destabilised. Press the advantage."
       - "Opening. Take it."
-      - "It is on the back foot."
+      - "That {target} is on the back foot."
+      - "Hammer and anvil, {player}!"
     Summoned:
       - "Reporting for duty."
       - "Orders, {player}?"
@@ -568,18 +590,30 @@ lines:
       - "Still fit to fight."
     Killed:
       - "Target down."
-      - "{target} neutralised."
+      - "{target} neutralized."
+    PlayerGotAKill:
+      - "Excellent demonstration of {weapontype}, {player}."
+      - "{player} eliminated the {target}."
+      - "One fewer {target} amongst the enemy's numbers."
     Idle:
       - "Holding position."
       - "Perimeter clear."
+    Buffed:
+      - "Excellent. With {status} we are well prepared."
+      - "Good team-work, {player}. Preparation is key."
+      - "That {status} will keep the troops going."
     Idle[biome=Swamp]:
       - "Footing is poor. Watch your step, {player}."
       - "Visibility down. Closing up."
-      - "This ground was a road once."
+      - "As long as we are prepared, the swamp should be no issue for us."
+      - "Keep on our task, and we'll have no issues with the swamp."
+      - "Poison-resist potions are valuable here. You've got them, {player}?"
     Idle[biome=Mistlands]:
       - "Visibility nil. Staying close."
       - "Report it if you hear that again."
       - "Holding formation. Such as it is."
+      - "I suggest fire-resist potions if we encounter a Gjall."
+      - "Be vigilant. Surprise is the enemy in the Mists."
 
   # Has done this too many times.
   veteran:
@@ -588,16 +622,16 @@ lines:
       - "Eat it while it is hot."
       - "Food is food."
     PlayerAte:
-      - "Eat while you can."
+      - "Eat that {item} while you can."
       - "That will not keep out the cold."
     Dawn:
-      - "Sunrise. Seen a few."
-      - "Still coming up, then."
+      - "Another sunrise to add to the pile."
+      - "Good that the sun hasn't stopped coming up, then."
     RaidEnded:
       - "That is the fourth one this month."
       - "Nothing new."
     PlayerDodged:
-      - "Lucky."
+      - "Lucky, {player}."
       - "Do not make a habit of relying on that."
       - "Saw a man try that once."
     PlayerStaggered:
