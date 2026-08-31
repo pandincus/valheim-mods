@@ -12,9 +12,9 @@ namespace ChattyBones.Patches
     ///
     /// The cauldron is not a cooking station in the code's sense at all - it is a
     /// <c>CraftingStation</c>, and making a sausage runs the same path as forging a
-    /// sword. The food preparation table and the mead ketill are
-    /// <c>StationExtension</c>s hanging off it rather than stations of their own, so
-    /// all three arrive here together and none of them needs naming.
+    /// sword. The food preparation table and the mead ketill are stations in their own
+    /// right, and all three tag their recipes with the Cooking skill - so asking the
+    /// recipe which skill it trains picks up all of them without naming any.
     ///
     /// The cooking rack and the stone oven are the other family, <c>CookingStation</c>,
     /// and are deliberately not hooked. Putting raw meat on a rack is a chore rather
@@ -48,8 +48,15 @@ namespace ChattyBones.Patches
         }
 
         /// <summary>Offer it to the squad, and let the budget decide.</summary>
-        /// <param name="item">What was made, already localized, or null.</param>
-        internal static void React(string item)
+        /// <param name="item">What was made, or null.</param>
+        /// <remarks>
+        /// Takes the item rather than its name so that the localizing happens on this
+        /// side of the guard. Handing a caller a string to build means the caller does
+        /// that work whether or not anybody is listening, and both call sites got it
+        /// wrong the same way - which is a sign the parameter was the wrong shape
+        /// rather than that the call sites were careless.
+        /// </remarks>
+        internal static void React(ItemDrop.ItemData item)
         {
             if (!ModConfig.Enabled.Value || ChatterComponent.All.Count == 0)
             {
@@ -61,7 +68,7 @@ namespace ChattyBones.Patches
                 subject: 0,
                 targetName: null,
                 companion: null,
-                details: new LineDetails(item: item));
+                details: new LineDetails(item: Doings.NameOf(item)));
         }
     }
 
@@ -69,10 +76,16 @@ namespace ChattyBones.Patches
     /// <remarks>
     /// <c>m_craftingSkill</c> is how we tell a cauldron from a forge, and it is
     /// vanilla's own answer rather than a list of prefab names we would have to keep:
-    /// every station declares the skill it trains, and DoCrafting already reads it to
-    /// decide the craft bonus. Cooking food raises Cooking, so the filter agrees with
-    /// the game by construction and picks up any station a future update tags the same
-    /// way.
+    /// every station declares the skill it trains, and picks up any station a future
+    /// update tags the same way.
+    ///
+    /// Read off the *recipe's* station rather than the one the player has open, and
+    /// that distinction is the whole guard. A recipe needing no station is craftable
+    /// anywhere and is listed alongside the food, while the open cauldron stays the
+    /// player's current station until they close the panel - so asking the player
+    /// meant arrows crafted at the cauldron read as cooking. Vanilla settles it the
+    /// same way a few lines further down DoCrafting, where the skill it raises comes
+    /// off the recipe.
     ///
     /// The value lives in serialized prefab data rather than in code, so it cannot be
     /// checked by decompiling - it was confirmed in play instead.
@@ -97,19 +110,14 @@ namespace ChattyBones.Patches
         {
             try
             {
-                if (Player.m_localPlayer == null)
-                {
-                    return;
-                }
-
-                CraftingStation station = Player.m_localPlayer.GetCurrentCraftingStation();
+                CraftingStation station = ___m_craftRecipe?.m_craftingStation;
 
                 if (station == null || station.m_craftingSkill != Skills.SkillType.Cooking)
                 {
                     return;
                 }
 
-                Cooking.React(Doings.NameOf(___m_craftRecipe?.m_item?.m_itemData));
+                Cooking.React(___m_craftRecipe.m_item?.m_itemData);
             }
             catch (Exception e)
             {
@@ -149,7 +157,7 @@ namespace ChattyBones.Patches
                 Fermenter.ItemConversion conversion = __instance.m_conversion.Find(
                     c => c?.m_from != null && c.m_from.gameObject.name == ___m_delayedTapItem);
 
-                Cooking.React(Doings.NameOf(conversion?.m_to?.m_itemData));
+                Cooking.React(conversion?.m_to?.m_itemData);
             }
             catch (Exception e)
             {
