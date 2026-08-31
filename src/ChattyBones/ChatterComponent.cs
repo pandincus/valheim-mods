@@ -205,6 +205,8 @@ namespace ChattyBones
                 return;
             }
 
+            CheckHome();
+
             Character target = _ai.GetTargetCreature();
 
             // Two questions, and they have to be asked with two different operators.
@@ -247,6 +249,100 @@ namespace ChattyBones
                     subject: 0,
                     targetName: null,
                     companion: Chatter.AnotherOf(this));
+            }
+        }
+
+        /// <summary>Whether it was near your bed last time we looked.</summary>
+        private bool _atHome;
+
+        /// <summary>How many sweeps in a row it has looked to be outside.</summary>
+        /// <remarks>
+        /// The hysteresis, and it earns its keep more here than it would have against
+        /// a boundary. Being safe at home is a conjunction of several conditions and
+        /// some of them flicker - anything that targets you and can see or hear you
+        /// drops Resting until about a second after it stops. So leaving takes
+        /// agreeing with itself several times while arriving takes one. Wrong in the
+        /// forgiving direction: the worst it does is call a squad home a few seconds
+        /// longer than they were.
+        /// </remarks>
+        private int _sweepsOutside;
+
+        /// <summary>How many sweeps outside before we believe it has actually left.</summary>
+        private const int SweepsBeforeLeaving = 4;
+
+        /// <summary>Sweeps still to skip before asking about shelter again.</summary>
+        private int _untilHomeCheck;
+
+        /// <summary>How many sweeps to skip between shelter checks.</summary>
+        /// <remarks>
+        /// Not for cost - IsSafeInHome is a bool field read, and vanilla recomputes it
+        /// every fixed update whether we ask or not. It is for the hysteresis, which
+        /// this is what sets the scale of: four consecutive misses at one check every
+        /// two seconds is eight seconds of being away before the squad stops calling
+        /// it home.
+        ///
+        /// An earlier version of this comment justified the throttle on the cost of a
+        /// physics overlap, which was true of the query it replaced and not of this
+        /// one.
+        /// </remarks>
+        private const int SweepsBetweenHomeChecks = 8;
+
+        /// <summary>Notice when you are properly settled at home.</summary>
+        /// <remarks>
+        /// Vanilla's own answer, and it took two wrong ones to go and look for it.
+        /// <c>Player.IsSafeInHome()</c> is public, and the game trusts it enough to
+        /// bill your TimeInBase statistic against it.
+        ///
+        /// It unpacks to Resting, and under a roof, and within twenty metres of a
+        /// base area - where Resting is itself near a fire, sheltered or sitting, not
+        /// cold, not freezing, not on fire, not wet unless somewhere cozy, and
+        /// unnoticed by anything.
+        ///
+        /// Worth reading that list once, because the base area in it is the same
+        /// workbench-projected area that made the first attempt at this fire from a
+        /// hundred metres out. It was never the wrong signal; it was the wrong signal
+        /// on its own. Conjoined with a fire and a roof and nothing hunting you, it
+        /// means what it looked like it meant.
+        ///
+        /// The cost is that this is about being settled rather than about arriving:
+        /// walk in, craft for ten minutes and walk out without ever standing by the
+        /// fire, and it never fires. That reads as the better moment - a skeleton
+        /// remarking on it once everyone has stopped moving is closer to what the line
+        /// is for than one triggered by crossing an invisible circle.
+        /// </remarks>
+        private void CheckHome()
+        {
+            if (--_untilHomeCheck > 0)
+            {
+                return;
+            }
+
+            _untilHomeCheck = SweepsBetweenHomeChecks;
+
+            bool inside = Player.m_localPlayer != null && Player.m_localPlayer.IsSafeInHome();
+
+            if (inside)
+            {
+                _sweepsOutside = 0;
+
+                if (!_atHome)
+                {
+                    _atHome = true;
+                    _ = Chatter.TrySpeak(this, ChatterEvent.AtHome, subject: 0, targetName: null, companion: null);
+                }
+
+                return;
+            }
+
+            if (!_atHome)
+            {
+                return;
+            }
+
+            _sweepsOutside++;
+            if (_sweepsOutside >= SweepsBeforeLeaving)
+            {
+                _atHome = false;
             }
         }
 

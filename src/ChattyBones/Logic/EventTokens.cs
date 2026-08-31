@@ -31,6 +31,15 @@ namespace ChattyBones.Logic
 
         /// <summary>{status} - a status effect's name.</summary>
         Status = 32,
+
+        /// <summary>{biome} - where the skeleton is standing.</summary>
+        Biome = 64,
+
+        /// <summary>{item} - something eaten or picked up.</summary>
+        Item = 128,
+
+        /// <summary>{skill} - the skill that went up.</summary>
+        Skill = 256,
     }
 
     /// <summary>Which events promise which tokens, and what the hooks have actually supplied.</summary>
@@ -120,6 +129,25 @@ namespace ChattyBones.Logic
                 set |= TokenSet.Status;
             }
 
+            // Dawn and Nightfall are handed the biome by the method they hook, so it
+            // costs nothing there and lets a sunrise line know what it is coming up
+            // over.
+            if (kind is ChatterEvent.BiomeChanged or ChatterEvent.Dawn or ChatterEvent.Nightfall)
+            {
+                set |= TokenSet.Biome;
+            }
+
+            // The same question either way - what was it - so one token serves both.
+            if (kind is ChatterEvent.Looted or ChatterEvent.PlayerAte)
+            {
+                set |= TokenSet.Item;
+            }
+
+            if (kind == ChatterEvent.PlayerSkilledUp)
+            {
+                set |= TokenSet.Skill;
+            }
+
             return set;
         }
 
@@ -138,6 +166,9 @@ namespace ChattyBones.Logic
             if (details.WeaponType != null) { set |= TokenSet.WeaponType; }
             if (details.Damage != null) { set |= TokenSet.Damage; }
             if (details.Status != null) { set |= TokenSet.Status; }
+            if (details.Biome != null) { set |= TokenSet.Biome; }
+            if (details.Item != null) { set |= TokenSet.Item; }
+            if (details.Skill != null) { set |= TokenSet.Skill; }
 
             return set;
         }

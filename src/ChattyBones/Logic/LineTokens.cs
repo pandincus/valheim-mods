@@ -7,15 +7,15 @@ namespace ChattyBones.Logic
     /// </summary>
     /// <remarks>
     /// A pack author writes "Get lost, {target}!" and we turn that into "Get lost,
-    /// Greydwarf!" at the moment it is said. Eight tokens, all optional - four for
-    /// the people involved, four for the event itself:
+    /// Greydwarf!" at the moment it is said. Eleven tokens, all optional - four for
+    /// the people involved, seven for the event itself:
     ///
     /// - {target} is whatever the skeleton is reacting to, already localized
     /// - {player} is you, whoever summoned it
     /// - {name} is the skeleton's own name
     /// - {companion} is another of your skeletons, for lines about each other
-    /// - {weapon}, {weapontype}, {damage} and {status} describe what happened, and
-    ///   live on <see cref="LineDetails"/>
+    /// - {weapon}, {weapontype}, {damage}, {status}, {biome}, {item} and {skill}
+    ///   describe what happened and where, and live on <see cref="LineDetails"/>
     ///
     /// Every client fills these in for itself rather than being sent the words. For
     /// {target} that means a German player reads "Grauzwerg" while you read
@@ -176,7 +176,7 @@ namespace ChattyBones.Logic
 
         /// <summary>Is this one of the tokens we understand?</summary>
         /// <param name="token">The text between the braces, with the braces removed.</param>
-        /// <returns>True for target, player, name and companion. False for anything else.</returns>
+        /// <returns>True for any of the eleven. False for anything else.</returns>
         /// <remarks>
         /// Case-sensitive on purpose. The pack is a file people edit by hand, and I
         /// would rather "{Target}" show up in game looking wrong than quietly work.
@@ -185,11 +185,12 @@ namespace ChattyBones.Logic
         private static bool IsKnown(string token)
         {
             return token is "target" or "player" or "name" or "companion"
-                or "weapon" or "weapontype" or "damage" or "status";
+                or "weapon" or "weapontype" or "damage" or "status" or "biome"
+                or "item" or "skill";
         }
 
         /// <summary>The value for a known token, or null when we do not have one.</summary>
-        /// <param name="token">One of target, player, name or companion.</param>
+        /// <param name="token">One of the eleven token names.</param>
         /// <returns>The value, or null if it was not supplied.</returns>
         private string ValueOf(string token)
         {
@@ -203,6 +204,9 @@ namespace ChattyBones.Logic
                 "weapontype" => Details.WeaponType,
                 "damage" => Details.Damage,
                 "status" => Details.Status,
+                "biome" => Details.Biome,
+                "item" => Details.Item,
+                "skill" => Details.Skill,
                 _ => null,
             };
         }

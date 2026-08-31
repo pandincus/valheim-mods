@@ -262,13 +262,20 @@ namespace ChattyBones.Tests
             {
                 Match match = Regex.Match(
                     raw.TrimEnd('\r'),
-                    @"^#   (\w+)\s+.*?([T.])  ([C.])  ([W.])  ([K.])  ([D.])  ([S.])$");
+                    @"^#   (\w+)\s+.*?([T.])  ([C.])  ([W.])  ([K.])  ([D.])  ([S.])  ([B.])  ([I.])  ([L.])$");
 
                 if (match.Success)
                 {
+                    // The header is aligned to the character, and a row that drifts
+                    // still matches the pattern - the leading .*? absorbs it. So the
+                    // width is asserted rather than assumed, or the one thing a reader
+                    // checks this grid for by eye can rot unnoticed.
+                    Assert.Equal(80, match.Value.Length);
+
                     rows[match.Groups[1].Value] = string.Concat(
                         match.Groups[2].Value, match.Groups[3].Value, match.Groups[4].Value,
-                        match.Groups[5].Value, match.Groups[6].Value, match.Groups[7].Value);
+                        match.Groups[5].Value, match.Groups[6].Value, match.Groups[7].Value,
+                        match.Groups[8].Value, match.Groups[9].Value, match.Groups[10].Value);
                 }
             }
 
@@ -284,7 +291,10 @@ namespace ChattyBones.Tests
                     Mark('W', tokens.TryRender("{weapon}", out _)),
                     Mark('K', tokens.TryRender("{weapontype}", out _)),
                     Mark('D', tokens.TryRender("{damage}", out _)),
-                    Mark('S', tokens.TryRender("{status}", out _)));
+                    Mark('S', tokens.TryRender("{status}", out _)),
+                    Mark('B', tokens.TryRender("{biome}", out _)),
+                    Mark('I', tokens.TryRender("{item}", out _)),
+                    Mark('L', tokens.TryRender("{skill}", out _)));
 
                 Assert.True(rows.ContainsKey(kind.ToString()), "No row in the pack header for " + kind + ".");
                 Assert.Equal(expected, rows[kind.ToString()]);
@@ -323,7 +333,10 @@ namespace ChattyBones.Tests
                     weapon: Fill(promised, TokenSet.Weapon, "Mistwalker"),
                     weaponType: Fill(promised, TokenSet.WeaponType, "sword"),
                     damage: Fill(promised, TokenSet.Damage, "slash"),
-                    status: Fill(promised, TokenSet.Status, "Burning")));
+                    status: Fill(promised, TokenSet.Status, "Burning"),
+                    biome: Fill(promised, TokenSet.Biome, "Black Forest"),
+                    item: Fill(promised, TokenSet.Item, "Carrot Soup"),
+                    skill: Fill(promised, TokenSet.Skill, "Blocking")));
         }
 
         /// <summary>A fixture value when the event promises that token, null when it does not.</summary>

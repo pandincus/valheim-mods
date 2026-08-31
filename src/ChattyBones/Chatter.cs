@@ -418,6 +418,11 @@ namespace ChattyBones
                 return;
             }
 
+            // Anything recorded during a blow is said by the postfix that ends it.
+            // A skill can also go up while you are chopping a tree, where there is no
+            // blow to end - so a record that outlives its frame is said here instead.
+            Patches.Blow.FlushStale();
+
             _untilSweep -= dt;
             if (_untilSweep > 0f)
             {
@@ -426,6 +431,17 @@ namespace ChattyBones
 
             float elapsed = SweepSeconds - _untilSweep;
             _untilSweep = SweepSeconds;
+
+            // Asked once for the squad rather than once per skeleton: it is a question
+            // about the world, and the answer does not vary between them.
+            try
+            {
+                Patches.Raids.Poll();
+            }
+            catch (System.Exception e)
+            {
+                ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over a raid: " + e);
+            }
 
             // Guarded per skeleton rather than around the loop, so one of them failing
             // costs its own turn rather than the rest of the squad's. This is the only

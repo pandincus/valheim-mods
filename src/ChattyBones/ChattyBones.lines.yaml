@@ -49,34 +49,44 @@
 #
 # EVENTS
 #
-# Twenty-one things a skeleton reacts to, and which tokens each one can fill in.
+# Thirty things a skeleton reacts to, and which tokens each one can fill in.
 # {name} and {player} are left out of the table because every event has them.
 #
 #     T {target}       W {weapon}        D {damage}
 #     C {companion}    K {weapontype}    S {status}
+#     B {biome}        I {item}          L {skill}
 #
-#                                                      T  C  W  K  D  S
-#   Summoned             you raised it                 .  .  .  .  .  .
-#   TargetAcquired       it picked something           T  .  .  .  .  .
-#   Hurt                 something hit it              .  .  W  K  D  .
-#   Buffed               it gained a helpful effect    .  .  .  .  .  S
-#   Afflicted            it caught fire or poison      .  .  .  .  .  S
-#   Weather              rain, water, or the swamp     .  .  .  .  .  S
-#   Killed               it killed something           T  .  W  K  .  .
-#   Died                 it died                       .  .  W  K  .  .
-#   Unsummoned           it timed out or strayed       .  .  .  .  .  .
-#   Idle                 nothing is happening          .  C  .  .  .  .
-#   PlayerHurt           you took a hit                .  .  W  K  D  .
-#   PlayerLandedABigHit  you hit something hard        T  .  W  K  D  .
-#   PlayerGotAKill       you killed something          T  .  W  K  .  .
-#   CompanionHurt        another skeleton was hit      .  C  W  K  D  .
-#   CompanionKilled      another skeleton got a kill   T  C  W  K  .  .
-#   CompanionDied        another skeleton died         .  C  .  .  .  .
-#   CompanionSummoned    another was just raised       .  C  .  .  .  .
-#   PlayerParried        you turned a blow in time     T  .  .  .  .  .
-#   PlayerStaggered      something knocked you about   T  .  .  .  .  .
-#   StaggeredIt          you knocked something about   T  .  .  .  .  .
-#   PlayerDodged         you rolled clear of a blow    .  .  .  .  .  .
+#                                                      T  C  W  K  D  S  B  I  L
+#   Summoned             you raised it                 .  .  .  .  .  .  .  .  .
+#   TargetAcquired       it picked something           T  .  .  .  .  .  .  .  .
+#   Hurt                 something hit it              .  .  W  K  D  .  .  .  .
+#   Buffed               it gained a helpful effect    .  .  .  .  .  S  .  .  .
+#   Afflicted            it caught fire or poison      .  .  .  .  .  S  .  .  .
+#   Weather              rain, water, or the swamp     .  .  .  .  .  S  .  .  .
+#   Killed               it killed something           T  .  W  K  .  .  .  .  .
+#   Died                 it died                       .  .  W  K  .  .  .  .  .
+#   Unsummoned           it timed out or strayed       .  .  .  .  .  .  .  .  .
+#   Idle                 nothing is happening          .  C  .  .  .  .  .  .  .
+#   PlayerHurt           you took a hit                .  .  W  K  D  .  .  .  .
+#   PlayerLandedABigHit  you hit something hard        T  .  W  K  D  .  .  .  .
+#   PlayerGotAKill       you killed something          T  .  W  K  .  .  .  .  .
+#   CompanionHurt        another skeleton was hit      .  C  W  K  D  .  .  .  .
+#   CompanionKilled      another skeleton got a kill   T  C  W  K  .  .  .  .  .
+#   CompanionDied        another skeleton died         .  C  .  .  .  .  .  .  .
+#   CompanionSummoned    another was just raised       .  C  .  .  .  .  .  .  .
+#   PlayerParried        you turned a blow in time     T  .  .  .  .  .  .  .  .
+#   PlayerStaggered      something knocked you about   T  .  .  .  .  .  .  .  .
+#   StaggeredIt          you knocked something about   T  .  .  .  .  .  .  .  .
+#   PlayerDodged         you rolled clear of a blow    .  .  .  .  .  .  .  .  .
+#   Dawn                 the sun came up               .  .  .  .  .  .  B  .  .
+#   Nightfall            the light went                .  .  .  .  .  .  B  .  .
+#   BiomeChanged         you crossed a biome border    .  .  .  .  .  .  B  .  .
+#   Raid                 something is coming           .  .  .  .  .  .  .  .  .
+#   RaidEnded            you saw it off                .  .  .  .  .  .  .  .  .
+#   AtHome               you settled in safely         .  .  .  .  .  .  .  .  .
+#   Looted               you picked something up       .  .  .  .  .  .  .  I  .
+#   PlayerAte            you ate something             .  .  .  .  .  .  .  I  .
+#   PlayerSkilledUp      you got better at something   .  .  .  .  .  .  .  .  L
 #
 # The D column is the one worth a second look. {damage} only reaches the events
 # that catch a blow as it lands, because that is the only moment the numbers
@@ -93,7 +103,7 @@
 # sometimes be wrong. "My bones are wet" travels better than "it is raining".
 #
 # Spelling counts, capitals included: "idle" is not "Idle", and a name that is
-# not exactly one of the twenty-one above is reported in the log and skipped.
+# not exactly one of the thirty above is reported in the log and skipped.
 #
 # An event you leave out entirely is simply never commented on, which is a fine
 # way to switch off the idle chatter.
@@ -101,20 +111,23 @@
 #
 # TOKENS
 #
-# Eight things a line can drop into itself. Four are about the people involved:
+# Eleven things a line can drop into itself. Four are about the people involved:
 #
 #   {name}        the skeleton speaking
 #   {player}      you
 #   {target}      the creature it is reacting to
 #   {companion}   another of your skeletons
 #
-# ...and four describe what actually happened:
+# ...and seven describe what happened and where:
 #
 #   {weapon}      the weapon by name, e.g. "Mistwalker"
 #   {weapontype}  what kind it is, e.g. "sword"
 #   {damage}      the main damage type: blunt, slash, pierce, fire, frost,
 #                 lightning, poison or spirit
 #   {status}      a status effect by name, e.g. "Burning"
+#   {biome}       where it is standing, e.g. "Black Forest"
+#   {item}        something you ate or picked up, e.g. "Carrot Soup"
+#   {skill}       the skill that just went up, e.g. "Blocking"
 #
 # Neither weapon token is exact, in different ways. {weapon} is read from the
 # attacker's hands a moment after the blow, so an arrow still in the air, a
@@ -123,6 +136,11 @@
 # a creature with no real weapon reports "sword", because that is the default on
 # an attack nobody filled in. Prefer {weapontype} where a mistake would read
 # badly, and expect the occasional well-armed greydwarf.
+#
+# {biome} and {item} arrive capitalized too - "Black Forest", "Carrot Soup",
+# "Wood". That is fine mid-sentence, because the game capitalizes them
+# everywhere else as well, so "More Wood, then." reads the way the rest of the
+# interface does. {status} is the exception, and this is why:
 #
 # {status} arrives capitalized, because that is how the game names it on your
 # status bar - "Burning", "Wet", "Tarred". Put it where a capital belongs, at
@@ -207,6 +225,8 @@ colors:
     PlayerParried: triumph
     StaggeredIt: triumph
     PlayerDodged: triumph
+    Raid: alarm
+    RaidEnded: triumph
 
 lines:
 
@@ -313,9 +333,64 @@ lines:
       - "Nothing touched you."
       - "How did you even do that?"
       - "I could never do that. No knees, see."
+    Dawn:
+      - "Ugh. Daylight."
+      - "Morning over the {biome}. Joy."
+      - "Is it always this bright?"
+      - "Another day of this, then."
+    Nightfall:
+      - "Ah. Better."
+      - "Night over the {biome}. That is more like it."
+      - "Now we are in our element."
+      - "Dark again. Good."
+    BiomeChanged:
+      - "The {biome}. Right."
+      - "Back in the {biome}, then."
+      - "I have a bad feeling about the {biome}."
+      - "This place again."
+    Raid:
+      - "Something is coming."
+      - "Something is out there."
+      - "That does not sound good."
+      - "Stand ready."
+    RaidEnded:
+      - "Still standing."
+      - "Well. That happened."
+      - "Is that all of them?"
+      - "We saw it off."
+    AtHome:
+      - "Right. Feet up."
+      - "Walls, a roof, a fire. Luxury."
+      - "Nothing is trying to eat us. Novel."
+      - "Safe as anything."
+    Looted:
+      - "More {item}, then."
+      - "That {item} looks useful. Probably."
+      - "Pocketing the {item}, are we?"
+      - "Finders keepers, I suppose."
+    PlayerAte:
+      - "Eating some {item}? I used to eat."
+      - "It goes straight through me these days."
+      - "Enjoy the {item}. Truly."
+      - "I remember tasting things."
+    PlayerSkilledUp:
+      - "Better at {skill} now, are you."
+      - "Your {skill} improves, {player}."
+      - "Practice does it."
+      - "You will be dangerous eventually."
 
   # Would rather be somewhere else.
   cowardly:
+    Looted:
+      - "Is that safe to carry?"
+      - "Do not touch anything else."
+    Raid:
+      - "I want to go inside!"
+      - "Can we not be here?"
+      - "Whatever that is, it is not worth it."
+    AtHome:
+      - "Oh thank goodness."
+      - "We are staying, yes? We are staying."
     PlayerStaggered:
       - "We are losing! We are losing!"
       - "Get up! Please get up!"
@@ -349,6 +424,15 @@ lines:
 
   # Convinced of its own legend.
   boastful:
+    PlayerSkilledUp:
+      - "You learn from the best."
+      - "I said you had promise."
+    Raid:
+      - "Let them come."
+      - "Finally, something worth my time."
+    RaidEnded:
+      - "Barely a warm-up."
+      - "You are all welcome."
     PlayerParried:
       - "I taught you that."
       - "Nearly as good as me."
@@ -377,6 +461,15 @@ lines:
 
   # Takes the job seriously.
   dutiful:
+    Looted:
+      - "{item}. Logged."
+      - "Recovered and accounted for."
+    Raid:
+      - "Perimeter. Now."
+      - "Forming up."
+    AtHome:
+      - "Position secured."
+      - "Standing down. For now."
     PlayerParried:
       - "Textbook, {player}."
       - "Correct form. Noted."
@@ -403,6 +496,15 @@ lines:
 
   # Has done this too many times.
   veteran:
+    PlayerAte:
+      - "Eat while you can."
+      - "That will not keep out the cold."
+    Dawn:
+      - "Sunrise. Seen a few."
+      - "Still coming up, then."
+    RaidEnded:
+      - "That is the fourth one this month."
+      - "Nothing new."
     PlayerDodged:
       - "Lucky."
       - "Do not make a habit of relying on that."

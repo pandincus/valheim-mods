@@ -61,12 +61,24 @@ namespace ChattyBones.Patches
         /// </remarks>
         private static Character _selfStaggered;
 
+        /// <summary>Which frame that happened in.</summary>
+        /// <remarks>
+        /// Its own stamp rather than sharing <see cref="_frame"/>, which it did at
+        /// first. The two are answering different questions with different lifetimes -
+        /// this one is only ever read inside the blow that set it, while a pending
+        /// record can outlive its frame and wait for <see cref="FlushStale"/>. Sharing
+        /// meant a stagger could push the freshness of an unrelated record forward and
+        /// keep it waiting, and a record held that way still counted as fresh when it
+        /// finally spoke.
+        /// </remarks>
+        private static int _selfStaggeredFrame;
+
         /// <summary>Note that this character's own bar filled while absorbing a blow.</summary>
         /// <param name="victim">Whoever was staggered.</param>
         internal static void NoteSelfStagger(Character victim)
         {
             _selfStaggered = victim;
-            _frame = Time.frameCount;
+            _selfStaggeredFrame = Time.frameCount;
         }
 
         /// <summary>Was this character staggered by the blow it is about to be asked about?</summary>
@@ -76,7 +88,7 @@ namespace ChattyBones.Patches
         {
             return victim != null
                 && ReferenceEquals(victim, _selfStaggered)
-                && _frame == Time.frameCount;
+                && _selfStaggeredFrame == Time.frameCount;
         }
 
         /// <summary>Set aside something worth saying once this blow has finished landing.</summary>
@@ -116,6 +128,27 @@ namespace ChattyBones.Patches
             _frame = Time.frameCount;
         }
 
+        /// <summary>Say anything left over from a frame that has already finished.</summary>
+        /// <remarks>
+        /// Most records are consumed by the RPC_Damage postfix that ends the blow they
+        /// belong to. Not all of them: a skill can go up during a blow *or* while you
+        /// are chopping a tree, and the hook cannot tell which. So it always records,
+        /// and anything still sitting here a frame later had no blow to end it and is
+        /// said now.
+        ///
+        /// A tick late is imperceptible for the events that reach this - nobody can
+        /// tell a level-up remark arrived a sixtieth of a second after the level.
+        /// </remarks>
+        internal static void FlushStale()
+        {
+            if (_victim == null || _frame == Time.frameCount)
+            {
+                return;
+            }
+
+            Flush(_victim);
+        }
+
         /// <summary>Say whatever was set aside for this victim, if it is still worth saying.</summary>
         /// <param name="victim">Whoever the finished blow landed on.</param>
         /// <remarks>
@@ -139,7 +172,12 @@ namespace ChattyBones.Patches
             int subject = _subject;
             string targetName = _targetName;
             LineDetails details = _details;
-            bool fresh = _frame == Time.frameCount;
+
+            // One frame of grace rather than none. The blow that recorded this ends in
+            // the same frame, and FlushStale deliberately picks records up in the next
+            // one - so anything older than that was orphaned by an exception and is
+            // dropped rather than attached to whatever is happening now.
+            bool fresh = Time.frameCount - _frame <= 1;
 
             _victim = null;
             _targetName = null;

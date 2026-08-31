@@ -339,6 +339,172 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void PickingThingsUpSitsRightAtTheBottom()
+        {
+            // Looted sits one rank above Idle, which is what lets it fire on every
+            // pickup with no filter at all: it can interrupt an idle mutter and
+            // nothing else, so a stick getting through costs one mutter.
+            Assert.True(CanInterrupt(ChatterEvent.Looted, ChatterEvent.Idle));
+            Assert.False(CanInterrupt(ChatterEvent.Looted, ChatterEvent.Weather));
+            Assert.False(CanInterrupt(ChatterEvent.Looted, ChatterEvent.TargetAcquired));
+        }
+
+        [Fact]
+        public void TheSmallTalkGoesInThreeTiers()
+        {
+            // The bottom of the table is a dozen events with nothing urgent in it, so
+            // the ordering inside it is a judgement rather than a fact - which is
+            // exactly why it needs pinning. A review found four of these orderings
+            // could be swapped with every test still passing.
+            //
+            // Coarsest first: what the squad is, then what you are doing, then what
+            // the world is doing around you.
+            ChatterEvent[] descending =
+            [
+                ChatterEvent.Buffed,
+                ChatterEvent.Summoned,
+                ChatterEvent.CompanionSummoned,
+                ChatterEvent.PlayerSkilledUp,
+                ChatterEvent.PlayerAte,
+                ChatterEvent.AtHome,
+                ChatterEvent.BiomeChanged,
+                ChatterEvent.Dawn,
+                ChatterEvent.Nightfall,
+                ChatterEvent.Weather,
+                ChatterEvent.Looted,
+                ChatterEvent.Idle,
+            ];
+
+            for (int i = 0; i + 1 < descending.Length; i++)
+            {
+                Assert.True(
+                    CanInterrupt(descending[i], descending[i + 1]),
+                    descending[i] + " should outrank " + descending[i + 1]);
+
+                Assert.False(
+                    CanInterrupt(descending[i + 1], descending[i]),
+                    descending[i + 1] + " should not outrank " + descending[i]);
+            }
+        }
+
+        [Fact]
+        public void ASquadmateArrivingBeatsYourLunch()
+        {
+            // Called out on its own because it was wrong. CompanionSummoned sat below
+            // PlayerAte, AtHome and BiomeChanged while the comment above it said
+            // arriving somewhere ranks below anything that happens to a person - so a
+            // squad welcoming a newcomer lost to you eating a carrot.
+            Assert.True(CanInterrupt(ChatterEvent.CompanionSummoned, ChatterEvent.PlayerAte));
+            Assert.True(CanInterrupt(ChatterEvent.CompanionSummoned, ChatterEvent.AtHome));
+            Assert.True(CanInterrupt(ChatterEvent.CompanionSummoned, ChatterEvent.BiomeChanged));
+        }
+
+        [Fact]
+        public void TheSmallTalkBandStillHasRoomToGrow()
+        {
+            // The table's own convention is that the gaps are wide so there is room to
+            // slot something in later. Adding nine events in one branch consumed every
+            // free integer between Idle and Summoned, and the next addition would have
+            // had to renumber a neighbour - which is how two events come to share a
+            // rank and quietly stop being able to interrupt each other.
+            //
+            // Asserting the gap rather than the numbers, so respacing again is free.
+            ChatterEvent[] band =
+            [
+                ChatterEvent.Idle, ChatterEvent.Looted, ChatterEvent.Weather,
+                ChatterEvent.Nightfall, ChatterEvent.Dawn, ChatterEvent.BiomeChanged,
+                ChatterEvent.AtHome, ChatterEvent.PlayerAte, ChatterEvent.PlayerSkilledUp,
+                ChatterEvent.CompanionSummoned, ChatterEvent.Summoned, ChatterEvent.Buffed,
+            ];
+
+            foreach (ChatterEvent kind in band)
+            {
+                foreach (ChatterEvent other in band)
+                {
+                    if (kind != other)
+                    {
+                        Assert.True(
+                            ChatterBudget.PriorityOf(kind) != ChatterBudget.PriorityOf(other) + 1,
+                            kind + " sits immediately above " + other + " with no room between them.");
+                    }
+                }
+            }
+        }
+
+        [Fact]
+        public void NoneOfTheSmallTalkTalksOverAFight()
+        {
+            Assert.False(CanInterrupt(ChatterEvent.PlayerSkilledUp, ChatterEvent.TargetAcquired));
+            Assert.False(CanInterrupt(ChatterEvent.PlayerAte, ChatterEvent.Hurt));
+            Assert.False(CanInterrupt(ChatterEvent.AtHome, ChatterEvent.Killed));
+        }
+
+        [Fact]
+        public void ARaidAnnouncingItselfBeatsTheFightItBrings()
+        {
+            // The reason Raid is ranked oddly high for something this rare. It arrives
+            // and immediately supplies things to fight, so at any lower rank the squad
+            // would announce the first greydwarf and never the raid - and "something is
+            // coming" is the better line and the one that only gets said once.
+            Assert.True(CanInterrupt(ChatterEvent.Raid, ChatterEvent.TargetAcquired));
+            Assert.True(CanInterrupt(ChatterEvent.Raid, ChatterEvent.PlayerGotAKill));
+
+            // But not over somebody actually being hurt. A warning about what is
+            // coming loses to what has already arrived.
+            Assert.False(CanInterrupt(ChatterEvent.Raid, ChatterEvent.PlayerHurt));
+        }
+
+        [Fact]
+        public void SurvivingARaidIsSaidIntoAQuietField()
+        {
+            // RaidEnded deliberately does not inherit Raid's standing. It fires when
+            // the fighting has stopped, so it has nothing to compete with and does not
+            // need to win anything.
+            Assert.False(CanInterrupt(ChatterEvent.RaidEnded, ChatterEvent.TargetAcquired));
+            Assert.True(CanInterrupt(ChatterEvent.RaidEnded, ChatterEvent.Idle));
+        }
+
+        [Fact]
+        public void TravellingRemarksNeverTalkOverAFight()
+        {
+            // All four fire while you are going somewhere, which is when the squad has
+            // least to say - and they must stay out of the way when that changes.
+            ChatterEvent[] travelling =
+            [
+                ChatterEvent.BiomeChanged,
+                ChatterEvent.AtHome,
+                ChatterEvent.Dawn,
+                ChatterEvent.Nightfall,
+            ];
+
+            foreach (ChatterEvent kind in travelling)
+            {
+                Assert.False(
+                    CanInterrupt(kind, ChatterEvent.TargetAcquired),
+                    kind + " should not have cut in on TargetAcquired");
+
+                Assert.False(
+                    CanInterrupt(kind, ChatterEvent.Hurt),
+                    kind + " should not have cut in on an injury");
+
+                Assert.True(
+                    CanInterrupt(kind, ChatterEvent.Idle),
+                    kind + " should have been able to cut in on Idle");
+            }
+        }
+
+        [Fact]
+        public void ArrivingSomewhereOutranksTheSkyDoingItsUsualThing()
+        {
+            // A twenty-minute day cycle means Dawn and Nightfall come round on their
+            // own; crossing into the Plains does not. So the sky sits below the ground
+            // underfoot, and both sit above the weather.
+            Assert.True(CanInterrupt(ChatterEvent.BiomeChanged, ChatterEvent.Dawn));
+            Assert.True(CanInterrupt(ChatterEvent.AtHome, ChatterEvent.Nightfall));
+            Assert.True(CanInterrupt(ChatterEvent.Dawn, ChatterEvent.Weather));
+        }
+
+        [Fact]
         public void CatchingFireOutranksTheBlowThatCausedIt()
         {
             // Uniqueness alone left this rank free to move either way. Why it is above

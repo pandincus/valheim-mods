@@ -347,6 +347,12 @@ namespace ChattyBones.Logic
 
                 ChatterEvent.CompanionHurt => 90,
 
+                // Above the kill events, which is unusual for something this rare.
+                // A raid announces itself and then immediately supplies things to
+                // fight, so at any lower rank the squad would call out the first
+                // greydwarf instead of the thing that brought it.
+                ChatterEvent.Raid => 85,
+
                 // Outcomes above intentions, which they were not at first. See
                 // HowAFightEndedOutranksNoticingItStarted for what that cost.
                 ChatterEvent.PlayerGotAKill => 80,
@@ -366,13 +372,47 @@ namespace ChattyBones.Logic
                 ChatterEvent.StaggeredIt => 42,
 
                 ChatterEvent.PlayerLandedABigHit => 40,
-                ChatterEvent.Buffed => 30,
-                ChatterEvent.Summoned => 20,
-                ChatterEvent.CompanionSummoned => 15,
+
+                // Far below Raid, and it does not need the standing: surviving one
+                // is said into a quiet field with nothing to compete against.
+                ChatterEvent.RaidEnded => 35,
+
+                // Everything from here down is small talk, and it is spaced in twos
+                // rather than packed. The band ran out of free integers once already,
+                // and the next event to want a home in it would have had to renumber a
+                // neighbour - which is how two events end up sharing a rank and
+                // silently losing the ability to interrupt each other.
+                //
+                // Three tiers, coarsest first: what the squad is, then what you are
+                // doing, then what the world is doing.
+                ChatterEvent.Buffed => 32,
+                ChatterEvent.Summoned => 30,
+                ChatterEvent.CompanionSummoned => 28,
+
+                // About you rather than about the place, so above both.
+                ChatterEvent.PlayerSkilledUp => 26,
+                ChatterEvent.PlayerAte => 24,
+
+                // Where you are. Arriving somewhere beats the sky doing its usual
+                // thing, because the sky comes round on its own every twenty minutes
+                // and the Plains do not.
+                ChatterEvent.AtHome => 22,
+                ChatterEvent.BiomeChanged => 20,
+
+                // The sky, and then the weather under it. Dawn above Nightfall
+                // because an undead thing has more of a view about sunrise.
+                ChatterEvent.Dawn => 18,
+                ChatterEvent.Nightfall => 16,
 
                 // Being rained on is small talk, and any water at all applies it - so
                 // anywhere higher and a skeleton crossing a stream talks over a kill.
-                ChatterEvent.Weather => 12,
+                ChatterEvent.Weather => 14,
+
+                // One above Idle, and doing the whole job of deciding how often you
+                // hear about loot: emptying a chest of forty things produces about one
+                // remark, because at this rank Looted only speaks when the field is
+                // quiet and the squad gap has elapsed.
+                ChatterEvent.Looted => 12,
 
                 ChatterEvent.Idle => 10,
 

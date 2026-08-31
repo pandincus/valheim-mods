@@ -192,5 +192,62 @@ namespace ChattyBones.Logic
         /// air. Same argument as <see cref="PlayerParried"/>.
         /// </remarks>
         PlayerDodged,
+
+        /// <summary>The sun came up.</summary>
+        /// <remarks>
+        /// A twenty-minute day cycle, so this and <see cref="Nightfall"/> are a
+        /// rhythm rather than a ceremony - which is most of why they are worth
+        /// having. The rest of it is that an undead thing has opinions about
+        /// daylight, and they write themselves.
+        /// </remarks>
+        Dawn,
+
+        /// <summary>The sun went down.</summary>
+        Nightfall,
+
+        /// <summary>You crossed into a different biome.</summary>
+        /// <remarks>
+        /// Every crossing, not only the first - so lines for it must read on the
+        /// hundredth walk home through the Meadows, not just on discovering it.
+        /// </remarks>
+        BiomeChanged,
+
+        /// <summary>Something is coming - a raid has started, or a boss has a health bar up.</summary>
+        /// <remarks>
+        /// Both, and on purpose - "something is coming" carries Eikthyr perfectly well,
+        /// so a boss needs no event of its own. Only <see cref="RaidEnded"/> is choosy:
+        /// a raid finishing is a fact we can ask about, while a boss health bar going
+        /// away could be a kill or could be you leaving.
+        /// </remarks>
+        Raid,
+
+        /// <summary>The raid is over and everyone is still standing.</summary>
+        RaidEnded,
+
+        /// <summary>You have settled somewhere safe, and it has noticed.</summary>
+        /// <remarks>
+        /// The only event with no hook behind it - "are we home" is a query rather
+        /// than a moment, so it rides the sweep that already runs for
+        /// <see cref="TargetAcquired"/>.
+        ///
+        /// About being settled rather than arriving, which is worth knowing when
+        /// writing lines for it: you can walk in, craft for ten minutes and leave
+        /// without ever triggering it. It wants a fire and a roof and nothing hunting
+        /// you.
+        /// </remarks>
+        AtHome,
+
+        /// <summary>You picked something up.</summary>
+        /// <remarks>
+        /// Anything at all, with no judgement about what is worth mentioning - so what
+        /// it catches is near enough random, which the lines are written for.
+        /// </remarks>
+        Looted,
+
+        /// <summary>You ate something.</summary>
+        PlayerAte,
+
+        /// <summary>You got better at something.</summary>
+        PlayerSkilledUp,
     }
 }
