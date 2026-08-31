@@ -247,6 +247,20 @@ namespace ChattyBones.Logic
         /// <summary>You ate something.</summary>
         PlayerAte,
 
+        /// <summary>You made something to eat or drink.</summary>
+        /// <remarks>
+        /// The cauldron and everything that hangs off it - the food preparation table
+        /// and the mead ketill are extensions rather than stations of their own - plus
+        /// drawing finished mead off a fermenter. Not the cooking rack or the oven,
+        /// which are a different type entirely and are not hooked.
+        ///
+        /// Fires per craft, so making ten sausages is ten of these. That is fine at
+        /// this rank for the same reason it is fine for <see cref="Looted"/>: the
+        /// budget collapses the burst into about one remark, and no filter of ours
+        /// would do it better.
+        /// </remarks>
+        PlayerCooked,
+
         /// <summary>You got better at something.</summary>
         PlayerSkilledUp,
     }

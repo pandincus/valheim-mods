@@ -14,7 +14,7 @@ react to the same greydwarf very differently.
 
 ## What it does
 
-- Reacts to thirty things: being raised, picking a target, getting hurt, gaining
+- Reacts to thirty-one things: being raised, picking a target, getting hurt, gaining
   a status effect, catching fire or poison, killing something, dying, being
   unsummoned, and idling — plus the same happening to you, and to the skeleton
   standing next to it
@@ -22,10 +22,10 @@ react to the same greydwarf very differently.
   that turned a blow, and either of you being knocked off balance
 - And notices the world around it: sunrise and nightfall, crossing into a new
   biome, a raid arriving and being seen off, settling in somewhere safe, and
-  what you pick up, eat and get better at
+  what you pick up, eat, cook and get better at
 - Lines can name the weapon that hit them, what kind it was, the damage type,
-  the status effect, the biome, what you just picked up or ate, the skill that
-  went up, and the skeleton standing next to them
+  the status effect, the biome, what you just picked up, ate or made, the skill
+  that went up, and the skeleton standing next to them
 - A personality per skeleton, assigned at summon and remembered in your save
 - A squad of five will not all talk over each other. The group stays quiet for a
   moment after any one of them speaks, an individual waits rather longer, and one
