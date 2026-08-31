@@ -79,13 +79,17 @@ namespace ChattyBones.Patches
     /// every station declares the skill it trains, and picks up any station a future
     /// update tags the same way.
     ///
-    /// Read off the *recipe's* station rather than the one the player has open, and
-    /// that distinction is the whole guard. A recipe needing no station is craftable
-    /// anywhere and is listed alongside the food, while the open cauldron stays the
-    /// player's current station until they close the panel - so asking the player
-    /// meant arrows crafted at the cauldron read as cooking. Vanilla settles it the
-    /// same way a few lines further down DoCrafting, where the skill it raises comes
-    /// off the recipe.
+    /// Read off the *recipe's* station rather than the one the player has open. Both
+    /// answer the same way in practice, and the recipe is simply the question we mean
+    /// - is this a cooking recipe - rather than a fact about where somebody is
+    /// standing. Vanilla agrees: the skill it raises a few lines further down
+    /// DoCrafting comes off the recipe too.
+    ///
+    /// It also sidesteps a flag we cannot read. Whether a station's panel offers
+    /// recipes needing no station at all is <c>m_showBasicRecipies</c>, checked in
+    /// Player.RequiredCraftingStation and set per prefab, so from here there is no
+    /// telling whether a cooking station could list a non-food recipe. Asking the
+    /// recipe makes the answer not matter.
     ///
     /// The value lives in serialized prefab data rather than in code, so it cannot be
     /// checked by decompiling - it was confirmed in play instead.
