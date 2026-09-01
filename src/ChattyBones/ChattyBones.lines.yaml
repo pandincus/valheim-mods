@@ -540,7 +540,7 @@ lines:
       - "Stick with me, {player}, and you'll get to Valhalla easy."
       - "Even the dull parts are important for the ballad!"
       - "Is my left side or my right more portrait-worthy?"
-      - "Hey {player}, but in a good word for me with Odin, huh?"
+      - "Hey {player}, put in a good word for me with Odin, huh?"
     Idle[biome=Swamp]:
       - "I have fought worse than whatever is in that water."
       - "Don't worry, {player}. I know my way through the muck."
