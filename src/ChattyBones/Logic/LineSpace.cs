@@ -163,9 +163,12 @@ namespace ChattyBones.Logic
         /// a group rather than as narrators.
         ///
         /// Within a band, two context groups that both match are settled by whichever
-        /// the pack wrote first. That cannot come up while <c>biome</c> is the only
-        /// context, but it is a rule an author can predict and control from their own
-        /// file rather than one they have to be told.
+        /// the pack wrote first. With more than one context that is no longer a corner
+        /// case - a skeleton in the Swamp at night satisfies two at once every time it
+        /// speaks - so the rule now decides something on most utterances rather than
+        /// none. It stays file order because an author can see it and change it by
+        /// moving a group up the page, which is not true of any ranking between the
+        /// context names themselves.
         /// </remarks>
         internal bool TrySelect(IReadOnlyList<string> contexts, out int offset, out int length)
         {
@@ -210,8 +213,8 @@ namespace ChattyBones.Logic
                     continue;
                 }
 
-                // Hand-rolled rather than LINQ or a set: this runs per utterance, and
-                // contexts holds one entry today and will not hold many.
+                // Hand-rolled rather than LINQ or a set: this runs per utterance, and a
+                // skeleton satisfies a handful of contexts at a time, never many.
                 for (int c = 0; c < contexts.Count; c++)
                 {
                     if (string.Equals(contexts[c], group.Context, StringComparison.Ordinal))

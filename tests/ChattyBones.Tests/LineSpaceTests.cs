@@ -23,6 +23,20 @@ namespace ChattyBones.Tests
         private static readonly string[] InSwamp = [Swamp];
         private static readonly string[] InMeadows = [Meadows];
 
+        /// <summary>A skeleton satisfying more than one context at once.</summary>
+        /// <remarks>
+        /// What every utterance looks like now. The time context is listed *first* on
+        /// purpose, and the packs below all write their biome group first, so the two
+        /// orders disagree - which is the whole point. Selection has to walk the groups
+        /// and consult this, never the other way round.
+        ///
+        /// It was the other way round to begin with, and a review showed what that cost:
+        /// with both orders agreeing, inverting the two loops in TryBand still passed
+        /// TwoMatchingContextGroupsAreSettledByFileOrder, because the two rules cannot be
+        /// told apart when they happen to give the same answer.
+        /// </remarks>
+        private static readonly string[] InSwampAtNight = ["time=night", Swamp];
+
         private static EventKey Key(string text)
         {
             Assert.True(EventKey.TryParse(text, out EventKey key, out string problem), problem);
@@ -124,6 +138,52 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void TwoMatchingContextGroupsAreSettledByFileOrder()
+        {
+            // Untestable while biome was the only context, and the ordinary case now
+            // that it is not: a skeleton in the Swamp at night matches both of these on
+            // every single utterance, and the one higher up the page wins.
+            LinePack pack = new LinePack.Builder()
+                .Add(Cowardly, Key("Idle[biome=Swamp]"), "swamp")
+                .Add(Cowardly, Key("Idle[time=night]"), "night")
+                .Build();
+
+            Assert.True(pack.TryGetGroup(Cowardly, ChatterEvent.Idle, out IReadOnlyList<string> lines, InSwampAtNight));
+            Assert.Equal(["swamp"], lines);
+        }
+
+        [Fact]
+        public void ItIsGenuinelyFileOrderAndNotARankingOfTheContextNames()
+        {
+            // The same pack with the two groups swapped gives the other answer. Worth
+            // its own test rather than trusting the one above: if some ranking of biome
+            // against time ever crept in, the first test would still pass and an author
+            // moving a group up the page would find it did nothing.
+            LinePack pack = new LinePack.Builder()
+                .Add(Cowardly, Key("Idle[time=night]"), "night")
+                .Add(Cowardly, Key("Idle[biome=Swamp]"), "swamp")
+                .Build();
+
+            Assert.True(pack.TryGetGroup(Cowardly, ChatterEvent.Idle, out IReadOnlyList<string> lines, InSwampAtNight));
+            Assert.Equal(["night"], lines);
+        }
+
+        [Fact]
+        public void AContextTheSkeletonSatisfiesButThePackIgnoresIsHarmless()
+        {
+            // Three contexts are resolved on every utterance and a pack may well tag
+            // groups with only one of them. The other two have to be quietly nothing,
+            // rather than steering selection or losing the group that does match.
+            LinePack pack = new LinePack.Builder()
+                .Add(Cowardly, Key("Idle[time=night]"), "night")
+                .Add(Cowardly, Key("Idle"), "plain a", "plain b")
+                .Build();
+
+            Assert.True(pack.TryGetGroup(Cowardly, ChatterEvent.Idle, out IReadOnlyList<string> lines, InSwampAtNight));
+            Assert.Equal(["night"], lines);
+        }
+
+        [Fact]
         public void APersonalityThatIsTheSharedOneIsNotCountedTwice()
         {
             LinePack pack = new LinePack.Builder()
@@ -199,6 +259,47 @@ namespace ChattyBones.Tests
                 Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, lineRef, out string heard));
                 Assert.Equal(said, heard);
             }
+        }
+
+        [Fact]
+        public void ASpeakerInSeveralContextsAndAListenerInNoneReachTheSameLine()
+        {
+            // The property the whole flat numbering exists for, with the case that is now
+            // every utterance. The speaker resolves three contexts and picks a window; the
+            // listener resolves nothing and folds the bare number against the same list.
+            LinePack pack = new LinePack.Builder()
+                .Add(Cowardly, Key("Idle[home=yes]"), "home a", "home b")
+                .Add(Cowardly, Key("Idle[biome=Swamp]"), "swamp a", "swamp b")
+                .Add(Cowardly, Key("Idle[time=night]"), "night a", "night b")
+                .Add(Cowardly, Key("Idle"), "plain a", "plain b")
+                .Build();
+
+            Assert.True(pack.TryGetSpace(Cowardly, ChatterEvent.Idle, out LineSpace space));
+            Assert.True(space.TrySelect(["home=yes", Swamp, "time=night"], out int offset, out int length));
+
+            // home is written first, so it wins - and the listener, who resolves nothing,
+            // still lands on the same words from the index alone.
+            for (int i = 0; i < length; i++)
+            {
+                Assert.Equal(space.All[offset + i], space.All[(offset + i) % space.Count]);
+            }
+
+            Assert.Equal(["home a", "home b"], [space.All[offset], space.All[offset + 1]]);
+        }
+
+        [Fact]
+        public void AHomeIsNoGroupShadowsEverythingBelowIt()
+        {
+            // home resolves to one of its two values on essentially every utterance, so a
+            // [home=no] group written high in a pack is matched almost always - which is a
+            // way to silence the groups under it that reads as innocuous on the page.
+            LinePack pack = new LinePack.Builder()
+                .Add(Cowardly, Key("Idle[home=no]"), "out a", "out b")
+                .Add(Cowardly, Key("Idle[biome=Swamp]"), "swamp a", "swamp b")
+                .Build();
+
+            Assert.True(pack.TryGetGroup(Cowardly, ChatterEvent.Idle, out IReadOnlyList<string> lines, ["home=no", Swamp]));
+            Assert.Equal(["out a", "out b"], lines);
         }
 
         [Fact]

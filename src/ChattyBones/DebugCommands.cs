@@ -31,7 +31,7 @@ namespace ChattyBones
 
             _ = new Terminal.ConsoleCommand(
                 "cb_who",
-                "list the summoned skeletons nearby",
+                "[event] - list the summoned skeletons nearby, with the group each would draw from",
                 Who,
                 isCheat: false,
                 isNetwork: false,
@@ -112,13 +112,38 @@ namespace ChattyBones
         }
 
         /// <summary>List nearby summons, so "nothing happened" can be told from "nothing is there".</summary>
-        /// <param name="args">Ignored.</param>
+        /// <param name="args">An event to ask about, or nothing for Idle.</param>
+        /// <remarks>
+        /// Reports the contexts each skeleton satisfies and the group it would actually
+        /// draw from, because the tie-break between two matching groups is silent by
+        /// design - the one written first wins and nothing is said about the other. The
+        /// group named here is the answer to "why am I not hearing the lines I wrote".
+        /// </remarks>
         private static void Who(Terminal.ConsoleEventArgs args)
         {
             if (Player.m_localPlayer == null)
             {
                 args.Context.AddString("No player yet.");
                 return;
+            }
+
+            // An event can be named to ask about that one instead. Idle is the default
+            // because it is where context groups actually get written, and printing all
+            // thirty-one per skeleton would bury the answer.
+            ChatterEvent asking = ChatterEvent.Idle;
+
+            string wanted = args.ArgsAll == null ? string.Empty : args.ArgsAll.Trim();
+
+            if (wanted.Length > 0)
+            {
+                if (EventKey.TryParse(wanted, out EventKey named, out string problem))
+                {
+                    asking = named.Kind;
+                }
+                else
+                {
+                    args.Context.AddString(problem + ". Showing Idle.");
+                }
             }
 
             Vector3 me = Player.m_localPlayer.transform.position;
@@ -133,10 +158,24 @@ namespace ChattyBones
                 }
 
                 found++;
+
+                IReadOnlyList<string> contexts = Contexts.For(all[i]);
+
                 args.Context.AddString(
                     (Summons.NameOf(all[i]) ?? "(unnamed)")
                     + " - " + Mathf.RoundToInt(Vector3.Distance(me, all[i].transform.position)) + "m"
-                    + " - " + PersonalityOf(all[i]));
+                    + " - " + PersonalityOf(all[i])
+                    + " - " + (contexts == null || contexts.Count == 0
+                        ? "no context"
+                        : string.Join(", ", contexts)));
+
+                ChatterComponent chatter = all[i].GetComponent<ChatterComponent>();
+                string choice = chatter == null
+                    ? null
+                    : Chatter.DescribeChoice(chatter.Personality, asking, contexts);
+
+                args.Context.AddString(
+                    "    " + asking + " -> " + (choice ?? "nothing it could say"));
             }
 
             args.Context.AddString(

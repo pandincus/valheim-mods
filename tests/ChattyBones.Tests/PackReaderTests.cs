@@ -126,6 +126,34 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void ABadContextValueIsRefusedWithTheLineItIsOn()
+        {
+            // The whole reason time and home are checked in EventKey rather than at load
+            // with the biome values: the reader wraps a parse problem in the position of
+            // the key, so an author is sent to the line instead of being told afterwards
+            // that something somewhere never matches. The pack header promises this.
+            string yaml = """
+                lines:
+                  common:
+                    Idle[time=noon]:
+                      - Dropped.
+                    Idle:
+                      - Kept.
+                """;
+
+            Assert.True(PackReader.TryRead(yaml, out LinePack pack, out IReadOnlyList<string> problems));
+
+            string complaint = Assert.Single(problems);
+            Assert.Contains("line 3", complaint);
+            Assert.Contains("morning", complaint);
+
+            // The bad group is dropped rather than kept under a context nothing resolves,
+            // so even a skeleton claiming to be in it gets the plain lines.
+            Assert.True(pack.TryGetGroup("common", ChatterEvent.Idle, out IReadOnlyList<string> lines, ["time=noon"]));
+            Assert.Equal(["Kept."], lines);
+        }
+
+        [Fact]
         public void BrokenIndentationIsRefusedWithAPosition()
         {
             const string yaml = """

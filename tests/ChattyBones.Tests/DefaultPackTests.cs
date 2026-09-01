@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using ChattyBones.Logic;
 
@@ -204,6 +205,111 @@ namespace ChattyBones.Tests
             }
         }
 
+        /// <summary>How rare each context is, rarest first.</summary>
+        /// <remarks>
+        /// Two matching context groups are settled by file order and nothing warns about
+        /// the loser, so the order the pack writes its groups in is a content decision
+        /// rather than tidiness. This is the decision: rarest condition first.
+        ///
+        /// <c>home=yes</c> is the rarest thing a skeleton can be - it wants resting, a
+        /// roof, a fire, a base and nothing hunting you all at once - so it should be
+        /// heard whenever it holds. <c>biome</c> is next, because where you are says more
+        /// than what hour it is, and <c>time</c> after it because a quarter of every day
+        /// satisfies it.
+        ///
+        /// <c>home=no</c> is last, and it is the reason this ranks whole contexts rather
+        /// than just their names. A value can invert a context's rarity: home resolves to
+        /// one or the other on every real utterance, so <c>home=no</c> is true nearly
+        /// always and a group tagged with it sits above its neighbours as a silent kill
+        /// switch. Ranking by the name alone approved exactly that, in the same commit
+        /// that added a test warning about it.
+        /// </remarks>
+        private static readonly string[] RarestFirst = ["home=yes", "biome", "time", "home=no"];
+
+        /// <summary>Where a context sits in the ranking.</summary>
+        /// <returns>Its position, or -1 for a context the rule has no opinion about.</returns>
+        /// <param name="context">The context a group is tagged with, as "name=value".</param>
+        /// <remarks>
+        /// The whole context first, so a value that changes the answer can say so, then
+        /// the bare name for the ones where every value is equally rare - any biome is as
+        /// likely to be true as any other, and so is any time band.
+        /// </remarks>
+        private static int RankOf(string context)
+        {
+            int exact = Array.IndexOf(RarestFirst, context);
+
+            return exact >= 0 ? exact : Array.IndexOf(RarestFirst, NameOf(context));
+        }
+
+        [Fact]
+        public void ContextGroupsAreWrittenRarestFirst()
+        {
+            // The first version of this checked biome against everything else, and only
+            // for Idle. Both limits were real: it passed while cowardly and dutiful had
+            // their home groups below time, which silenced the home lines every night -
+            // the quarter of the day they were written for - and it would not have looked
+            // at a context group on any other event at all.
+            LinePack pack = DefaultPack.Build();
+
+            foreach (string personality in pack.Personalities)
+            {
+                foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
+                {
+                    if (!pack.TryGetSpace(personality, kind, out LineSpace space))
+                    {
+                        continue;
+                    }
+
+                    CheckOneEvent(personality, kind, space);
+                }
+            }
+        }
+
+        /// <summary>Walk one personality's groups for one event and check their order.</summary>
+        /// <param name="personality">Whose lines these are.</param>
+        /// <param name="kind">The event.</param>
+        /// <param name="space">Its numbering, groups in the order the pack wrote them.</param>
+        private static void CheckOneEvent(string personality, ChatterEvent kind, LineSpace space)
+        {
+            int previous = -1;
+            string previousContext = null;
+
+            foreach (LineSpace.Group group in space.Groups)
+            {
+                // Only the personality's own band. File order decides within a band -
+                // TrySelect exhausts the personal groups before it touches the shared
+                // ones - so a shared group below a personal one is not a shadowing.
+                if (!group.Personal || group.Context == null)
+                {
+                    continue;
+                }
+
+                int rank = RankOf(group.Context);
+
+                Assert.True(
+                    rank >= 0,
+                    personality + "/" + kind + "[" + group.Context + "] uses a context this rule"
+                    + " has no opinion about. Add it to RarestFirst and decide where it goes.");
+
+                Assert.True(
+                    rank >= previous,
+                    personality + "/" + kind + " writes [" + group.Context + "] below ["
+                    + previousContext + "], so it is unreachable whenever both match.");
+
+                previous = rank;
+                previousContext = group.Context;
+            }
+        }
+
+        /// <summary>The name half of a "name=value" context.</summary>
+        /// <returns>The part before the =.</returns>
+        /// <param name="context">The context a group is tagged with.</param>
+        private static string NameOf(string context)
+        {
+            int equals = context.IndexOf('=');
+            return equals < 0 ? context : context[..equals];
+        }
+
         [Fact]
         public void NoSharedContextGroupIsWrittenWhereNobodyCanReachIt()
         {
@@ -283,6 +389,24 @@ namespace ChattyBones.Tests
                     }
                 }
             }
+        }
+
+        [Fact]
+        public void ThePackHeadersTimeValuesMatchTheBandsTheCodeProduces()
+        {
+            // The header's vocabulary row is a hand-copy of TimeOfDay.All - the fourth
+            // one, and the only one a test can reach that is not derived from the list.
+            // A band renamed in code and not here would leave the file telling authors to
+            // write a value that is refused at load, which reads as the mod being broken
+            // rather than the docs being stale.
+            Match row = Regex.Match(DefaultPack.Yaml, @"^#   time=\s+(.*)$", RegexOptions.Multiline);
+
+            Assert.True(row.Success, "the header has no 'time=' vocabulary row any more");
+
+            string[] listed = row.Groups[1].Value.Split(
+                [' '], StringSplitOptions.RemoveEmptyEntries);
+
+            Assert.Equal(TimeOfDay.All.OrderBy(band => band, StringComparer.Ordinal), listed.OrderBy(band => band, StringComparer.Ordinal));
         }
 
         [Fact]

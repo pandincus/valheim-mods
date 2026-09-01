@@ -110,10 +110,11 @@
 # way to switch off the idle chatter.
 #
 #
-# LINES THAT ONLY SUIT ONE PLACE
+# LINES THAT ONLY SUIT ONE MOMENT
 #
-# An event can be tagged with where the skeleton is standing, and then those lines
-# are used only there:
+# An event can be tagged with something about the moment - where the skeleton is,
+# what time it is, whether you are safely at home - and then those lines are used
+# only then:
 #
 #   cowardly:
 #     Idle:
@@ -125,34 +126,78 @@
 # from the plain one. This is the thing {biome} cannot do for you - a token puts a
 # word in a line, but it cannot stop a line being said in the wrong place.
 #
+# There are three tags. The values are exact, capitals and all:
+#
+#   biome=    Meadows   BlackForest   Swamp   Mountain   Plains
+#             Mistlands   AshLands   DeepNorth   Ocean
+#
+#             ("None" and "All" are reported at load - they are spellings the game
+#              keeps for its own bookkeeping and no skeleton is ever standing in
+#              one, so a group tagged with either is silent. For "anywhere", write
+#              a plain group with no brackets.)
+#
+#   time=     morning   afternoon   evening   night
+#
+#   home=     yes   no
+#
+# "time" is the quarter of the day, cut where the game cuts it: morning is dawn
+# to noon, afternoon is noon to sunset, evening is sunset to midnight, night is
+# midnight to dawn.
+#
+# "home" is not simply "indoors" or "near a workbench". It is the game's own idea
+# of being settled - resting, under a roof, near a fire, within your base, and
+# with nothing hunting you - so home=yes is a quiet moment and not merely an
+# address. It is also about *you* rather than about the skeleton, so a skeleton
+# left out in the woods still says home lines while you sit by the fire.
+#
+# A "biome" name that is not one of those is reported in the log at load. It has
+# to be, because a group tagged with a place that does not exist reads perfectly
+# and is silent forever, which is the least helpful kind of mistake a file can
+# contain. A wrong "time" or "home" value is caught sooner, when the file is read,
+# and reported with the line it is on, and that group is skipped.
+#
 # The rule for which group wins, in order:
 #
-#   1. your personality's lines for this exact place
+#   1. your personality's lines for this exact moment
 #   2. your personality's plain lines
-#   3. the shared lines for this exact place
+#   3. the shared lines for this exact moment
 #   4. the shared plain lines
 #
 # So a personality with plain lines of its own uses those before it will touch a
-# shared group tagged for where it is standing. Personality first, place second.
+# shared group tagged for where it is standing. Personality first, moment second.
+#
+# Where the plain group sits in the file does not matter - a tagged group is tried
+# before it either way - so you can leave your plain lines at the top of an event.
 #
 # One tag per group. "Idle[biome=Swamp,time=night]" is refused rather than
 # guessed at, and reported in the log.
 #
-# The place names are the game's own spellings, capitals and all:
+# Which matters more than it used to, now that there is more than one tag: a
+# skeleton standing in the Swamp at night matches a [biome=Swamp] group and a
+# [time=night] group at the same time, and the one written HIGHER UP THE FILE
+# wins. Nothing warns you about the other one.
 #
-#   Meadows   BlackForest   Swamp   Mountain   Plains
-#   Mistlands   AshLands   DeepNorth   Ocean
+# So the rule for writing them is: PUT YOUR RAREST GROUPS FIRST. This file goes
 #
-# A name that is not one of those is reported in the log at load. It has to be,
-# because a group tagged with a place that does not exist reads perfectly and is
-# silent forever, which is the least helpful kind of mistake a file can contain.
+#   home=yes, then biome, then time, and home=no last of all
+#
+# because home=yes is the hardest thing to be - resting, roofed, warm, in your
+# base, with nothing hunting you - while time is true a quarter of every day and
+# would drown the other two if it went first. If you want a different order, move
+# the groups; that is the whole mechanism.
+#
+# Note that the VALUE can matter and not just the tag. Every skeleton is either
+# home or not, so [home=no] is true almost always: put one high in a group and
+# everything below it stops being reachable. That is why the order above names
+# home twice, at opposite ends.
+#
+# It is easy to get wrong and quiet when you do. The first draft of this file put
+# the home groups last, which meant the cozy-fireside lines could only be said in
+# daylight - the one time of day nobody is sitting by the fire.
 #
 # The same warning about short groups applies here and bites harder. A tagged
 # group with one line in it means that skeleton says that one line every single
-# time it is in that place, and the lines beside it are never reached.
-#
-# Only "biome" for now. More kinds of place, and things that are not places at
-# all, are meant to follow.
+# time it is in that moment, and the lines beside it are never reached.
 #
 #
 # TOKENS
@@ -472,6 +517,11 @@ lines:
     Idle:
       - "Can we go home?"
       - "It's very open out here."
+    Idle[home=yes]:
+      - "H-hey, it's nice and cozy here! Can we stay?"
+      - "Nothing out there can get in, right?"
+      - "Let's never leave. I mean it."
+      - "I mean, why would we wanna go back out there anyway?"
     Idle[biome=Swamp]:
       - "I do not like it here."
       - "Can we go back to the open bit?"
@@ -482,6 +532,16 @@ lines:
       - "{player}? Are you still there?"
       - "I can't see anything in this mist!"
       - "I keep hearing things and none of this is pleasant."
+    Idle[biome=Plains]:
+      - "I keep hearing this buzzing sound!"
+      - "W-why does this feel like the meadows, but wrong?"
+      - "You haven't seen any of those Tar Growths, have you?"
+      - "Can't s-stand that laughter from the little guys..."
+    Idle[time=night]:
+      - "It's dark. It's dark and we are still outside."
+      - "Can we light something? Anything at all?"
+      - "There are more of them at night. I have counted."
+      - "I get that as a skellet I should like the night, but... I don't!"
     CompanionDied:
       - "We're all going to die out here!"
       - "That could have been me!"
@@ -541,15 +601,24 @@ lines:
       - "Even the dull parts are important for the ballad!"
       - "Is my left side or my right more portrait-worthy?"
       - "Hey {player}, put in a good word for me with Odin, huh?"
+    Idle[home=yes]:
+      - "A fire, warm walls. A perfect place to listen to my ballad."
+      - "Cook me up some food, will you {player}? Just kidding. I do not eat! Ha!"
+      - "I've built greater halls than this, you know."
+      - "That fire is... acceptable."
     Idle[biome=Swamp]:
       - "I have fought worse than whatever is in that water."
       - "Don't worry, {player}. I know my way through the muck."
-      - "I took on three draugrs at once, once. Ask me how."
+      - "I took on three draugrs at once, once."
     Idle[biome=Mistlands]:
       - "Let whatever's out there come. I will find it by sound."
       - "I am not lost in the mist. I am scouting."
       - "Whatever is out there has not met me, {name}, yet."
       - "I think we should build a great hall here in the Mists, worthy of Valhalla."
+    Idle[time=night]:
+      - "The dark holds no fear for me. I am the interesting part of it."
+      - "Night suits me. Better lighting for my singing."
+      - "Anything out there in the dark is welcome to try, {player}."
 
   # Takes the job seriously.
   dutiful:
@@ -602,18 +671,32 @@ lines:
       - "Excellent. With {status} we are well prepared."
       - "Good team-work, {player}. Preparation is key."
       - "That {status} will keep the troops going."
+    Idle[home=yes]:
+      - "Perimeter's quiet. I will keep watching anyway."
+      - "Everything in its place. As it should be."
+      - "Rest while you can, {player}. I have the door."
+      - "Keep the fire going. Light keeps us safe."
     Idle[biome=Swamp]:
       - "Footing is poor. Watch your step, {player}."
       - "Visibility down. Closing up."
       - "As long as we are prepared, the swamp should be no issue for us."
       - "Keep on our task, and we'll have no issues with the swamp."
       - "Poison-resist potions are valuable here. You've got them, {player}?"
+    Idle[biome=Plains]:
+      - "The Fuling mages use fire magic. Have fire protection handy."
+      - "The Growths use poison, and slow you. Be vigilant. Avoid their attacks."
+      - "Deceptively calm, here in the plains. Be steady. Stay close."
     Idle[biome=Mistlands]:
       - "Visibility nil. Staying close."
       - "Report it if you hear that again."
       - "Holding formation. Such as it is."
       - "I suggest fire-resist potions if we encounter a Gjall."
       - "Be vigilant. Surprise is the enemy in the Mists."
+    Idle[time=night]:
+      - "Night watch. I have this side."
+      - "Nothing to report. Yet."
+      - "Keep the fire between us and the trees, {player}."
+      - "We would do well to return to camp soon."
 
   # Has done this too many times.
   veteran:
@@ -663,10 +746,18 @@ lines:
       - "Swamp. Of course it is."
       - "Nothing good was ever buried anywhere dry."
       - "Stay out of the water and you keep your feet."
+    Idle[biome=Plains]:
+      - "Going to take on a Fuling village, are we?"
+      - "Mmh. Lox roam these hills. I used to hunt them."
+      - "We could fashion a great hall in these parts, {player}."
     Idle[biome=Mistlands]:
       - "I have been somewhere like this. I did not care for it either."
       - "Don't chase what you can't see."
       - "The quiet is the bad part."
+    Idle[time=night]:
+      - "Long night."
+      - "Nothing good has ever happened to me at this hour."
+      - "Dark now. It'll be dark for a while."
     CompanionSummoned:
       - "Another one. Marvellous."
       - "Don't get comfortable, {companion}."

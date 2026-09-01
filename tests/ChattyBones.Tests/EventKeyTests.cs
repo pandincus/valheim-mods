@@ -78,6 +78,59 @@ namespace ChattyBones.Tests
             Assert.Contains("biome", problem);
         }
 
+        [Theory]
+        [InlineData("Idle[time=morning]", "time=morning")]
+        [InlineData("Idle[time=afternoon]", "time=afternoon")]
+        [InlineData("Idle[time=evening]", "time=evening")]
+        [InlineData("Idle[time=night]", "time=night")]
+        [InlineData("Idle[home=yes]", "home=yes")]
+        [InlineData("Idle[home=no]", "home=no")]
+        public void TheOtherContextsParseTheSameWay(string text, string expected)
+        {
+            Assert.True(EventKey.TryParse(text, out EventKey key, out _));
+
+            Assert.Equal(expected, key.Context);
+        }
+
+        [Theory]
+        [InlineData("Idle[time=noon]")]
+        [InlineData("Idle[time=dusk]")]
+        [InlineData("Idle[time=Night]")]
+        [InlineData("Idle[home=true]")]
+        [InlineData("Idle[home=Yes]")]
+        public void AValueOutsideAContextsVocabularyIsRefused(string text)
+        {
+            // The whole point of checking these here rather than at load: a value we
+            // can see is wrong is caught against the line of the file it came from.
+            // Capitals count, the same as they do everywhere else in a pack.
+            Assert.False(EventKey.TryParse(text, out _, out string problem));
+
+            Assert.Contains("is not one of the values", problem);
+        }
+
+        [Fact]
+        public void ARefusedValueSaysWhichOnesWouldHaveWorked()
+        {
+            Assert.False(EventKey.TryParse("Idle[time=noon]", out _, out string problem));
+
+            Assert.Contains("morning", problem);
+            Assert.Contains("afternoon", problem);
+            Assert.Contains("evening", problem);
+            Assert.Contains("night", problem);
+        }
+
+        [Fact]
+        public void ABiomeValueIsNotCheckedHere()
+        {
+            // Deliberately, and it is the one exception. The spellings are a Unity enum
+            // this assembly cannot see, so Contexts.Unusable catches a wrong one at
+            // load instead. A test rather than a comment because the asymmetry looks
+            // like an oversight.
+            Assert.True(EventKey.TryParse("Idle[biome=Swamps]", out EventKey key, out _));
+
+            Assert.Equal("biome=Swamps", key.Context);
+        }
+
         [Fact]
         public void TheSameGroupComparesEqualHoweverItWasBuilt()
         {

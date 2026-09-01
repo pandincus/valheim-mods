@@ -132,7 +132,9 @@ namespace ChattyBones
                 "These groups are tagged with something that is not a real value, so nothing"
                 + " will ever match them: " + string.Join(", ", bad)
                 + ". Biome names are the game's own spellings, like Meadows, BlackForest,"
-                + " Swamp, Mountain, Plains, Mistlands, AshLands and DeepNorth.");
+                + " Swamp, Mountain, Plains, Mistlands, AshLands and DeepNorth. None and"
+                + " All are real names in the game's list but no skeleton is ever standing"
+                + " in one - for lines that suit anywhere, write a plain group instead.");
         }
 
         /// <summary>Read the current config into a fresh settings object.</summary>
@@ -149,6 +151,61 @@ namespace ChattyBones
                 preemptGapSeconds: ModConfig.PreemptGapSeconds.Value,
                 speakerCooldownSeconds: ModConfig.SpeakerCooldownSeconds.Value,
                 squadEchoWindowSeconds: ModConfig.SquadEchoWindowSeconds.Value);
+        }
+
+        /// <summary>Say which group a speaker would draw from right now.</summary>
+        /// <returns>The group in words, or null when it has no lines for this event at all.</returns>
+        /// <param name="personality">The speaker's personality, or null if it has none yet.</param>
+        /// <param name="kind">The event to ask about.</param>
+        /// <param name="contexts">What the speaker currently satisfies, from <see cref="Contexts.For"/>.</param>
+        /// <remarks>
+        /// For <c>cb_who</c>, and it exists because the tie-break is deliberately silent:
+        /// two context groups can both match and the one written first wins, with nothing
+        /// said about the other. That is the rule we want, but it leaves an author whose
+        /// group never fires with nothing to go on - the same shape as the two silent
+        /// failures <c>cb_tokens</c> and <c>EventsWithNoLines</c> were built for.
+        ///
+        /// Here rather than in the command so the pack stays private. The command has no
+        /// business holding one, and this is the only question it needs answered.
+        /// </remarks>
+        internal static string DescribeChoice(
+            string personality, ChatterEvent kind, IReadOnlyList<string> contexts)
+        {
+            if (_pack == null
+                || !_pack.TryGetSpace(personality, kind, out LineSpace space)
+                || !space.TrySelect(contexts, out int offset, out int length))
+            {
+                return null;
+            }
+
+            // A personality with no lines of its own for this event is handed the shared
+            // space, and every group in *that* space is flagged Personal - the builder
+            // passes common's groups as both bands, so they land in the first one. So the
+            // flag alone answers "which band", not "whose lines", and HasOwnLines is what
+            // answers the question a person is actually asking. Without it cb_who called
+            // common's lines "its own" for nineteen of boastful's thirty-one events, and
+            // for every event of a skeleton with no personality yet.
+            bool ownSpace = _pack.HasOwnLines(personality, kind);
+
+            // Offset and length together, not offset alone. TrySelect has a fallback that
+            // hands back the whole numbering starting at 0, and group[0] also starts at 0,
+            // so matching on offset would report the first group and quietly swallow the
+            // one case worth seeing.
+            for (int i = 0; i < space.Groups.Count; i++)
+            {
+                LineSpace.Group group = space.Groups[i];
+
+                if (group.Offset != offset || group.Length != length)
+                {
+                    continue;
+                }
+
+                return (group.Context ?? "plain")
+                    + ", " + group.Length + (group.Length == 1 ? " line" : " lines")
+                    + ", " + (ownSpace && group.Personal ? "its own" : "shared");
+            }
+
+            return length + " lines, the whole numbering - which means nothing matched";
         }
 
         /// <summary>Pick up a config change without a restart.</summary>

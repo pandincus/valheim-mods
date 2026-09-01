@@ -21,18 +21,32 @@ namespace ChattyBones.Logic
     /// </remarks>
     internal readonly struct EventKey : IEquatable<EventKey>
     {
-        /// <summary>The context names a pack may filter on.</summary>
+        /// <summary>The context names a pack may filter on, and the values each takes.</summary>
         /// <remarks>
-        /// One for now. Each new context is a member here plus a resolver on the mod
-        /// side, which is what makes them additive - the parsing, the fallback chain and
-        /// the line numbering are all indifferent to which context is in play.
+        /// Each new context is a row here plus a resolver on the mod side, which is what
+        /// makes them additive - the parsing, the fallback chain and the line numbering
+        /// are all indifferent to which context is in play.
         ///
         /// An unknown name is refused rather than ignored. A pack that never fires is
         /// the failure this project keeps paying for, and a typo like
         /// <c>Idle[bioem=Swamp]</c> is exactly that failure with no symptom - so it is
         /// reported at load, where somebody can still see it.
+        ///
+        /// A null value set means "this half cannot check it". That is only
+        /// <c>biome</c>, whose spellings are a Unity enum this assembly deliberately
+        /// cannot see; the mod side catches those at load instead. Everywhere else the
+        /// vocabulary is a handful of plain words, and checking them here is worth
+        /// doing because a parse failure is reported against the line of the file it
+        /// came from - so <c>Idle[time=noon]</c> is refused at line 412 and told what
+        /// would have worked, rather than warned about after the whole file has been
+        /// read.
         /// </remarks>
-        private static readonly HashSet<string> KnownContexts = ["biome"];
+        private static readonly Dictionary<string, HashSet<string>> KnownContexts = new(StringComparer.Ordinal)
+        {
+            ["biome"] = null,
+            ["home"] = ["yes", "no"],
+            ["time"] = new HashSet<string>(TimeOfDay.All, StringComparer.Ordinal),
+        };
 
         /// <summary>Build a key. Private so that <see cref="TryParse"/> is the only way in.</summary>
         /// <param name="kind">The event.</param>
@@ -194,10 +208,10 @@ namespace ChattyBones.Logic
             string what = inside.Substring(0, equals).Trim();
             string value = inside.Substring(equals + 1).Trim();
 
-            if (!KnownContexts.Contains(what))
+            if (!KnownContexts.TryGetValue(what, out HashSet<string> allowed))
             {
                 problem = "'" + what + "' is not a context this version understands"
-                    + " (it knows: " + string.Join(", ", Sorted(KnownContexts)) + ")";
+                    + " (it knows: " + string.Join(", ", Sorted(KnownContexts.Keys)) + ")";
                 return false;
             }
 
@@ -207,17 +221,28 @@ namespace ChattyBones.Logic
                 return false;
             }
 
+            if (allowed != null && !allowed.Contains(value))
+            {
+                problem = "'" + value + "' is not one of the values '" + what + "' takes"
+                    + " (it takes: " + string.Join(", ", Sorted(allowed)) + ")";
+                return false;
+            }
+
             context = what + "=" + value;
             return true;
         }
 
-        /// <summary>The known context names in a stable order, for a message.</summary>
+        /// <summary>Names in a stable order, for a message.</summary>
         /// <returns>The names, sorted.</returns>
-        /// <param name="names">The set to sort.</param>
-        private static string[] Sorted(HashSet<string> names)
+        /// <param name="names">The names to sort.</param>
+        /// <remarks>
+        /// Sorted rather than written out in file order, because this is the one place
+        /// the reader is scanning for a word they expected to find and did not.
+        /// </remarks>
+        private static string[] Sorted(ICollection<string> names)
         {
             string[] all = new string[names.Count];
-            names.CopyTo(all);
+            names.CopyTo(all, 0);
             Array.Sort(all, StringComparer.Ordinal);
             return all;
         }
