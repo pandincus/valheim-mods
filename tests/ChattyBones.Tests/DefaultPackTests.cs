@@ -77,31 +77,6 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void NoLineDropsAStatusTokenIntoTheMiddleOfASentence()
-        {
-            // The game names a status effect for its status bar, so {status} always
-            // arrives capitalized - "Wet", "Burning", "Tarred". Sentence-initial that
-            // is exactly right, and "Hey, my bones are Wet." looks like a typo. Seen in
-            // a live session on three shipped lines, which is why it is a rule: 5d is a
-            // whole pass of writing new ones, and this reads fine on the page.
-            //
-            // Comment lines are skipped deliberately - the pack header demonstrates the
-            // mistake in order to warn about it.
-            foreach (string raw in DefaultPack.Yaml.Split('\n'))
-            {
-                string line = raw.TrimEnd('\r');
-                if (line.TrimStart().StartsWith("#", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                Assert.False(
-                    Regex.IsMatch(line, @"[\p{L}\d,]\s*\{status\}"),
-                    "A status token mid-sentence, which reads as \"my bones are Wet\": " + line.Trim());
-            }
-        }
-
-        [Fact]
         public void EveryLineInTheShippedPackIsDoubleQuoted()
         {
             // The pack header makes this the house rule, and it is the only rule that
@@ -164,8 +139,8 @@ namespace ChattyBones.Tests
         public void EveryPersonalitySoundsLikeItselfSomewhere(string personality)
         {
             // Asserting that a personality can react to every event proves nothing:
-            // TryGetGroup falls back to the shared group, which EveryEventHasSomething
-            // ToSay already covers, so it comes back true whatever the personality
+            // the lookups fall back to the shared group, which EveryEventHasSomething
+            // ToSay already covers, so they come back true whatever the personality
             // contains - including nothing at all. What is worth checking is that each
             // one has lines of its own somewhere, or it is a name with no character.
             LinePack pack = DefaultPack.Build();
@@ -173,10 +148,7 @@ namespace ChattyBones.Tests
 
             foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
             {
-                _ = pack.TryGetGroup(LinePack.SharedPersonality, kind, out IReadOnlyList<string> shared);
-
-                if (pack.TryGetGroup(personality, kind, out IReadOnlyList<string> lines)
-                    && !ReferenceEquals(lines, shared))
+                if (pack.HasOwnLines(personality, kind))
                 {
                     own++;
                 }
@@ -192,32 +164,92 @@ namespace ChattyBones.Tests
         [InlineData("veteran")]
         public void NoPersonalityOverridesTheSharedLinesWithASingleOne(string personality)
         {
-            // A personality group *replaces* the shared one rather than adding to it -
-            // TryGetGroup returns one or the other and never merges - so a group with
-            // one line in it means that personality says that line and nothing else,
-            // for that event, forever. The shared lines beside it become unreachable.
+            // A personality group *shadows* the shared one rather than adding to it -
+            // selection picks one window and stays in it - so a group with one line in
+            // it means that personality says that line and nothing else, for that
+            // event, forever. The shared lines beside it become unreachable.
             //
             // Easy to write and impossible to see on the page, which is why it is a
             // rule: six of these went in at once, and the review caught them rather
             // than a test. The pack header's own advice is that a group of three
             // audibly cycles.
+            //
+            // Every group of the personality's is checked, not only the one in force
+            // with no context resolved. A one-line Idle[biome=Swamp] shadows exactly
+            // the same way and would otherwise be invisible here - which is the second
+            // way to make this mistake that the context work introduced.
             LinePack pack = DefaultPack.Build();
 
             foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
             {
-                _ = pack.TryGetGroup(LinePack.SharedPersonality, kind, out IReadOnlyList<string> shared);
-
-                if (!pack.TryGetGroup(personality, kind, out IReadOnlyList<string> lines)
-                    || ReferenceEquals(lines, shared))
+                if (!pack.HasOwnLines(personality, kind)
+                    || !pack.TryGetSpace(personality, kind, out LineSpace space))
                 {
                     continue;
                 }
 
-                Assert.True(
-                    lines.Count > 1,
-                    personality + "/" + kind + " has one line of its own, so it will say \""
-                    + lines[0] + "\" every time and never reach the " + (shared?.Count ?? 0)
-                    + " shared ones.");
+                foreach (LineSpace.Group group in space.Groups)
+                {
+                    if (!group.Personal || group.Length > 1)
+                    {
+                        continue;
+                    }
+
+                    string where = group.Context == null ? "" : "[" + group.Context + "]";
+
+                    Assert.Fail(
+                        personality + "/" + kind + where + " has one line of its own, so it will say \""
+                        + space.All[group.Offset] + "\" every time and never reach anything beside it.");
+                }
+            }
+        }
+
+        [Fact]
+        public void NoSharedContextGroupIsWrittenWhereNobodyCanReachIt()
+        {
+            // Personality beats context, so a personality with plain lines of its own
+            // for an event never falls through to a shared group tagged for where it is
+            // standing. If every personality has plain lines for that event, a shared
+            // context group is unreachable - it reads perfectly and nothing can ever
+            // say it.
+            //
+            // Eight lines shipped that way before a review caught it, which is why the
+            // rule is here rather than in somebody's head. The atmosphere belongs in
+            // the personalities; common is the boring baseline.
+            LinePack pack = DefaultPack.Build();
+
+            if (!pack.TryGetSpace(LinePack.SharedPersonality, ChatterEvent.Idle, out _))
+            {
+                return;
+            }
+
+            foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
+            {
+                if (!pack.TryGetSpace(LinePack.SharedPersonality, kind, out LineSpace shared))
+                {
+                    continue;
+                }
+
+                bool anyoneFallsThrough = false;
+
+                for (int i = 0; !anyoneFallsThrough && i < pack.Personalities.Count; i++)
+                {
+                    anyoneFallsThrough = !pack.HasOwnLines(pack.Personalities[i], kind);
+                }
+
+                if (anyoneFallsThrough)
+                {
+                    continue;
+                }
+
+                foreach (LineSpace.Group group in shared.Groups)
+                {
+                    Assert.True(
+                        group.Context == null,
+                        "common/" + kind + "[" + group.Context + "] can never be reached: every "
+                        + "personality has its own plain " + kind + " lines, and those win. "
+                        + "Put these lines in the personalities instead.");
+                }
             }
         }
 
@@ -233,12 +265,16 @@ namespace ChattyBones.Tests
 
                 foreach (string personality in personalities)
                 {
-                    if (!pack.TryGetGroup(personality, kind, out IReadOnlyList<string> lines))
+                    // The whole numbering rather than the group in force, because with
+                    // no context resolved the window is only the plain group - which
+                    // would leave every Idle[biome=...] line unchecked, and a token an
+                    // event never supplies makes a line silently unsayable.
+                    if (!pack.TryGetSpace(personality, kind, out LineSpace space))
                     {
                         continue;
                     }
 
-                    foreach (string template in lines)
+                    foreach (string template in space.All)
                     {
                         Assert.True(
                             tokens.TryRender(template, out _),

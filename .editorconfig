@@ -68,6 +68,19 @@ dotnet_diagnostic.IDE0031.severity = none
 dotnet_diagnostic.IDE0029.severity = none
 dotnet_diagnostic.IDE0030.severity = none
 
+# Off because these two cannot be right for both projects at once. The test
+# project compiles the mod's Logic/ sources against net10, where s[^1] and
+# s[..n] are available, and offers them; the mod itself is net472, which has no
+# System.Index or System.Range, so applying the suggestion produces code that
+# builds in one project and fails in the other.
+#
+# This was known and written down as "write the index arithmetic out by hand" -
+# which does not work, because dotnet format puts the range syntax back on the
+# next run. It did exactly that twice in one sitting, over a comment saying not
+# to. A note cannot argue with a formatter; only this can.
+dotnet_diagnostic.IDE0056.severity = none
+dotnet_diagnostic.IDE0057.severity = none
+
 # ...and put them back for the Logic folders, which contain no Unity types at
 # all. Stated positively rather than relying on the glob above to miss them, so
 # that a new folder under src/<Mod>/ cannot quietly change what applies where.

@@ -23,6 +23,11 @@ with a roof and a fire and nothing hunting you. They will remark on what you pic
 up, what you eat, what you brew or cook at a cauldron, and what you are getting
 better at.
 
+Lines can also be attached to where the skeleton is standing. Write
+`Idle[biome=Swamp]` beside your ordinary `Idle` and those lines are used only in
+the Swamp, so a remark about the open sky stops turning up under the trees. Each
+personality has its own take on the Swamp and the Mistlands out of the box.
+
 Every line lives in `BepInEx/config/ChattyBones.lines.yaml`, written for you on
 first run and yours to rewrite. Edit it while the game is running and the change
 takes effect immediately — no restart, no leaving the world. A pack that will not

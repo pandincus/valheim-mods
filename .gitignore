@@ -24,3 +24,7 @@ dist/
 .idea/
 *.user
 *.suo
+
+# Captured BepInEx logs from play sessions, kept as evidence for the notes.
+# The live log is overwritten on every launch, so interesting ones get copied here.
+logs/
