@@ -75,30 +75,34 @@ namespace ChattyBones
         {
             Enabled = cfg.Bind(
                 "General", "Enabled", true,
+                new ConfigDescription(
                 "Master switch. Turn this off and your skeletons shut up completely - no " +
-                "speech, no idle chatter, nothing. Safe to flip while you are playing.");
+                "speech, no idle chatter, nothing. Safe to flip while you are playing.",
+                    null, At(100)));
 
             Bubble = cfg.Bind(
                 "Appearance", "BubbleStyle", BubbleStyle.FloatingText,
+                new ConfigDescription(
                 "How a line is drawn. FloatingText is the chat text that follows the " +
                 "skeleton's head, and is the default. DialoguePanel is the box the " +
                 "traders use - it does not follow the skeleton around, but it is built " +
                 "on the parts of the game that mods are meant to use, so it is there if " +
-                "a Valheim update ever breaks the other one.");
+                "a Valheim update ever breaks the other one.",
+                    null, At(100)));
 
             DialoguePanelSeconds = cfg.Bind(
                 "Appearance", "DialoguePanelSeconds", 5f,
                 new ConfigDescription(
                     "How long a DialoguePanel line stays up. Ignored by FloatingText, which " +
                     "uses Valheim's own chat timeout.",
-                    new AcceptableValueRange<float>(1f, 30f), "Advanced"));
+                    new AcceptableValueRange<float>(1f, 30f), Adv(70)));
 
             DialoguePanelCullDistance = cfg.Bind(
                 "Appearance", "DialoguePanelCullDistance", 20f,
                 new ConfigDescription(
                     "How far away you can be and still see a DialoguePanel line, in meters. " +
                     "Ignored by FloatingText.",
-                    new AcceptableValueRange<float>(5f, 100f), "Advanced"));
+                    new AcceptableValueRange<float>(5f, 100f), Adv(60)));
 
             TextHeight = cfg.Bind(
                 "Appearance", "TextHeight", 0.3f,
@@ -107,55 +111,69 @@ namespace ChattyBones
                     "the name label. 0.3 sits just clear of it; by 1.0 the text looks " +
                     "detached from whoever said it. 0 puts it exactly where Valheim puts a " +
                     "player's chat, which lands right on the name.",
-                    new AcceptableValueRange<float>(0f, 2f), "Advanced"));
+                    new AcceptableValueRange<float>(0f, 2f), Adv(80)));
 
             TextColor = cfg.Bind(
                 "Appearance", "TextColor", "",
+                new ConfigDescription(
                 "One color for everything the skeletons say, as a hex code like #C8FFC8. " +
                 "Leave it empty - which is the default - and the line pack decides " +
                 "instead, which is usually what you want: packs color by event, so a " +
                 "death cry reads as bad news before you have read a word of it. Set this " +
                 "to override the pack entirely. Accepts #RGB, #RRGGBB and #RRGGBBAA, and " +
-                "anything that is not a hex code is ignored with a note in the log.");
+                "anything that is not a hex code is ignored with a note in the log.",
+                    null, At(90)));
 
             ChatterFrequency = cfg.Bind(
                 "Chatter", "ChatterFrequency", ChatterAmount.Sometimes,
+                new ConfigDescription(
                 "How much the squad reacts to things - fights, weather, what you pick up, " +
                 "each other. Sometimes is what the mod ships with.\n" +
                 "Never leaves them reacting to nothing at all, which is not the same as " +
                 "silence: they will still mutter to themselves if IdleChatter lets them. " +
                 "Custom hands the decision to MinGapSeconds, SpeakerCooldownSeconds and " +
                 "SquadEchoWindowSeconds in the advanced settings, which are ignored until " +
-                "you pick it.");
+                "you pick it.\n" +
+                "This is also a ceiling on everything else: idle chatter passes the same " +
+                "gaps, so turning IdleChatter up past this will not get you any more of " +
+                "it. And it quiets other players' skeletons on your screen as well as " +
+                "your own - HearOthers is the switch for theirs alone.\n" +
+                "Advanced settings are behind the tick box at the top of the " +
+                "ConfigurationManager window.",
+                    null, At(100)));
 
             IdleChatter = cfg.Bind(
                 "Chatter", "IdleChatter", ChatterAmount.Sometimes,
+                new ConfigDescription(
                 "How often a skeleton with nothing happening says something anyway. Its own " +
                 "dial rather than part of the one above, because they are different " +
                 "complaints: a squad that talks over a fight and a squad that will not stop " +
                 "musing on the weather want opposite answers.\n" +
-                "Custom hands the decision to IdleSeconds in the advanced settings.");
+                "Custom hands the decision to IdleSeconds in the advanced settings. Either " +
+                "way this is held to the ceiling ChatterFrequency sets, so turning it up " +
+                "past that one makes no difference.",
+                    null, At(90)));
 
             SilencedEvents = cfg.Bind(
                 "Chatter", "SilencedEvents", "",
                 new ConfigDescription(
                     "Events to switch off completely, separated by commas - for example " +
                     "\"Weather, PlayerAte\". Everything else carries on as normal. The names " +
-                    "are the ones listed at the top of ChattyBones.lines.yaml, and anything " +
+                    "are the ones listed at the top of ChattyBones.lines.default.yaml, which is " +
+                    "rewritten every launch and always carries the table. Anything " +
                     "that is not one of them is reported in the log and otherwise ignored.\n" +
                     "Deleting an event from your line pack does the same thing and is the " +
                     "better move if you are editing the pack anyway. This is for when you " +
                     "are not.",
-                    null, "Advanced"));
+                    null, Adv(80)));
 
             MinGapSeconds = cfg.Bind(
                 "Chatter", "MinGapSeconds", 2.5f,
                 new ConfigDescription(
-                    "How long the whole squad stays quiet after any one of them speaks. This " +
-                    "is the main dial for how talkative they are: raise it if five skeletons " +
-                    "feel like a crowd, lower it if they feel asleep.\n" +
+                    "How long the whole squad stays quiet after any one of them speaks: raise " +
+                    "it if five skeletons feel like a crowd, lower it if they feel asleep.\n" +
                     "Only used when ChatterFrequency is Custom.",
-                    new AcceptableValueRange<float>(0f, 30f), "Advanced"));
+                    new AcceptableValueRange<float>(0f, 30f), Adv(95)));
 
             PreemptGapSeconds = cfg.Bind(
                 "Chatter", "PreemptGapSeconds", 0.5f,
@@ -163,7 +181,7 @@ namespace ChattyBones
                     "How long something important waits before cutting in on something " +
                     "trivial. Without a gap a death cry can land in the same frame as the " +
                     "idle mutter it interrupts, and two lines at once is two lines nobody reads.",
-                    new AcceptableValueRange<float>(0f, 10f), "Advanced"));
+                    new AcceptableValueRange<float>(0f, 10f), Adv(70)));
 
             SpeakerCooldownSeconds = cfg.Bind(
                 "Chatter", "SpeakerCooldownSeconds", 8f,
@@ -173,7 +191,7 @@ namespace ChattyBones
                     "each individual stays fairly quiet, which reads as several people rather " +
                     "than one person with a lot to say.\n" +
                     "Only used when ChatterFrequency is Custom.",
-                    new AcceptableValueRange<float>(0f, 120f), "Advanced"));
+                    new AcceptableValueRange<float>(0f, 120f), Adv(94)));
 
             SquadEchoWindowSeconds = cfg.Bind(
                 "Chatter", "SquadEchoWindowSeconds", 6f,
@@ -182,7 +200,7 @@ namespace ChattyBones
                     "Send five skeletons at one greydwarf and all five notice it inside the " +
                     "same second, so without this you get five near-identical lines at once.\n" +
                     "Only used when ChatterFrequency is Custom.",
-                    new AcceptableValueRange<float>(0f, 60f), "Advanced"));
+                    new AcceptableValueRange<float>(0f, 60f), Adv(93)));
 
             IdleSeconds = cfg.Bind(
                 "Chatter", "IdleSeconds", 45f,
@@ -191,7 +209,7 @@ namespace ChattyBones
                     "Scattered by a quarter either way, so a squad summoned together does not " +
                     "get bored together.\n" +
                     "Only used when IdleChatter is Custom.",
-                    new AcceptableValueRange<float>(5f, 600f), "Advanced"));
+                    new AcceptableValueRange<float>(5f, 600f), Adv(89)));
 
             SummonGreetingSeconds = cfg.Bind(
                 "Chatter", "SummonGreetingSeconds", 5f,
@@ -200,7 +218,7 @@ namespace ChattyBones
                     "time you walk back into their area, so this is what separates being " +
                     "raised from being reloaded. Only raise it if greetings are being missed " +
                     "on a slow machine.",
-                    new AcceptableValueRange<float>(1f, 60f), "Advanced"));
+                    new AcceptableValueRange<float>(1f, 60f), Adv(60)));
 
             HurtFraction = cfg.Bind(
                 "Chatter", "HurtFraction", 0.15f,
@@ -208,7 +226,7 @@ namespace ChattyBones
                     "How big a hit has to be before a skeleton mentions it, as a share of its " +
                     "own maximum health. At 0.15 it complains about anything taking a seventh " +
                     "of it; at 0.01 it complains about everything.",
-                    new AcceptableValueRange<float>(0.01f, 1f), "Advanced"));
+                    new AcceptableValueRange<float>(0.01f, 1f), Adv(50)));
 
             BigHitFraction = cfg.Bind(
                 "Chatter", "BigHitFraction", 0.15f,
@@ -219,37 +237,38 @@ namespace ChattyBones
                     "not quite finish the job.\n" +
                     "Being a share of the victim's health has an awkward consequence worth " +
                     "knowing before you tune it: the tougher the enemy, the harder it is to " +
-                    "impress anybody. At 0.15 a draugr with a hundred health notices anything " +
-                    "taking fifteen of it, while a troll's six hundred wants ninety - a real " +
-                    "two-handed swing - and a boss is out of reach at any setting you would " +
-                    "want. A hit that takes half a greydwarf usually kills it outright and is " +
-                    "counted as a kill instead. So the lines come from mid-sized enemies more " +
-                    "than from your best ones, and lowering this is what brings the big " +
-                    "creatures in at all.\n" +
-                    "0.15 is deliberately generous. How often you actually hear it is decided " +
+                    "impress anybody. At 0.15 they remark on anything taking fifteen of a " +
+                    "draugr's hundred health, while a troll's six hundred wants ninety - a " +
+                    "real two-handed swing. A hit that takes half a greydwarf usually kills " +
+                    "it outright and is counted as a kill instead. So the lines come from " +
+                    "mid-sized enemies more than from your best ones, and lowering this is " +
+                    "what brings the bigger creatures in.\n" +
+                    "It ships set low on purpose. How often you actually hear one is decided " +
                     "by the gaps the squad keeps anyway, so this only decides what counts.",
-                    new AcceptableValueRange<float>(0.01f, 1f), "Advanced"));
+                    new AcceptableValueRange<float>(0.01f, 1f), Adv(40)));
 
             HearOthers = cfg.Bind(
                 "Multiplayer", "HearOthers", true,
+                new ConfigDescription(
                 "Whether other players' skeletons talk on your screen. They only ever say " +
                 "what their own player's game decided they say - this side does no choosing " +
                 "at all - so switching it off is a statement about your screen rather than " +
                 "about their squad.\n" +
                 "Players without ChattyBones see nothing either way, and are told nothing: " +
                 "the mod writes what it needs into fields the game already syncs, and an " +
-                "unmodded client ignores a field it does not recognize.");
+                "unmodded client ignores a field it does not recognize.",
+                    null, At(100)));
 
             AllyGreetingDistance = cfg.Bind(
                 "Multiplayer", "AllyGreetingDistance", 15f,
                 new ConfigDescription(
                     "How close another player has to come to one of your skeletons before it " +
-                    "says hail, in metres. Measured from the skeletons rather than from you, " +
+                    "says hail, in meters. Measured from the skeletons rather than from you, " +
                     "so one told to hold position at home greets whoever walks past it. The " +
                     "same distance decides whether an ordinary line can use {ally}.\n" +
                     "Pairs with AllyGreetingForgetSeconds below: a large value here means a " +
                     "greeting from further off, not a greeting more often.",
-                    new AcceptableValueRange<float>(2f, 60f), "Advanced"));
+                    new AcceptableValueRange<float>(2f, 60f), Adv(90)));
 
             AllyGreetingForgetSeconds = cfg.Bind(
                 "Multiplayer", "AllyGreetingForgetSeconds", 60f,
@@ -261,17 +280,35 @@ namespace ChattyBones
                     "often than you would think, so err high. A greeting you did not get is " +
                     "a small loss; one you get every few minutes from the same person is the " +
                     "kind of line you stop hearing.",
-                    new AcceptableValueRange<float>(5f, 600f), "Advanced"));
+                    new AcceptableValueRange<float>(5f, 600f), Adv(80)));
 
             LogChatter = cfg.Bind(
                 "Debug", "LogChatter", false,
+                new ConfigDescription(
                 "Write a line to BepInEx/LogOutput.log every time a skeleton was about to say " +
                 "something, and what came of it - said, or turned down and by which check. " +
                 "Also records every time one loses sight of its target, with how stale that " +
                 "sighting was, which is what decides whether the kill gets mentioned at all.\n" +
                 "For working out why the squad is quieter than you expect. A refusal looks " +
                 "exactly like silence from outside, so without this there is nothing to go " +
-                "on. Off by default, and it is a lot of log.");
+                "on. Off by default, and it is a lot of log.",
+                    null, At(100)));
+        }
+
+        /// <summary>Where a visible setting sits in its section.</summary>
+        /// <returns>A tag for ConfigurationManager, ignored by everything else.</returns>
+        /// <param name="order">Higher comes first.</param>
+        private static ConfigurationManagerAttributes At(int order)
+        {
+            return new ConfigurationManagerAttributes { Order = order };
+        }
+
+        /// <summary>Where a setting sits, and that it is hidden until Advanced is ticked.</summary>
+        /// <returns>A tag for ConfigurationManager, ignored by everything else.</returns>
+        /// <param name="order">Higher comes first.</param>
+        private static ConfigurationManagerAttributes Adv(int order)
+        {
+            return new ConfigurationManagerAttributes { IsAdvanced = true, Order = order };
         }
     }
 }
