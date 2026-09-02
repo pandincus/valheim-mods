@@ -6,15 +6,15 @@ namespace ChattyBones.Tests
     /// Covers the one word a player picks, and the four numbers it stands for.
     /// </summary>
     /// <remarks>
-    /// The one worth reading is <see cref="SometimesIsExactlyWhatTheModShippedWith"/>.
-    /// Presets arrived after the numbers did, so the level that is the default has to
-    /// reproduce the old behaviour exactly - otherwise everybody's squad quietly
-    /// changes character on upgrade, and nothing in the config would say why.
+    /// The one worth reading is <see cref="SometimesIsTheRungTheOthersAreSpacedAround"/>.
+    /// Presets arrived after the numbers did, and Sometimes is those numbers. Pinning
+    /// it gives the ladder one rung that cannot drift, so a change to any other level
+    /// is a change against a fixed thing rather than against whatever it was last week.
     /// </remarks>
     public class ChatterPresetsTests
     {
         [Fact]
-        public void SometimesIsExactlyWhatTheModShippedWith()
+        public void SometimesIsTheRungTheOthersAreSpacedAround()
         {
             Assert.True(ChatterPresets.TryGaps(ChatterAmount.Sometimes, out ChatterGaps gaps));
 

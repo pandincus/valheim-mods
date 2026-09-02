@@ -14,7 +14,7 @@ namespace ChattyBones.Logic
         /// <summary>Now and then.</summary>
         Rarely,
 
-        /// <summary>The amount the mod shipped with.</summary>
+        /// <summary>The tuning every other rung was measured against.</summary>
         Sometimes,
 
         /// <summary>Chattier.</summary>
@@ -52,9 +52,11 @@ namespace ChattyBones.Logic
     /// has nothing on screen telling them why. So the numbers are consulted only under
     /// <see cref="ChatterAmount.Custom"/>, and every advanced description says so.
     ///
-    /// <see cref="ChatterAmount.Sometimes"/> is exactly what the mod shipped with -
-    /// 2.5, 8 and 6, and 45 seconds of idling. A player upgrading into presets should
-    /// not be able to hear the difference, and a test holds that.
+    /// <see cref="ChatterAmount.Sometimes"/> is 2.5, 8 and 6, and 45 seconds of idling -
+    /// the numbers the budget was built and played on before any of this existed, and
+    /// what every other rung was spaced around. A test pins it so the ladder keeps one
+    /// fixed rung. The shipped default is one step up at Often, which is a taste call
+    /// rather than a technical one.
     ///
     /// <b>The two dials are not equals, and the config says so.</b> These gaps come from
     /// the reactions dial alone, and every event passes them - idle mutter included - so

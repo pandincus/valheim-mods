@@ -125,7 +125,7 @@ namespace ChattyBones
                     null, At(90)));
 
             ChatterFrequency = cfg.Bind(
-                "Chatter", "ChatterFrequency", ChatterAmount.Sometimes,
+                "Chatter", "ChatterFrequency", ChatterAmount.Often,
                 new ConfigDescription(
                 "How much the squad reacts to things - fights, weather, what you pick up, " +
                 "each other. Sometimes is what the mod ships with.\n" +
@@ -133,7 +133,8 @@ namespace ChattyBones
                 "silence: they will still mutter to themselves if IdleChatter lets them. " +
                 "Custom hands the decision to MinGapSeconds, SpeakerCooldownSeconds and " +
                 "SquadEchoWindowSeconds in the advanced settings, which are ignored until " +
-                "you pick it.\n" +
+                "you pick it - and picking anything else writes them for you, so they always " +
+                "say what is actually in force.\n" +
                 "This is also a ceiling on everything else: idle chatter passes the same " +
                 "gaps, so turning IdleChatter up past this will not get you any more of " +
                 "it. And it quiets other players' skeletons on your screen as well as " +
@@ -168,11 +169,12 @@ namespace ChattyBones
                     null, Adv(80)));
 
             MinGapSeconds = cfg.Bind(
-                "Chatter", "MinGapSeconds", 2.5f,
+                "Chatter", "MinGapSeconds", 1.5f,
                 new ConfigDescription(
                     "How long the whole squad stays quiet after any one of them speaks: raise " +
                     "it if five skeletons feel like a crowd, lower it if they feel asleep.\n" +
-                    "Only used when ChatterFrequency is Custom.",
+                    "Set for you by ChatterFrequency, unless that is Custom. Changing this by hand " +
+                    "switches it to Custom.",
                     new AcceptableValueRange<float>(0f, 30f), Adv(95)));
 
             PreemptGapSeconds = cfg.Bind(
@@ -184,22 +186,24 @@ namespace ChattyBones
                     new AcceptableValueRange<float>(0f, 10f), Adv(70)));
 
             SpeakerCooldownSeconds = cfg.Bind(
-                "Chatter", "SpeakerCooldownSeconds", 8f,
+                "Chatter", "SpeakerCooldownSeconds", 5f,
                 new ConfigDescription(
                     "How long one skeleton waits before speaking again. Much longer than " +
                     "MinGapSeconds on purpose - the squad keeps a conversation going while " +
                     "each individual stays fairly quiet, which reads as several people rather " +
                     "than one person with a lot to say.\n" +
-                    "Only used when ChatterFrequency is Custom.",
+                    "Set for you by ChatterFrequency, unless that is Custom. Changing this by hand " +
+                    "switches it to Custom.",
                     new AcceptableValueRange<float>(0f, 120f), Adv(94)));
 
             SquadEchoWindowSeconds = cfg.Bind(
-                "Chatter", "SquadEchoWindowSeconds", 6f,
+                "Chatter", "SquadEchoWindowSeconds", 4f,
                 new ConfigDescription(
                     "How long one remark about a thing stops the others remarking on it too. " +
                     "Send five skeletons at one greydwarf and all five notice it inside the " +
                     "same second, so without this you get five near-identical lines at once.\n" +
-                    "Only used when ChatterFrequency is Custom.",
+                    "Set for you by ChatterFrequency, unless that is Custom. Changing this by hand " +
+                    "switches it to Custom.",
                     new AcceptableValueRange<float>(0f, 60f), Adv(93)));
 
             IdleSeconds = cfg.Bind(
@@ -208,7 +212,8 @@ namespace ChattyBones
                     "Roughly how often a skeleton with nothing to do says something anyway. " +
                     "Scattered by a quarter either way, so a squad summoned together does not " +
                     "get bored together.\n" +
-                    "Only used when IdleChatter is Custom.",
+                    "Set for you by IdleChatter, unless that is Custom. Changing this by hand " +
+                    "switches it to Custom.",
                     new AcceptableValueRange<float>(5f, 600f), Adv(89)));
 
             SummonGreetingSeconds = cfg.Bind(
@@ -293,6 +298,110 @@ namespace ChattyBones
                 "exactly like silence from outside, so without this there is nothing to go " +
                 "on. Off by default, and it is a lot of log.",
                     null, At(100)));
+        }
+
+        /// <summary>Keep the dials and the numbers telling the same story.</summary>
+        /// <remarks>
+        /// Called once, after <see cref="Init"/>. Picking a preset writes its numbers
+        /// into the advanced settings, so a player watching the panel sees the sliders
+        /// move and a player reading the .cfg never finds a value that is not in force.
+        /// Moving one of those sliders by hand sets the dial to Custom, which is the
+        /// same bargain every graphics menu makes and the reason nobody has to be told
+        /// about it.
+        ///
+        /// At startup the dial wins. A hand-edited number under a named preset cannot
+        /// be told apart from a hand-edited dial, and the dial is the one the player is
+        /// more likely to have meant - it is also the only reading under which the file
+        /// never displays a number that does nothing.
+        ///
+        /// The guard is load-bearing rather than defensive: writing a number raises
+        /// SettingChanged, which is the very thing that would flip the dial to Custom.
+        /// </remarks>
+        internal static void Wire()
+        {
+            ChatterFrequency.SettingChanged += (_, _) => PushReactions();
+            IdleChatter.SettingChanged += (_, _) => PushIdle();
+
+            MinGapSeconds.SettingChanged += (_, _) => NoticeReactionsEdited();
+            SpeakerCooldownSeconds.SettingChanged += (_, _) => NoticeReactionsEdited();
+            SquadEchoWindowSeconds.SettingChanged += (_, _) => NoticeReactionsEdited();
+            IdleSeconds.SettingChanged += (_, _) => NoticeIdleEdited();
+
+            PushReactions();
+            PushIdle();
+        }
+
+        /// <summary>Whether we are the ones moving a value right now.</summary>
+        private static bool _pushing;
+
+        /// <summary>Write the reactions preset into the three numbers it stands for.</summary>
+        private static void PushReactions()
+        {
+            if (_pushing || !ChatterPresets.TryGaps(ChatterFrequency.Value, out ChatterGaps gaps))
+            {
+                return;
+            }
+
+            _pushing = true;
+            try
+            {
+                MinGapSeconds.Value = gaps.MinGapSeconds;
+                SpeakerCooldownSeconds.Value = gaps.SpeakerCooldownSeconds;
+                SquadEchoWindowSeconds.Value = gaps.SquadEchoWindowSeconds;
+            }
+            finally
+            {
+                _pushing = false;
+            }
+        }
+
+        /// <summary>Write the idle preset into the one number it stands for.</summary>
+        private static void PushIdle()
+        {
+            if (_pushing || !ChatterPresets.TryIdleSeconds(IdleChatter.Value, out float seconds))
+            {
+                return;
+            }
+
+            _pushing = true;
+            try
+            {
+                IdleSeconds.Value = seconds;
+            }
+            finally
+            {
+                _pushing = false;
+            }
+        }
+
+        /// <summary>Move the reactions dial to Custom when the numbers no longer match it.</summary>
+        private static void NoticeReactionsEdited()
+        {
+            if (_pushing || !ChatterPresets.TryGaps(ChatterFrequency.Value, out ChatterGaps gaps))
+            {
+                return;
+            }
+
+            if (MinGapSeconds.Value != gaps.MinGapSeconds
+                || SpeakerCooldownSeconds.Value != gaps.SpeakerCooldownSeconds
+                || SquadEchoWindowSeconds.Value != gaps.SquadEchoWindowSeconds)
+            {
+                ChatterFrequency.Value = ChatterAmount.Custom;
+            }
+        }
+
+        /// <summary>Move the idle dial to Custom when its number no longer matches it.</summary>
+        private static void NoticeIdleEdited()
+        {
+            if (_pushing || !ChatterPresets.TryIdleSeconds(IdleChatter.Value, out float seconds))
+            {
+                return;
+            }
+
+            if (IdleSeconds.Value != seconds)
+            {
+                IdleChatter.Value = ChatterAmount.Custom;
+            }
         }
 
         /// <summary>Where a visible setting sits in its section.</summary>

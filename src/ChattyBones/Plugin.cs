@@ -48,6 +48,7 @@ namespace ChattyBones
         {
             Log = Logger;
             ModConfig.Init(Config);
+            ModConfig.Wire();
             Speech.Resolve();
 
             // Init reads a file and parses YAML, so unlike everything else here it can
