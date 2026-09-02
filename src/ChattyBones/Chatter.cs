@@ -149,9 +149,10 @@ namespace ChattyBones
         /// </remarks>
         private static ChatterSettings SettingsFromConfig()
         {
-            // Never falls through to the numbers along with Custom, and that costs
-            // nothing: it switches every event off below, so which gaps it would have
-            // kept between lines it is not going to say is not a question.
+            // Only Custom sends us to the numbers. Never used to as well, which was
+            // wrong twice over: it does not silence Idle, so those gaps still paced
+            // something, and every advanced description promises they are read under
+            // Custom alone.
             if (!ChatterPresets.TryGaps(ModConfig.ChatterFrequency.Value, out ChatterGaps gaps))
             {
                 gaps = new ChatterGaps(
@@ -183,16 +184,14 @@ namespace ChattyBones
         /// <summary>Every event switched off, whether by a dial or by name.</summary>
         /// <returns>The events that must never be spoken about.</returns>
         /// <remarks>
-        /// Two dials set to Never are the same thing as a long list, so they are folded
-        /// into one here rather than checked separately at the point of speaking.
-        /// Reactions Never leaves Idle alone on purpose: between them the two dials can
-        /// say "only mutter to yourselves" and "only speak when something happens",
-        /// which the master switch cannot.
+        /// The folding itself is <see cref="EventList.Silenced"/>, where a test can see
+        /// it. What is left here is reading the config and complaining about a typo,
+        /// neither of which one can be.
         /// </remarks>
         private static IReadOnlyList<ChatterEvent> Silenced()
         {
-            List<ChatterEvent> off =
-                [.. EventList.Parse(ModConfig.SilencedEvents.Value, out IReadOnlyList<string> unknown)];
+            IReadOnlyList<ChatterEvent> named =
+                EventList.Parse(ModConfig.SilencedEvents.Value, out IReadOnlyList<string> unknown);
 
             // Only when it changes. This runs again on every SettingChanged, and a
             // player fixing a typo should not be told off once per keystroke.
@@ -210,23 +209,8 @@ namespace ChattyBones
                 }
             }
 
-            if (ModConfig.IdleChatter.Value == ChatterAmount.Never && !off.Contains(ChatterEvent.Idle))
-            {
-                off.Add(ChatterEvent.Idle);
-            }
-
-            if (ModConfig.ChatterFrequency.Value == ChatterAmount.Never)
-            {
-                foreach (ChatterEvent kind in System.Enum.GetValues(typeof(ChatterEvent)))
-                {
-                    if (kind != ChatterEvent.Idle && !off.Contains(kind))
-                    {
-                        off.Add(kind);
-                    }
-                }
-            }
-
-            return off;
+            return EventList.Silenced(
+                ModConfig.ChatterFrequency.Value, ModConfig.IdleChatter.Value, named);
         }
 
         /// <summary>Say which group a speaker would draw from right now.</summary>

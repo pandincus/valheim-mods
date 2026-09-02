@@ -55,13 +55,23 @@ namespace ChattyBones.Logic
     /// <see cref="ChatterAmount.Sometimes"/> is exactly what the mod shipped with -
     /// 2.5, 8 and 6, and 45 seconds of idling. A player upgrading into presets should
     /// not be able to hear the difference, and a test holds that.
+    ///
+    /// <b>The two dials are not equals, and the config says so.</b> These gaps come from
+    /// the reactions dial alone, and every event passes them - idle mutter included - so
+    /// that dial is also a ceiling. Turning idle chatter up past it makes no difference:
+    /// Rarely reactions and Always idle gives roughly Rarely's rate, because each
+    /// skeleton is still held by a twenty-second cooldown. The useful direction works
+    /// exactly as it reads - turning idle down always makes them mutter less - and the
+    /// combination the ceiling spoils, quiet in a fight but chatty standing still, is a
+    /// strange thing to want. Giving idle its own gaps is the real fix and it is a
+    /// change to ChatterBudget, not to this table.
     /// </remarks>
     internal static class ChatterPresets
     {
         /// <summary>The gaps for one amount.</summary>
-        /// <returns>False for Never and Custom, which name no gaps.</returns>
+        /// <returns>False only for Custom, where the player's own numbers are wanted.</returns>
         /// <param name="amount">What the player picked.</param>
-        /// <param name="gaps">The three numbers, when there are three numbers.</param>
+        /// <param name="gaps">The three numbers, unless the answer is Custom.</param>
         /// <remarks>
         /// The echo window moves with the rest, which is not obvious - it is a dedup
         /// rule rather than a frequency. It belongs here because a player asking for
@@ -76,6 +86,12 @@ namespace ChattyBones.Logic
                     gaps = new ChatterGaps(6f, 20f, 12f);
                     return true;
 
+                // Never names the middle gaps rather than naming nothing. Its events are
+                // switched off elsewhere, so these only pace whatever is still allowed to
+                // speak - and falling through to the player's numbers would contradict
+                // every advanced description, each of which says those are read under
+                // Custom alone. An earlier version did exactly that.
+                case ChatterAmount.Never:
                 case ChatterAmount.Sometimes:
                     gaps = new ChatterGaps(2.5f, 8f, 6f);
                     return true;
@@ -88,7 +104,6 @@ namespace ChattyBones.Logic
                     gaps = new ChatterGaps(0.75f, 3f, 2f);
                     return true;
 
-                case ChatterAmount.Never:
                 case ChatterAmount.Custom:
                 default:
                     gaps = default;
@@ -97,9 +112,9 @@ namespace ChattyBones.Logic
         }
 
         /// <summary>How long a skeleton with nothing to do waits before saying something.</summary>
-        /// <returns>False for Never and Custom.</returns>
+        /// <returns>False only for Custom.</returns>
         /// <param name="amount">What the player picked.</param>
-        /// <param name="seconds">The idle interval, when there is one.</param>
+        /// <param name="seconds">The idle interval, unless the answer is Custom.</param>
         internal static bool TryIdleSeconds(ChatterAmount amount, out float seconds)
         {
             switch (amount)
@@ -108,6 +123,9 @@ namespace ChattyBones.Logic
                     seconds = 120f;
                     return true;
 
+                // Never, for the reason given on TryGaps: the Idle event is switched off,
+                // so this paces nothing, and it must still not reach for the Custom number.
+                case ChatterAmount.Never:
                 case ChatterAmount.Sometimes:
                     seconds = 45f;
                     return true;
@@ -120,7 +138,6 @@ namespace ChattyBones.Logic
                     seconds = 10f;
                     return true;
 
-                case ChatterAmount.Never:
                 case ChatterAmount.Custom:
                 default:
                     seconds = 0f;

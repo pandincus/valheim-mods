@@ -80,6 +80,73 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void WithBothDialsUpNothingIsSilencedButTheList()
+        {
+            IReadOnlyList<ChatterEvent> off = EventList.Silenced(
+                ChatterAmount.Often, ChatterAmount.Often, [ChatterEvent.Weather]);
+
+            Assert.Equal([ChatterEvent.Weather], off);
+        }
+
+        [Fact]
+        public void IdleNeverSilencesIdleAndNothingElse()
+        {
+            IReadOnlyList<ChatterEvent> off =
+                EventList.Silenced(ChatterAmount.Often, ChatterAmount.Never, []);
+
+            Assert.Equal([ChatterEvent.Idle], off);
+        }
+
+        [Fact]
+        public void ReactionsNeverLeavesIdleStanding()
+        {
+            // The whole point of two dials rather than one. "Only mutter to yourselves"
+            // is not reachable any other way - the master switch takes the lot.
+            IReadOnlyList<ChatterEvent> off =
+                EventList.Silenced(ChatterAmount.Never, ChatterAmount.Often, []);
+
+            Assert.DoesNotContain(ChatterEvent.Idle, off);
+
+            foreach (ChatterEvent kind in System.Enum.GetValues(typeof(ChatterEvent)))
+            {
+                if (kind != ChatterEvent.Idle)
+                {
+                    Assert.Contains(kind, off);
+                }
+            }
+        }
+
+        [Fact]
+        public void BothDialsAtNeverSilenceEverything()
+        {
+            IReadOnlyList<ChatterEvent> off =
+                EventList.Silenced(ChatterAmount.Never, ChatterAmount.Never, []);
+
+            foreach (ChatterEvent kind in System.Enum.GetValues(typeof(ChatterEvent)))
+            {
+                Assert.Contains(kind, off);
+            }
+        }
+
+        [Fact]
+        public void AnEventNamedTwiceOverIsStillListedOnce()
+        {
+            // The list and the dial can name the same event, and a duplicate would be
+            // harmless downstream - ChatterSettings copies into a set - but a caller
+            // reading this back deserves it to mean what it says.
+            IReadOnlyList<ChatterEvent> off =
+                EventList.Silenced(ChatterAmount.Often, ChatterAmount.Never, [ChatterEvent.Idle]);
+
+            Assert.Equal([ChatterEvent.Idle], off);
+        }
+
+        [Fact]
+        public void NothingNamedIsFine()
+        {
+            Assert.Empty(EventList.Silenced(ChatterAmount.Often, ChatterAmount.Often, null));
+        }
+
+        [Fact]
         public void EveryEventCanBeNamed()
         {
             // The list is only as good as the spellings the pack header advertises, so

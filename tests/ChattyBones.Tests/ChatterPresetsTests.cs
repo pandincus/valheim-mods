@@ -29,15 +29,30 @@ namespace ChattyBones.Tests
         // A loop rather than a Theory throughout this file: ChatterAmount is internal,
         // and a public test method taking one as a parameter will not compile.
         [Fact]
-        public void TheTwoThatNameNoNumbersSaySo()
+        public void OnlyCustomSendsYouToTheNumbers()
         {
-            // Both mean "do not read these", for opposite reasons - one is switched off
-            // and the other is deferring to the advanced settings. Neither can answer.
-            foreach (ChatterAmount amount in new[] { ChatterAmount.Never, ChatterAmount.Custom })
-            {
-                Assert.False(ChatterPresets.TryGaps(amount, out _), amount + " named gaps");
-                Assert.False(ChatterPresets.TryIdleSeconds(amount, out _), amount + " named an interval");
-            }
+            // Custom is the one answer that means "go and read the advanced settings",
+            // and it has to be the only one - every advanced description promises the
+            // player their numbers are read under Custom alone. Never used to come here
+            // too, which quietly made that promise false for anyone who had tuned them.
+            Assert.False(ChatterPresets.TryGaps(ChatterAmount.Custom, out _));
+            Assert.False(ChatterPresets.TryIdleSeconds(ChatterAmount.Custom, out _));
+
+            Assert.True(ChatterPresets.TryGaps(ChatterAmount.Never, out _));
+            Assert.True(ChatterPresets.TryIdleSeconds(ChatterAmount.Never, out _));
+        }
+
+        [Fact]
+        public void NeverPacesWhatIsLeftAtTheMiddleSetting()
+        {
+            // Its own events are switched off, but it does not silence idle chatter, so
+            // the gaps still pace something and must not be nothing.
+            Assert.True(ChatterPresets.TryGaps(ChatterAmount.Never, out ChatterGaps never));
+            Assert.True(ChatterPresets.TryGaps(ChatterAmount.Sometimes, out ChatterGaps middle));
+
+            Assert.Equal(middle.MinGapSeconds, never.MinGapSeconds);
+            Assert.Equal(middle.SpeakerCooldownSeconds, never.SpeakerCooldownSeconds);
+            Assert.Equal(middle.SquadEchoWindowSeconds, never.SquadEchoWindowSeconds);
         }
 
         [Fact]

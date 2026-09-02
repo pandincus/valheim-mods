@@ -63,6 +63,43 @@ namespace ChattyBones.Logic
             return found;
         }
 
+        /// <summary>Everything a player has switched off, by dial or by name.</summary>
+        /// <returns>The events that must never be spoken about.</returns>
+        /// <param name="reactions">The dial for everything that happens.</param>
+        /// <param name="idle">The dial for saying something anyway.</param>
+        /// <param name="named">Whatever <see cref="Parse"/> read out of the list.</param>
+        /// <remarks>
+        /// Two dials set to Never are the same thing as a long list, so they are folded
+        /// in here rather than checked again wherever a line is about to be said.
+        ///
+        /// Reactions at Never spares Idle deliberately. Between them the two dials can
+        /// then say "only mutter to yourselves" and "only speak when something happens",
+        /// and neither is reachable any other way - the master switch turns off the lot.
+        /// </remarks>
+        internal static IReadOnlyList<ChatterEvent> Silenced(
+            ChatterAmount reactions, ChatterAmount idle, IReadOnlyList<ChatterEvent> named)
+        {
+            List<ChatterEvent> off = named == null ? [] : [.. named];
+
+            if (idle == ChatterAmount.Never && !off.Contains(ChatterEvent.Idle))
+            {
+                off.Add(ChatterEvent.Idle);
+            }
+
+            if (reactions == ChatterAmount.Never)
+            {
+                foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
+                {
+                    if (kind != ChatterEvent.Idle && !off.Contains(kind))
+                    {
+                        off.Add(kind);
+                    }
+                }
+            }
+
+            return off;
+        }
+
         /// <summary>Whether this could be an event name at all.</summary>
         /// <returns>False for anything holding a digit or a sign.</returns>
         /// <param name="name">One trimmed piece of the player's list.</param>
