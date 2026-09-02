@@ -78,6 +78,91 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void NoWeaponTokenSitsOnABlowComingIn()
+        {
+            // Both weapon tokens are read from the attacker's hands, and a creature with
+            // no real weapon reports "sword" - so a skeleton torn apart by a greydwarf
+            // announced it had been "done in by the sword". That shipped in common/Died,
+            // where no personality shadowed it, and survived every test here.
+            //
+            // These four events still promise both tokens and that is not a
+            // contradiction: the grid says what the hooks can fill, this says where it
+            // reads well. They are the only place in the pack where the two differ.
+            string[] incoming = ["Hurt", "PlayerHurt", "CompanionHurt", "Died"];
+            HashSet<string> seen = [];
+            string current = null;
+
+            foreach (string raw in DefaultPack.Yaml.Split('\n'))
+            {
+                string line = raw.TrimEnd('\r');
+
+                if (Regex.IsMatch(line, @"^  [A-Za-z]+:\s*(#.*)?$"))
+                {
+                    current = null;
+                    continue;
+                }
+
+                // The trailing comment is not decoration. Without it a "Died:  # blows
+                // coming in" fails to match, current keeps whatever event came before,
+                // and the offending line is quietly checked against the wrong one - so
+                // the case this test was written for passes.
+                Match key = Regex.Match(line, @"^    ([A-Za-z]+)(\[[^\]]*\])?:\s*(#.*)?$");
+                if (key.Success)
+                {
+                    current = key.Groups[1].Value;
+                    _ = seen.Add(current);
+                    continue;
+                }
+
+                if (current == null || !line.TrimStart().StartsWith("- ", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                Assert.False(
+                    Array.IndexOf(incoming, current) >= 0 && Regex.IsMatch(line, @"\{weapon(type)?\}"),
+                    "A weapon token on a blow coming in, which names whatever hit us and "
+                    + "reads as \"done in by the sword\": " + current + " " + line.Trim());
+            }
+
+            // Scanning by hand means a reindent, or a shape this does not recognise,
+            // would leave it walking the file and examining nothing while still passing.
+            foreach (string kind in incoming)
+            {
+                Assert.Contains(kind, seen);
+            }
+        }
+
+        [Fact]
+        public void TheBareDamageTokenNeverTakesAnArticle()
+        {
+            // {damage} is one of eight bare words, and "blunt" and "pierce" are not nouns
+            // you can put "the" in front of - so "Mind the {damage}, {player}." reads in
+            // play as "Mind the pierce". Fifteen lines shipped that way at once and
+            // passed everything, because the fixture renders {damage} as "slash", which
+            // is a word they all happen to survive.
+            //
+            // Attributive is the fix and stays legal, so "the {damage} damage" and "the
+            // {damage} hit" are both fine and only the bare token is refused - hence any
+            // following word rather than a list of the nouns I happened to think of.
+            // Dialogue only: the header explains the rule by quoting the wrong version.
+            foreach (string raw in DefaultPack.Yaml.Split('\n'))
+            {
+                string line = raw.TrimEnd('\r');
+
+                if (!line.TrimStart().StartsWith("- ", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                Assert.False(
+                    Regex.IsMatch(line, @"\b[Tt]he \{damage\}(?! \w)"),
+                    "An article on the bare damage token, which reads as \"the pierce\": "
+                    + line.Trim());
+            }
+        }
+
+        [Fact]
         public void EveryLineInTheShippedPackIsDoubleQuoted()
         {
             // The pack header makes this the house rule, and it is the only rule that
@@ -367,7 +452,7 @@ namespace ChattyBones.Tests
 
             foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
             {
-                LineTokens tokens = TokensFor(kind);
+                LineTokens tokens = AnythingFor(kind);
 
                 foreach (string personality in personalities)
                 {
@@ -422,7 +507,7 @@ namespace ChattyBones.Tests
             {
                 Match match = Regex.Match(
                     raw.TrimEnd('\r'),
-                    @"^#   (\w+)\s+.*?([T.])  ([C.])  ([W.])  ([K.])  ([D.])  ([S.])  ([B.])  ([I.])  ([L.])$");
+                    @"^#   (\w+)\s+.*?([T.])  ([C.])  ([A.])  ([W.])  ([K.])  ([D.])  ([S.])  ([B.])  ([I.])  ([L.])$");
 
                 if (match.Success)
                 {
@@ -430,12 +515,13 @@ namespace ChattyBones.Tests
                     // still matches the pattern - the leading .*? absorbs it. So the
                     // width is asserted rather than assumed, or the one thing a reader
                     // checks this grid for by eye can rot unnoticed.
-                    Assert.Equal(80, match.Value.Length);
+                    Assert.Equal(83, match.Value.Length);
 
                     rows[match.Groups[1].Value] = string.Concat(
                         match.Groups[2].Value, match.Groups[3].Value, match.Groups[4].Value,
                         match.Groups[5].Value, match.Groups[6].Value, match.Groups[7].Value,
-                        match.Groups[8].Value, match.Groups[9].Value, match.Groups[10].Value);
+                        match.Groups[8].Value, match.Groups[9].Value, match.Groups[10].Value,
+                        match.Groups[11].Value);
                 }
             }
 
@@ -448,6 +534,7 @@ namespace ChattyBones.Tests
                 string expected = string.Concat(
                     Mark('T', tokens.TryRender("{target}", out _)),
                     Mark('C', tokens.TryRender("{companion}", out _)),
+                    Mark('A', tokens.TryRender("{ally}", out _)),
                     Mark('W', tokens.TryRender("{weapon}", out _)),
                     Mark('K', tokens.TryRender("{weapontype}", out _)),
                     Mark('D', tokens.TryRender("{damage}", out _)),
@@ -459,6 +546,31 @@ namespace ChattyBones.Tests
                 Assert.True(rows.ContainsKey(kind.ToString()), "No row in the pack header for " + kind + ".");
                 Assert.Equal(expected, rows[kind.ToString()]);
             }
+        }
+
+        /// <summary>Everything a line in this event could possibly be given.</summary>
+        /// <returns>The promised tokens, plus the two that any event can fill.</returns>
+        /// <param name="kind">The event being fired.</param>
+        /// <remarks>
+        /// A different question from <see cref="TokensFor"/>, and the two must not be
+        /// merged. That one asks what the event *guarantees*, which is what the pack
+        /// header's grid states. This asks what a line could ever be handed, which is
+        /// what decides whether a line in the shipped pack is sayable at all -
+        /// {companion} and {ally} are filled from whoever is standing about on every
+        /// event, so a line using either is fine anywhere and the grid still should not
+        /// claim it.
+        /// </remarks>
+        private static LineTokens AnythingFor(ChatterEvent kind)
+        {
+            LineTokens promised = TokensFor(kind);
+
+            return new LineTokens(
+                target: promised.Target,
+                player: promised.Player,
+                name: promised.Name,
+                companion: promised.Companion ?? "Gunnar",
+                ally: promised.Ally ?? "Sigrid",
+                details: promised.Details);
         }
 
         /// <summary>One cell of the grid.</summary>
@@ -489,6 +601,7 @@ namespace ChattyBones.Tests
                 player: "Ragnar",
                 name: "Botvid",
                 companion: Fill(promised, TokenSet.Companion, "Gunnar"),
+                ally: Fill(promised, TokenSet.Ally, "Sigrid"),
                 details: new LineDetails(
                     weapon: Fill(promised, TokenSet.Weapon, "Mistwalker"),
                     weaponType: Fill(promised, TokenSet.WeaponType, "sword"),

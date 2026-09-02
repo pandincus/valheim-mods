@@ -279,6 +279,128 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void AListenerLandsOnTheSameLineTheOwnerChose()
+        {
+            // The whole point of mirroring a line ref rather than an index: two clients
+            // with the same pack fold the same number to the same line, and neither has
+            // to know anything about the other's file.
+            LinePack.Builder builder = new();
+            builder.Add(Cowardly, ChatterEvent.Idle, "One.", "Two.", "Three.");
+
+            LinePack pack = builder.Build();
+            LineTokens tokens = Everything();
+
+            for (int lineRef = 0; lineRef < 30; lineRef++)
+            {
+                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, lineRef, out string chosen));
+                Assert.True(pack.TryPickRenderable(Cowardly, ChatterEvent.Idle, lineRef, tokens, out string heard));
+
+                Assert.Equal(chosen, heard);
+            }
+        }
+
+        [Fact]
+        public void ALineTheListenerCannotRenderSlidesOnToTheNextOne()
+        {
+            // The decision this method exists to implement. The owner had a {weapon} in
+            // hand and we do not, so rather than going silent we take the next line
+            // along. Two players read different bubbles over the same skeleton, which
+            // the design already accepts for two different packs - and silence is the
+            // failure this mod has paid for over and over.
+            LinePack.Builder builder = new();
+            builder.Add(Cowardly, ChatterEvent.Killed, "Down it goes, by the {weapon}.", "Down it goes.");
+
+            LinePack pack = builder.Build();
+            LineTokens missing = new(target: null, player: "Ragnar", name: "Botvid");
+
+            Assert.True(pack.TryPickRenderable(Cowardly, ChatterEvent.Killed, 0, missing, out string line));
+
+            Assert.Equal("Down it goes.", line);
+        }
+
+        [Fact]
+        public void AListenerWithNothingItCanRenderStaysQuiet()
+        {
+            // The one case where silence is right: every line in the space wants
+            // something this client could not work out. Walking further would only go
+            // round the same lines again.
+            LinePack.Builder builder = new();
+            builder.Add(Cowardly, ChatterEvent.Killed, "Got the {target}!", "{target} is down.");
+
+            LinePack pack = builder.Build();
+            LineTokens missing = new(target: null, player: "Ragnar", name: "Botvid");
+
+            Assert.False(pack.TryPickRenderable(Cowardly, ChatterEvent.Killed, 0, missing, out string line));
+            Assert.Null(line);
+        }
+
+        [Fact]
+        public void AListenerReachesTheContextGroupsToo()
+        {
+            // A listener never resolves a context - it has no idea whether the skeleton
+            // is in the Swamp - so it walks the whole numbering. The owner's line ref is
+            // counted against exactly that same list, which is what makes the two agree
+            // without the listener asking a single question about where anybody is.
+            LinePack.Builder builder = new();
+            builder.Add(Cowardly, Key("Idle[biome=Swamp]"), "I do not like it here.");
+            builder.Add(Cowardly, ChatterEvent.Idle, "Hmm.");
+
+            LinePack pack = builder.Build();
+            LineTokens tokens = Everything();
+
+            Assert.True(pack.TryPickRenderable(Cowardly, ChatterEvent.Idle, 0, tokens, out string first));
+            Assert.True(pack.TryPickRenderable(Cowardly, ChatterEvent.Idle, 1, tokens, out string second));
+
+            Assert.Equal("I do not like it here.", first);
+            Assert.Equal("Hmm.", second);
+        }
+
+        [Fact]
+        public void ANegativeLineRefFromAnotherClientDoesNotThrow()
+        {
+            // A packed counter above 127 sets the top bit, so line refs arriving from
+            // another machine really are negative, and C# gives a negative remainder
+            // for a negative operand. TryPick has the same test for the same reason.
+            LinePack.Builder builder = new();
+            builder.Add(Cowardly, ChatterEvent.Idle, "One.", "Two.");
+
+            LinePack pack = builder.Build();
+
+            Assert.True(pack.TryPickRenderable(Cowardly, ChatterEvent.Idle, -7, Everything(), out _));
+            Assert.True(pack.TryPickRenderable(Cowardly, ChatterEvent.Idle, int.MinValue, Everything(), out _));
+        }
+
+        /// <summary>Parse a tagged event key, failing the test if it will not.</summary>
+        /// <returns>The key.</returns>
+        /// <param name="text">Something like "Idle[biome=Swamp]".</param>
+        private static EventKey Key(string text)
+        {
+            Assert.True(EventKey.TryParse(text, out EventKey key, out string problem), problem);
+
+            return key;
+        }
+
+        /// <summary>Tokens with a value for everything, so only the walk is under test.</summary>
+        /// <returns>A full set.</returns>
+        private static LineTokens Everything()
+        {
+            return new LineTokens(
+                target: "Greydwarf",
+                player: "Ragnar",
+                name: "Botvid",
+                companion: "Gunnar",
+                ally: "Sigrid",
+                details: new LineDetails(
+                    weapon: "Mistwalker",
+                    weaponType: "sword",
+                    damage: "slash",
+                    status: "Burning",
+                    biome: "Black Forest",
+                    item: "Carrot Soup",
+                    skill: "Blocking"));
+        }
+
+        [Fact]
         public void AnEmptyPackIsUsableRatherThanBroken()
         {
             // What we hand out if the player's file is missing or unreadable. Every

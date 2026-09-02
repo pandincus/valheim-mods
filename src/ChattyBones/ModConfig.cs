@@ -46,6 +46,10 @@ namespace ChattyBones
         internal static ConfigEntry<float> HurtFraction;
         internal static ConfigEntry<float> BigHitFraction;
 
+        internal static ConfigEntry<bool> HearOthers;
+        internal static ConfigEntry<float> VisitorDistance;
+        internal static ConfigEntry<float> VisitorForgetSeconds;
+
         internal static ConfigEntry<bool> LogChatter;
 
         /// <summary>
@@ -182,6 +186,39 @@ namespace ChattyBones
                     "lower it - and expect the lines to come from mid-sized enemies rather " +
                     "than from your best swings.",
                     new AcceptableValueRange<float>(0.01f, 1f)));
+
+            HearOthers = cfg.Bind(
+                "Multiplayer", "HearOthers", true,
+                "Whether other players' skeletons talk on your screen. They only ever say " +
+                "what their own player's game decided they say - this side does no choosing " +
+                "at all - so switching it off is a statement about your screen rather than " +
+                "about their squad.\n" +
+                "Players without ChattyBones see nothing either way, and are told nothing: " +
+                "the mod writes what it needs into fields the game already syncs, and an " +
+                "unmodded client ignores a field it does not recognize.");
+
+            VisitorDistance = cfg.Bind(
+                "Multiplayer", "VisitorDistance", 15f,
+                new ConfigDescription(
+                    "How close another player has to come to one of your skeletons before it " +
+                    "says hail, in metres. Measured from the skeletons rather than from you, " +
+                    "so one told to hold position at home greets whoever walks past it. The " +
+                    "same distance decides whether an ordinary line can use {ally}.\n" +
+                    "Pairs with VisitorForgetSeconds below: a large value here means a " +
+                    "greeting from further off, not a greeting more often.",
+                    new AcceptableValueRange<float>(2f, 60f)));
+
+            VisitorForgetSeconds = cfg.Bind(
+                "Multiplayer", "VisitorForgetSeconds", 60f,
+                new ConfigDescription(
+                    "How long somebody has to stay out of range before the squad will greet " +
+                    "them again, in seconds. This is the dial that decides whether a greeting " +
+                    "is a welcome or a tic.\n" +
+                    "The two of you playing side by side will cross that boundary far more " +
+                    "often than you would think, so err high. A greeting you did not get is " +
+                    "a small loss; one you get every few minutes from the same person is the " +
+                    "kind of line you stop hearing.",
+                    new AcceptableValueRange<float>(5f, 600f)));
 
             LogChatter = cfg.Bind(
                 "Debug", "LogChatter", false,

@@ -61,7 +61,7 @@ namespace ChattyBones.Tests
         [Fact]
         public void SupplyingATokenOnceIsRememberedForTheRestOfTheSession()
         {
-            EventTokens.Note(ChatterEvent.Hurt, target: null, companion: null, FullHit());
+            EventTokens.Note(ChatterEvent.Hurt, target: null, companion: null, ally: null, FullHit());
 
             string hurt = LineFor(ChatterEvent.Hurt);
 
@@ -77,7 +77,7 @@ namespace ChattyBones.Tests
             // leaves the judgement to whoever is reading, because nothing in the data
             // separates "the hook stopped passing it" from "no hit has had one yet".
             EventTokens.Note(
-                ChatterEvent.Hurt, null, null, new LineDetails(weapon: "Mistwalker", weaponType: "sword"));
+                ChatterEvent.Hurt, null, null, null, new LineDetails(weapon: "Mistwalker", weaponType: "sword"));
 
             string hurt = LineFor(ChatterEvent.Hurt);
 
@@ -92,13 +92,17 @@ namespace ChattyBones.Tests
             // supplies it every time, so one sighting is conclusive where an absence
             // never is. It means the grid under-claims and authors are being told not
             // to write a line that would work.
+            //
+            // Looted rather than Idle, which is what this used to use. Idle no longer
+            // promises anything at all, so it has no row in the report to say this on.
             EventTokens.Note(
-                ChatterEvent.Idle, target: null, companion: "Gunnar", new LineDetails(status: "Burning"));
+                ChatterEvent.Looted, target: null, companion: null, ally: null,
+                new LineDetails(item: "$item_stone", status: "Burning"));
 
-            string idle = LineFor(ChatterEvent.Idle);
+            string looted = LineFor(ChatterEvent.Looted);
 
-            Assert.Contains("supplies unpromised {status}", idle, StringComparison.Ordinal);
-            Assert.DoesNotContain("never seen", idle, StringComparison.Ordinal);
+            Assert.Contains("supplies unpromised {status}", looted, StringComparison.Ordinal);
+            Assert.DoesNotContain("never seen", looted, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -139,7 +143,7 @@ namespace ChattyBones.Tests
                     continue;
                 }
 
-                EventTokens.Note(kind, "Greydwarf", "Gunnar", FullHit());
+                EventTokens.Note(kind, "Greydwarf", "Gunnar", "Sigrid", FullHit());
 
                 string line = LineFor(kind);
                 Assert.True(line != null, kind + " promises tokens but has no row in the report.");
@@ -152,8 +156,8 @@ namespace ChattyBones.Tests
         {
             // Unreachable from the mod, and the cost of being wrong is an
             // IndexOutOfRangeException thrown from inside a Harmony postfix.
-            EventTokens.Note((ChatterEvent)999, "Greydwarf", "Gunnar", FullHit());
-            EventTokens.Note((ChatterEvent)(-1), null, null, details: default);
+            EventTokens.Note((ChatterEvent)999, "Greydwarf", "Gunnar", "Sigrid", FullHit());
+            EventTokens.Note((ChatterEvent)(-1), null, null, null, details: default);
         }
 
         [Fact]
@@ -167,6 +171,7 @@ namespace ChattyBones.Tests
                 TokenSet.Target | TokenSet.Companion | TokenSet.Weapon | TokenSet.WeaponType,
                 EventTokens.PromisedFor(ChatterEvent.CompanionKilled));
 
+            Assert.Equal(TokenSet.Ally, EventTokens.PromisedFor(ChatterEvent.Visitor));
             Assert.Equal(TokenSet.Status, EventTokens.PromisedFor(ChatterEvent.Afflicted));
             Assert.Equal(TokenSet.Target, EventTokens.PromisedFor(ChatterEvent.PlayerParried));
             Assert.Equal(TokenSet.None, EventTokens.PromisedFor(ChatterEvent.PlayerDodged));
@@ -188,6 +193,58 @@ namespace ChattyBones.Tests
                 Assert.True(
                     (EventTokens.PromisedFor(kind) & TokenSet.Companion) != 0,
                     kind + " is a companion event but does not promise {companion}.");
+            }
+        }
+
+        [Fact]
+        public void OnlyTheArrivalEventNamesAParticularPlayer()
+        {
+            // {ally} can be written into any line at all - Chatter fills in whoever is
+            // standing nearby - so the flag here means something narrower: this event
+            // knows *which* player it is about, and the fallback must keep its hands
+            // off. Exactly one event is in that position, and a second one appearing
+            // without the fallback being taught about it would have a skeleton greeting
+            // a bystander.
+            foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
+            {
+                bool named = (EventTokens.PromisedFor(kind) & TokenSet.Ally) != 0;
+
+                Assert.Equal(kind == ChatterEvent.Visitor, named);
+            }
+        }
+
+        [Fact]
+        public void SomebodyIsFilledInOnlyWhereTheEventDoesNotNameOne()
+        {
+            // The rule Chatter acts on when it decides whether to reach for whoever is
+            // standing about. Getting it backwards is quiet and nasty: CompanionDied
+            // would mourn a living skeleton, with the right grammar and the wrong name.
+            Assert.False(EventTokens.ShouldFillIn(ChatterEvent.CompanionDied, TokenSet.Companion));
+            Assert.False(EventTokens.ShouldFillIn(ChatterEvent.CompanionKilled, TokenSet.Companion));
+            Assert.False(EventTokens.ShouldFillIn(ChatterEvent.Visitor, TokenSet.Ally));
+
+            // And the other way, which is what lets a token go in any line at all.
+            Assert.True(EventTokens.ShouldFillIn(ChatterEvent.Killed, TokenSet.Companion));
+            Assert.True(EventTokens.ShouldFillIn(ChatterEvent.Idle, TokenSet.Companion));
+            Assert.True(EventTokens.ShouldFillIn(ChatterEvent.Idle, TokenSet.Ally));
+            Assert.True(EventTokens.ShouldFillIn(ChatterEvent.PlayerHurt, TokenSet.Ally));
+        }
+
+        [Fact]
+        public void EveryEventEitherNamesSomebodyOrFillsThemIn()
+        {
+            // Belt and braces over the pair above: for both people tokens, every event
+            // is on exactly one side of the rule. A third state would mean an event
+            // that neither supplies a companion nor is allowed one, which is a line
+            // that can never be said and nothing to say why.
+            foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
+            {
+                foreach (TokenSet token in new[] { TokenSet.Companion, TokenSet.Ally })
+                {
+                    bool named = (EventTokens.PromisedFor(kind) & token) != 0;
+
+                    Assert.Equal(!named, EventTokens.ShouldFillIn(kind, token));
+                }
             }
         }
 

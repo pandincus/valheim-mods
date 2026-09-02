@@ -33,15 +33,19 @@ namespace ChattyBones.Patches
         }
 
         /// <summary>What to call this effect in a line.</summary>
-        /// <returns>Its localized name, or null when it has not got one.</returns>
+        /// <returns>Its name as a key, e.g. "$se_burning", or null when it has not got one.</returns>
         /// <param name="effect">The effect being added.</param>
         /// <remarks>
+        /// Unlocalized, like every other detail, so it can travel to the other players
+        /// who can see the skeleton and be resolved in their language rather than ours.
+        /// <see cref="Mirror.Localize"/> does that at the moment of speaking.
+        ///
         /// Null rather than empty, because only null makes LineTokens refuse the line -
         /// an unnamed effect would otherwise render "Ah. . Wonderful."
         /// </remarks>
         private static string Named(StatusEffect effect)
         {
-            string name = Localization.instance.Localize(effect.m_name);
+            string name = effect.m_name;
 
             return string.IsNullOrEmpty(name) ? null : name;
         }

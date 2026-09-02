@@ -327,6 +327,59 @@ namespace ChattyBones.Logic
             return true;
         }
 
+        /// <summary>Choose a line a line ref points at, and that we can actually say.</summary>
+        /// <returns>False when nothing in the whole space renders. See <see cref="TryGetSpace"/>.</returns>
+        /// <param name="personality">Which personality type is speaking.</param>
+        /// <param name="kind">What just happened.</param>
+        /// <param name="lineRef">The number off the wire. Folded, exactly as <see cref="TryPick"/> folds it.</param>
+        /// <param name="tokens">What this client was able to work out about the event.</param>
+        /// <param name="line">The finished line, tokens filled in.</param>
+        /// <remarks>
+        /// What a listening client runs. It starts where the line ref points and walks
+        /// on until something renders, which is the same walk
+        /// <see cref="LineChooser.TryChoose"/> does, minus the no-repeat memory - a
+        /// listener has no business having one, for the reason that class explains.
+        ///
+        /// **Walking on rather than falling silent is a decision, and it is worth being
+        /// clear about what it costs.** Two players watching the same skeleton can read
+        /// different bubbles: the owner had a {weapon} to hand and the listener did not,
+        /// so the listener slid on to the next line. The mod already accepts that for
+        /// two players with different packs - mirroring a line ref rather than an index
+        /// is precisely the decision that a listener resolves against its own file - so
+        /// this is the same trade in a smaller place. Set against it, silence is the
+        /// failure this mod has paid for over and over, and a skeleton that visibly
+        /// reacts to nothing while its owner hears it chattering is the worse of the
+        /// two bugs by a distance.
+        ///
+        /// It walks the whole space rather than a context window, because a listener
+        /// never resolves a context - see <see cref="LineSpace"/>.
+        /// </remarks>
+        internal bool TryPickRenderable(
+            string personality, ChatterEvent kind, int lineRef, LineTokens tokens, out string line)
+        {
+            line = null;
+
+            if (!TryGetSpace(personality, kind, out LineSpace space))
+            {
+                return false;
+            }
+
+            IReadOnlyList<string> all = space.All;
+            int count = space.Count;
+            int from = (int)((uint)lineRef % (uint)count);
+
+            for (int offset = 0; offset < count; offset++)
+            {
+                if (tokens.TryRender(all[(from + offset) % count], out line))
+                {
+                    return true;
+                }
+            }
+
+            line = null;
+            return false;
+        }
+
         /// <summary>
         /// Assembles a <see cref="LinePack"/> one group of lines at a time.
         /// </summary>

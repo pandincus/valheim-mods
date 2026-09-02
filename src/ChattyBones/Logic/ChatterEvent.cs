@@ -263,5 +263,23 @@ namespace ChattyBones.Logic
 
         /// <summary>You got better at something.</summary>
         PlayerSkilledUp,
+
+        /// <summary>Another player has come near.</summary>
+        /// <remarks>
+        /// The only event that does nothing whatever on your own, and the reason it
+        /// arrived alongside the mirroring rather than with the other world events: a
+        /// greeting one person can see is not a greeting. The visitor's client draws
+        /// it from the same broadcast, so "Hail, Hella!" floats over the skeleton for
+        /// Hella too.
+        ///
+        /// Fires on arrival and re-arms on leaving, so walking past a squad twice gets
+        /// two greetings and standing among them gets one.
+        ///
+        /// We send which player rather than what they are called, for the reason
+        /// <see cref="LineTokens"/> gives about tamed names - a player name is UGC and
+        /// the game filters it per user, so shipping the string would route around
+        /// somebody else's settings.
+        /// </remarks>
+        Visitor,
     }
 }

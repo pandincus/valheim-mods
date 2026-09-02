@@ -57,7 +57,8 @@ namespace ChattyBones.Tests
 
         private static LineTokens Full()
         {
-            return new LineTokens(target: "Greydwarf", player: "Ragnar", name: "Rattles", companion: "Bjorn");
+            return new LineTokens(
+                target: "Greydwarf", player: "Ragnar", name: "Rattles", companion: "Bjorn", ally: "Sigrid");
         }
 
         [Fact]
@@ -178,6 +179,25 @@ namespace ChattyBones.Tests
             LineTokens alone = new(target: "Greydwarf", player: "Ragnar", name: "Rattles");
 
             Assert.False(alone.TryRender("Ach, {companion}!", out _));
+        }
+
+        [Fact]
+        public void AnAllyIsNamedLikeAnyOtherToken()
+        {
+            Assert.True(Full().TryRender("Hail, {ally}.", out string line));
+            Assert.Equal("Hail, Sigrid.", line);
+        }
+
+        [Fact]
+        public void AnAllyLineWithNobodyThereIsRefused()
+        {
+            // The usual case, and the reason {ally} is safe to scatter through a pack:
+            // on your own nobody is ever nearby, so every line asking for one is passed
+            // over rather than rendered as "Hail, .". It is also how a listener behaves
+            // when the person being named is not loaded on their machine.
+            LineTokens alone = new(target: "Greydwarf", player: "Ragnar", name: "Rattles");
+
+            Assert.False(alone.TryRender("Hail, {ally}.", out _));
         }
 
         [Fact]

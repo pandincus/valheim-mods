@@ -505,6 +505,19 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void SayingHelloOutranksSmallTalkAndNothingElse()
+        {
+            // A greeting goes off if it is not said now, so it beats the housekeeping
+            // events it would otherwise queue behind. It stays under everything in a
+            // fight because a skeleton breaking off from a greydwarf to say hail reads
+            // as a bug rather than as manners.
+            Assert.True(CanInterrupt(ChatterEvent.Visitor, ChatterEvent.Buffed));
+            Assert.True(CanInterrupt(ChatterEvent.Visitor, ChatterEvent.Summoned));
+            Assert.True(CanInterrupt(ChatterEvent.RaidEnded, ChatterEvent.Visitor));
+            Assert.True(CanInterrupt(ChatterEvent.Hurt, ChatterEvent.Visitor));
+        }
+
+        [Fact]
         public void CatchingFireOutranksTheBlowThatCausedIt()
         {
             // Uniqueness alone left this rank free to move either way. Why it is above

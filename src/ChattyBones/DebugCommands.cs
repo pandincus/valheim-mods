@@ -39,6 +39,15 @@ namespace ChattyBones
                 isSecret: true);
 
             _ = new Terminal.ConsoleCommand(
+                "cb_mirror",
+                "draw the nearest skeleton's own broadcast back at you, the way another player would see it",
+                Broadcast,
+                isCheat: false,
+                isNetwork: false,
+                onlyServer: false,
+                isSecret: true);
+
+            _ = new Terminal.ConsoleCommand(
                 "cb_tokens",
                 "what each event promises, against what it has actually supplied",
                 Tokens,
@@ -46,6 +55,101 @@ namespace ChattyBones
                 isNetwork: false,
                 onlyServer: false,
                 isSecret: true);
+        }
+
+        /// <summary>Read a skeleton's broadcast and draw it the way a listener would.</summary>
+        /// <param name="args">Ignored.</param>
+        /// <remarks>
+        /// Testing the mirrored path properly needs two machines, and this is what gets
+        /// most of the way there on one. Everything after the ZDO is exercised: reading
+        /// the packed int back, unpacking the detail record, turning a prefab hash and
+        /// a ZDOID into names, folding the line ref against the pack, and walking on
+        /// when the line will not render. Only the replication itself is untested, and
+        /// that is the one part vanilla is doing rather than us.
+        ///
+        /// Aimed at your own skeleton on purpose, which means it draws over one you can
+        /// already hear. That is the point: say something, then run this, and the two
+        /// lines should agree - or differ in a way you can explain by a token this side
+        /// could not work out.
+        /// </remarks>
+        private static void Broadcast(Terminal.ConsoleEventArgs args)
+        {
+            if (Player.m_localPlayer == null)
+            {
+                args.Context.AddString("No player yet.");
+                return;
+            }
+
+            if (!Summons.TryFindNearest(Player.m_localPlayer.transform.position, SearchRadius, out Character skeleton))
+            {
+                args.Context.AddString("No summoned skeleton within " + SearchRadius + "m.");
+                return;
+            }
+
+            string name = Summons.NameOf(skeleton) ?? "It";
+            ChatterComponent chatter = skeleton.GetComponent<ChatterComponent>();
+
+            if (chatter == null)
+            {
+                args.Context.AddString(name + " has no chatter component.");
+                return;
+            }
+
+            if (!chatter.TryReadBroadcast(
+                    out Utterance said, out LineDetails details, out ZDOID companion, out ZDOID ally))
+            {
+                args.Context.AddString(name + " has not said anything yet - nothing to mirror.");
+                return;
+            }
+
+            args.Context.AddString(
+                name + " is broadcasting " + said.Kind + " #" + said.Counter
+                + ", line ref " + said.LineRef
+                + ", about " + (said.Subject == 0 ? "nothing" : Mirror.CreatureName(said.Subject) ?? "an unknown prefab")
+                + ", to " + Who(companion, ally));
+
+            args.Context.AddString("    details: " + Describe(details));
+
+            Chatter.Hear(chatter, said, details, companion, ally);
+        }
+
+        /// <summary>Name whoever an utterance was addressed to.</summary>
+        /// <returns>The people it named, or a note that it named none.</returns>
+        /// <param name="companion">The skeleton field.</param>
+        /// <param name="ally">The player field.</param>
+        private static string Who(ZDOID companion, ZDOID ally)
+        {
+            List<string> named = [];
+
+            if (companion != ZDOID.None)
+            {
+                named.Add("companion " + (Mirror.NameFor(companion) ?? "not loaded here"));
+            }
+
+            if (ally != ZDOID.None)
+            {
+                named.Add("ally " + (Mirror.NameFor(ally) ?? "not loaded here"));
+            }
+
+            return named.Count == 0 ? "nobody" : string.Join(", ", named);
+        }
+
+        /// <summary>Spell a detail record out for the console.</summary>
+        /// <returns>The fields that have something in them, or a note that none do.</returns>
+        /// <param name="details">Straight off the wire, so keys rather than words.</param>
+        private static string Describe(LineDetails details)
+        {
+            List<string> had = [];
+
+            if (details.Weapon != null) { had.Add("weapon=" + details.Weapon); }
+            if (details.WeaponType != null) { had.Add("weapontype=" + details.WeaponType); }
+            if (details.Damage != null) { had.Add("damage=" + details.Damage); }
+            if (details.Status != null) { had.Add("status=" + details.Status); }
+            if (details.Biome != null) { had.Add("biome=" + details.Biome); }
+            if (details.Item != null) { had.Add("item=" + details.Item); }
+            if (details.Skill != null) { had.Add("skill=" + details.Skill); }
+
+            return had.Count == 0 ? "none" : string.Join(", ", had);
         }
 
         /// <summary>Show what the hooks have really been handing over.</summary>

@@ -20,6 +20,14 @@ namespace ChattyBones.Logic
         /// <summary>{companion} - another of your skeletons.</summary>
         Companion = 2,
 
+        /// <summary>{ally} - a particular other player, named by the event.</summary>
+        /// <remarks>
+        /// Out of numerical order, and it has to be: these are the bits of a packed
+        /// set, so slotting a new flag in beside its relatives would renumber every
+        /// one above it. The same argument as ChatterEvent's, for the same reason.
+        /// </remarks>
+        Ally = 512,
+
         /// <summary>{weapon} - the weapon's own name.</summary>
         Weapon = 4,
 
@@ -56,9 +64,9 @@ namespace ChattyBones.Logic
     ///
     /// An earlier version tried to report the disagreement by itself, as a warning in
     /// the log. Two reviews and a run of the real code killed it: a promised token can
-    /// be legitimately absent for the whole session, and the two cases the pack header
-    /// names as normal - a lone skeleton's Idle having no {companion}, a killer that
-    /// was not a Humanoid leaving no {weapon} - both fire reliably in ordinary play.
+    /// be legitimately absent for the whole session, and the case the pack header names
+    /// as normal - a killer that was not a Humanoid leaving no {weapon} - fires
+    /// reliably in ordinary play.
     /// Counting firings first only moved the false accusation later, because nothing
     /// in a count separates "the hook stopped passing it" from "the game never
     /// produces one here". So the judgement is left to a person, who has the context
@@ -73,6 +81,19 @@ namespace ChattyBones.Logic
         /// Grouped rather than listed per event because the grouping is the reasoning:
         /// a live blow can be described in full, a kill knows only what the killer was
         /// holding, and everything else is about people.
+        ///
+        /// **Companion and Ally mean something stronger here than the rest do.** Both
+        /// can be filled on any event at all - a skeleton standing next to another one
+        /// can name it in an idle mutter or in a line about you being hurt - so listing
+        /// them would be pointless if the flag only meant "can be filled". What the
+        /// flag means for those two is that the event supplies a *particular* person,
+        /// the one it is about, and that Chatter must therefore not fall back to
+        /// whoever happens to be nearby.
+        ///
+        /// That distinction is doing real work. Without it, a CompanionDied whose hook
+        /// stopped handing over the fallen skeleton would quietly name a living one -
+        /// "Oh no, Bjorn!" with Bjorn standing right there - instead of passing the
+        /// line over and being noticed.
         /// </remarks>
         internal static TokenSet PromisedFor(ChatterEvent kind)
         {
@@ -93,12 +114,14 @@ namespace ChattyBones.Logic
                 set |= TokenSet.Target;
             }
 
-            // Idle is in the list on purpose - they rib each other by name.
+            // Idle used to be in this list and is deliberately not any more. It was
+            // here because its hook passes a random other skeleton, which is now what
+            // every event gets for free - so listing it claimed something stronger than
+            // was true and made the flag mean two things at once.
             if (kind is ChatterEvent.CompanionHurt
                 or ChatterEvent.CompanionKilled
                 or ChatterEvent.CompanionDied
-                or ChatterEvent.CompanionSummoned
-                or ChatterEvent.Idle)
+                or ChatterEvent.CompanionSummoned)
             {
                 set |= TokenSet.Companion;
             }
@@ -148,20 +171,50 @@ namespace ChattyBones.Logic
                 set |= TokenSet.Skill;
             }
 
+            if (kind == ChatterEvent.Visitor)
+            {
+                set |= TokenSet.Ally;
+            }
+
             return set;
+        }
+
+        /// <summary>Whether a token may be filled in from whoever is standing about.</summary>
+        /// <returns>True when the event does not name somebody itself.</returns>
+        /// <param name="kind">The event being fired.</param>
+        /// <param name="token">
+        /// <see cref="TokenSet.Companion"/> or <see cref="TokenSet.Ally"/>. Asking about
+        /// a detail token answers true and means nothing - nothing fills a weapon in
+        /// from its surroundings.
+        /// </param>
+        /// <remarks>
+        /// The rule <see cref="PromisedFor"/> exists to state, given a name so that the
+        /// call site reads as the rule rather than as a bit test - and so that a test
+        /// can hold it, which a branch buried in a Unity class cannot be.
+        ///
+        /// Getting this backwards is the expensive mistake: filling in where the event
+        /// named somebody would have CompanionDied mourn a skeleton that is still
+        /// standing, quietly and with the right grammar.
+        /// </remarks>
+        internal static bool ShouldFillIn(ChatterEvent kind, TokenSet token)
+        {
+            return (PromisedFor(kind) & token) == 0;
         }
 
         /// <summary>What a call site actually handed over.</summary>
         /// <returns>The tokens with a value in them.</returns>
         /// <param name="target">The localized creature name, or null.</param>
         /// <param name="companion">The companion's name, or null.</param>
+        /// <param name="ally">The other player's name, or null.</param>
         /// <param name="details">Everything describing the event itself.</param>
-        internal static TokenSet SuppliedBy(string target, string companion, LineDetails details)
+        internal static TokenSet SuppliedBy(
+            string target, string companion, string ally, LineDetails details)
         {
             TokenSet set = TokenSet.None;
 
             if (target != null) { set |= TokenSet.Target; }
             if (companion != null) { set |= TokenSet.Companion; }
+            if (ally != null) { set |= TokenSet.Ally; }
             if (details.Weapon != null) { set |= TokenSet.Weapon; }
             if (details.WeaponType != null) { set |= TokenSet.WeaponType; }
             if (details.Damage != null) { set |= TokenSet.Damage; }
@@ -190,19 +243,21 @@ namespace ChattyBones.Logic
         /// <param name="kind">The event being fired.</param>
         /// <param name="target">The localized creature name, or null.</param>
         /// <param name="companion">The companion's name, or null.</param>
+        /// <param name="ally">The other player's name, or null.</param>
         /// <param name="details">Everything describing the event itself.</param>
         /// <remarks>
         /// One array write, so it runs whether or not logging is switched on - the
         /// point of the report is to be able to ask after something looked wrong,
         /// which is too late to start collecting.
         /// </remarks>
-        internal static void Note(ChatterEvent kind, string target, string companion, LineDetails details)
+        internal static void Note(
+            ChatterEvent kind, string target, string companion, string ally, LineDetails details)
         {
             int i = (int)kind;
 
             if (i >= 0 && i < Seen.Length)
             {
-                Seen[i] |= SuppliedBy(target, companion, details);
+                Seen[i] |= SuppliedBy(target, companion, ally, details);
             }
         }
 
@@ -310,10 +365,10 @@ namespace ChattyBones.Logic
             return highest;
         }
 
-        /// <summary>Every flag except None, in declaration order.</summary>
+        /// <summary>Every flag except None, smallest bit first.</summary>
         /// <remarks>
-        /// Derived rather than hand-listed, so a seventh flag added to TokenSet cannot
-        /// quietly drop out of every message it appears in.
+        /// Derived rather than hand-listed, so a flag added to TokenSet cannot quietly
+        /// drop out of every message it appears in.
         /// </remarks>
         private static readonly TokenSet[] AllTokens = BuildAllTokens();
 

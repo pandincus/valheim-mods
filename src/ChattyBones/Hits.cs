@@ -91,16 +91,21 @@ namespace ChattyBones
             return weapon?.m_shared == null ? null : NameOf(weapon);
         }
 
-        /// <summary>An item's own name, localized.</summary>
-        /// <returns>Something like "Mistwalker", or null when it has not got one.</returns>
+        /// <summary>An item's own name, as the key rather than the words.</summary>
+        /// <returns>Something like "$item_sword_mistwalker", or null when it has not got one.</returns>
         /// <param name="item">The item to name.</param>
         /// <remarks>
+        /// Unlocalized on purpose, and every other detail is the same. The key is what
+        /// travels to the other players who can see the skeleton, so each of them
+        /// resolves it in their own language - see <see cref="DetailWire"/>.
+        /// <see cref="Mirror.Localize"/> turns it into words at the moment of speaking.
+        ///
         /// Null rather than empty, so LineTokens passes the line over rather than
         /// rendering a hole - the same reason as SEManPatches.Named.
         /// </remarks>
         private static string NameOf(ItemDrop.ItemData item)
         {
-            string name = Localization.instance.Localize(item.m_shared.m_name);
+            string name = item.m_shared.m_name;
 
             return string.IsNullOrEmpty(name) ? null : name;
         }

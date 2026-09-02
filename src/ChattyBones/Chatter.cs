@@ -29,6 +29,9 @@ namespace ChattyBones
         /// <summary>Seconds of game time left to run before the sweep fires again.</summary>
         private static float _untilSweep;
 
+        /// <summary>Whether the mod was switched on the last time we looked.</summary>
+        private static bool _wasEnabled = true;
+
         /// <summary>How often we look at what the skeletons are doing.</summary>
         /// <remarks>
         /// Four times a second. Target changes and kills have no event to hang off -
@@ -237,6 +240,11 @@ namespace ChattyBones
         /// asked any more. Wins over <paramref name="companion"/> when supplied.
         /// </param>
         /// <param name="details">What is known about the event itself. Usually nothing.</param>
+        /// <param name="ally">
+        /// The particular other player the event is about, for the events that name
+        /// one. Left null everywhere else, where whoever is standing nearby is filled
+        /// in instead.
+        /// </param>
         /// <remarks>
         /// Three ways to come back false, and all three are ordinary: the budget said
         /// no, the pack had nothing sayable, or the world is not in a state to draw.
@@ -259,7 +267,8 @@ namespace ChattyBones
             string targetName,
             Character companion,
             string companionName = null,
-            LineDetails details = default)
+            LineDetails details = default,
+            Player ally = null)
         {
             if (!ModConfig.Enabled.Value || speaker == null || _budget == null)
             {
@@ -290,24 +299,60 @@ namespace ChattyBones
                 return false;
             }
 
-            // Built only once the budget has said yes. Summons.NameOf costs two ZDO
-            // reads and a filter pass, and the refusal path is much the busier one.
+            // Everything below is built only once the budget has said yes. Summons.NameOf
+            // costs two ZDO reads and a filter pass, and the refusal path is much the
+            // busier one.
             //
-            // companionName wins when supplied, for a companion that is not around to
-            // be asked any more - a skeleton being mourned is destroyed moments later,
-            // so its name has to be taken while it is still standing.
+            // Whoever the hook itself named. companionName wins when supplied, for a
+            // companion that is not around to be asked any more - a skeleton being
+            // mourned is destroyed moments later, so its name has to be taken while it
+            // is still standing.
+            string namedCompanion = companionName ?? Summons.NameOf(companion);
+            string namedAlly = Mirror.PlayerName(ally);
+
+            // Noted before anything is filled in, because cb_tokens is asking what the
+            // call site handed over. Recording the filled-in values would have every
+            // event in the mod reporting that it supplies {companion}, which is no
+            // report at all.
+            EventTokens.Note(kind, targetName, namedCompanion, namedAlly, details);
+
+            // Somebody to talk to, where the event has not named one itself. This is
+            // what lets "{companion}, with me!" go in a line about you being hurt, and
+            // "How are things, {ally}?" in an idle mutter - both are passed over
+            // whenever there is nobody about, which is most of the time.
+            //
+            // Deliberately not done for the events PromisedFor marks. There the hook
+            // names a *particular* person, and a fallback would name the wrong one - a
+            // CompanionDied whose hook broke would mourn a skeleton still standing
+            // rather than falling quiet and being noticed.
+            Character talkingTo = companion;
+            if (EventTokens.ShouldFillIn(kind, TokenSet.Companion))
+            {
+                talkingTo = AnotherOf(speaker);
+                namedCompanion = Summons.NameOf(talkingTo);
+            }
+
+            Player nearby = ally;
+            if (EventTokens.ShouldFillIn(kind, TokenSet.Ally))
+            {
+                nearby = Visitors.Nearby(character.transform.position);
+                namedAlly = Mirror.PlayerName(nearby);
+            }
+
             LineTokens tokens = new(
                 target: targetName,
-                player: Player.m_localPlayer == null ? null : Player.m_localPlayer.GetPlayerName(),
+                // Through the same GetHoverName the listening side uses, so both screens
+                // read the same name. It is the game's own UGC filter, and it applies to
+                // your own name as much as to anybody else's.
+                player: Mirror.PlayerName(Player.m_localPlayer),
                 name: Summons.NameOf(character),
-                companion: companionName ?? (companion == null ? null : Summons.NameOf(companion)),
-                details: details);
+                companion: namedCompanion,
+                ally: namedAlly,
 
-            // Keep a note of what this hook actually handed over, for cb_tokens. One
-            // array write, and it runs whether or not logging is on: the report is for
-            // asking after something looked wrong, which is too late to start
-            // collecting.
-            EventTokens.Note(kind, tokens.Target, tokens.Companion, details);
+                // Words here, keys on the wire. The hooks record a localization key so
+                // that the same broadcast reads in everybody's own language - see
+                // Mirror and Logic/DetailWire.
+                details: Mirror.Localize(details));
 
             if (!_chooser.TryChoose(
                     _pack, speaker.Personality, kind, tokens, _random,
@@ -324,10 +369,107 @@ namespace ChattyBones
             }
 
             _budget.Commit(speakerId, kind, subject, now);
-            speaker.OnSpoke(kind, lineRef, subject);
+
+            // The unlocalized details, not the ones we just said. Everything after this
+            // point is for the other clients, and they do their own localizing. The two
+            // identities are whoever we settled on above, fallback included, so a
+            // listener names the same people rather than choosing its own.
+            speaker.OnSpoke(kind, lineRef, subject, IdOf(talkingTo), IdOf(nearby), details);
 
             Trace(speaker, kind, "said \"" + line + "\"");
 
+            return true;
+        }
+
+        /// <summary>Somebody's identity, for the clients that have to name them too.</summary>
+        /// <returns>Their ZDOID, or <c>ZDOID.None</c> when there is nobody.</returns>
+        /// <param name="who">A skeleton or a player. Null is fine.</param>
+        /// <remarks>
+        /// Player derives from Character, so one method serves both of the fields an
+        /// utterance carries.
+        ///
+        /// A skeleton being mourned is the one case that regularly answers None:
+        /// Character.OnDeath has already reset its ZDO by the time the squad speaks, so
+        /// there is no identity left to send. Listeners then fall through to a line
+        /// that does not name anybody, which is the right shape for a death nobody else
+        /// can see the body of.
+        /// </remarks>
+        private static ZDOID IdOf(Character who)
+        {
+            return who == null ? ZDOID.None : who.GetZDOID();
+        }
+
+        /// <summary>Draw a line somebody else's skeleton has just said.</summary>
+        /// <returns>True when something actually reached the screen.</returns>
+        /// <param name="listener">One of their summons, loaded on this client.</param>
+        /// <param name="said">What came off the ZDO.</param>
+        /// <param name="raw">The details it carried, still as keys.</param>
+        /// <param name="companion">The skeleton it named, or <c>ZDOID.None</c>.</param>
+        /// <param name="ally">The player it named, or <c>ZDOID.None</c>.</param>
+        /// <remarks>
+        /// The budget is deliberately not consulted, beyond the per-event switches. It
+        /// is the owner's job to decide whether the squad may speak, and it has already
+        /// done it - running the gaps and cooldowns again here would drop lines on one
+        /// screen and not the other, which is the exact desync the whole mirroring
+        /// scheme exists to avoid. What we do honour is this player's own event
+        /// switches, because that is a statement about what they want to read rather
+        /// than about what anybody's skeleton may say.
+        ///
+        /// Nothing is committed either. This client's own squad has its own budget and
+        /// somebody else's skeleton talking must not spend it - two players standing
+        /// together would otherwise fall into taking turns to be allowed to speak.
+        /// </remarks>
+        internal static bool Hear(
+            ChatterComponent listener, Utterance said, LineDetails raw, ZDOID companion, ZDOID ally)
+        {
+            if (!ModConfig.Enabled.Value || !ModConfig.HearOthers.Value || _pack == null)
+            {
+                return false;
+            }
+
+            if (_budget != null && _budget.Settings.IsDisabled(said.Kind))
+            {
+                return false;
+            }
+
+            Character character = listener.Character;
+            if (character == null)
+            {
+                return false;
+            }
+
+            // The target is gated on what the event promises, and that is load-bearing
+            // rather than tidy. The subject field is the *budget's* dedup key, and for
+            // several events it is not a creature at all: Visitor sends the Player
+            // prefab, CompanionHurt sends the companion's, Looted sends the item's.
+            // Filling {target} from it unasked would have this side rendering a line the
+            // owner's side refused, and naming a stone as the thing being fought.
+            //
+            // The two people fields need no such gate, because each carries exactly one
+            // kind of thing. They shared a field at first, with the event saying which,
+            // which was tidy right up until a line wanted both at once.
+            TokenSet promised = EventTokens.PromisedFor(said.Kind);
+
+            LineTokens tokens = new(
+                target: (promised & TokenSet.Target) == 0 ? null : Mirror.CreatureName(said.Subject),
+                player: Mirror.SummonerName(character),
+                name: Summons.NameOf(character),
+                companion: Mirror.NameFor(companion),
+                ally: Mirror.NameFor(ally),
+                details: Mirror.Localize(raw));
+
+            if (!_pack.TryPickRenderable(listener.Personality, said.Kind, said.LineRef, tokens, out string line))
+            {
+                Trace(listener, said.Kind, "heard it, but has nothing it could say back");
+                return false;
+            }
+
+            if (Speech.Say(character, line, _pack.Colors.TagFor(said.Kind)) == Drew.Nothing)
+            {
+                return false;
+            }
+
+            Trace(listener, said.Kind, "heard \"" + line + "\"");
             return true;
         }
 
@@ -377,6 +519,7 @@ namespace ChattyBones
         /// <param name="companion">The skeleton the remark is about. Never the speaker - it is excluded by reference.</param>
         /// <param name="companionName">Its name, already resolved, when it may no longer exist to be asked.</param>
         /// <param name="details">What is known about the event itself. Usually nothing.</param>
+        /// <param name="ally">The particular other player the event is about, or null.</param>
         /// <remarks>
         /// Used by the events that happen to you or to the world rather than to one
         /// particular skeleton - you took a hit, you landed one, somebody's colleague
@@ -398,7 +541,8 @@ namespace ChattyBones
             string targetName,
             Character companion,
             string companionName = null,
-            LineDetails details = default)
+            LineDetails details = default,
+            Player ally = null)
         {
             List<ChatterComponent> squad = ChatterComponent.All;
             int count = squad.Count;
@@ -420,7 +564,7 @@ namespace ChattyBones
                     continue;
                 }
 
-                if (TrySpeak(speaker, kind, subject, targetName, companion, companionName, details))
+                if (TrySpeak(speaker, kind, subject, targetName, companion, companionName, details, ally))
                 {
                     return true;
                 }
@@ -436,8 +580,13 @@ namespace ChattyBones
         /// <returns>Another loaded skeleton, or null when it is on its own.</returns>
         /// <param name="speaker">Whoever is looking for company.</param>
         /// <remarks>
-        /// For the idle lines. Random rather than the nearest, so a squad of three
-        /// does not settle into two of them always addressing each other.
+        /// What fills {companion} on every event that does not name a particular one.
+        /// Random rather than the nearest, so a squad of three does not settle into two
+        /// of them always addressing each other.
+        ///
+        /// Drawn from every loaded summon rather than only from ours, so in a shared
+        /// world a skeleton will happily rib one of somebody else's. See the remarks on
+        /// <see cref="LineTokens.Companion"/> for why that is the wanted answer.
         /// </remarks>
         internal static Character AnotherOf(ChatterComponent speaker)
         {
@@ -499,8 +648,24 @@ namespace ChattyBones
 
             if (!ModConfig.Enabled.Value)
             {
+                // On the way down rather than the way back up, so a skeleton loaded
+                // while the mod is off is already in the right state. See ListenState
+                // for what this is protecting against.
+                if (_wasEnabled)
+                {
+                    _wasEnabled = false;
+
+                    List<ChatterComponent> asleep = ChatterComponent.All;
+                    for (int i = 0; i < asleep.Count; i++)
+                    {
+                        asleep[i].ForgetWhatWasHeard();
+                    }
+                }
+
                 return;
             }
+
+            _wasEnabled = true;
 
             // Anything recorded during a blow is said by the postfix that ends it.
             // A skill can also go up while you are chopping a tree, where there is no
@@ -525,6 +690,17 @@ namespace ChattyBones
             catch (System.Exception e)
             {
                 ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over a raid: " + e);
+            }
+
+            // Also a question about the world rather than about any one skeleton, and
+            // guarded separately so a bad answer to one does not cost the other.
+            try
+            {
+                Visitors.Poll(elapsed);
+            }
+            catch (System.Exception e)
+            {
+                ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over a visitor: " + e);
             }
 
             // Guarded per skeleton rather than around the loop, so one of them failing

@@ -285,6 +285,13 @@ namespace ChattyBones
         /// <summary>A stable id for this skeleton, for Chat to key its bubble by.</summary>
         /// <returns>The same value every time for the same skeleton.</returns>
         /// <param name="speaker">Whoever is talking.</param>
+        /// <remarks>
+        /// Stable is the point, and it has a consequence every caller inherits:
+        /// AddInworldText looks for an existing bubble with this id and overwrites its
+        /// text, so two lines drawn over one skeleton in the same frame are one bubble
+        /// showing the second. Anything that can speak twice in a frame has to pick
+        /// which line it wants rather than trusting both to arrive.
+        /// </remarks>
         private static long SenderIdFor(Character speaker)
         {
             ZDOID id = speaker.GetZDOID();

@@ -14,7 +14,7 @@ namespace ChattyBones.Patches
     internal static class Biomes
     {
         /// <summary>What to call a biome in a line.</summary>
-        /// <returns>The localized name, or null when there is nothing to say.</returns>
+        /// <returns>Its key, e.g. "$biome_blackforest", or null when there is nothing to say.</returns>
         /// <param name="biome">The biome to name.</param>
         /// <remarks>
         /// None comes back null rather than as a word. It is what Heightmap answers
@@ -28,9 +28,7 @@ namespace ChattyBones.Patches
                 return null;
             }
 
-            string name = Localization.instance.Localize("$biome_" + biome.ToString().ToLowerInvariant());
-
-            return string.IsNullOrEmpty(name) ? null : name;
+            return "$biome_" + biome.ToString().ToLowerInvariant();
         }
     }
 

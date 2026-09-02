@@ -6,7 +6,7 @@ Summoned skeletons talk. They react to being raised, to picking a fight, to
 winning or losing one, to being hurt or shielded, and to you doing any of the same
 — and they react to each other, by name.
 
-Thirty-one things they notice, across four personalities (cowardly, boastful,
+Thirty-two things they notice, across four personalities (cowardly, boastful,
 dutiful, veteran) assigned at summon and remembered in the save. They will tell
 you what hit them and what it was made of, complain specifically about being on
 fire, and rib each other by name when nothing is happening.
@@ -49,6 +49,24 @@ greydwarf would be an unreadable wall of text otherwise. Important things
 interrupt trivial ones, and a death or a new arrival gets an answer from somebody
 else in the same breath.
 
-Not yet: other players see nothing. Everything is decided and drawn on the
-machine that owns a skeleton, so your squad talks on your screen alone. The
-groundwork for mirroring is written but nothing reads it yet.
+In a shared world everybody with the mod sees everybody's skeletons talk, and
+there is nothing to install on a server to get it. A skeleton records what it
+said in the same place the game already keeps its name and its health, and the
+other players read it from there — so a player without the mod sees nothing at
+all and nothing goes wrong for them. What travels is which line rather than the
+line itself, so you and your friends do not need matching files: your skeletons
+say your lines on your screen and theirs on theirs, and if the files do match you
+both read the same words. `HearOthers` in the config switches it off for your
+screen.
+
+Which is also why they can now greet each other. Walk up to somebody and their
+squad says hail to you by name, and yours says hail to them — the only thing in
+here that does nothing at all when you play on your own. Names travel as
+identities rather than as text, so everybody's own language and everybody's own
+name filtering are applied on their own machine.
+
+And they will keep talking to whoever is standing there. `{ally}` names another
+player and `{companion}` names another of your skeletons, and both can go in any
+line at all rather than only in the ones about arriving or about each other — so
+"So, how are things, {ally}?" is an ordinary idle line that simply never comes up
+until somebody is actually there to ask.

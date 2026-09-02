@@ -377,6 +377,13 @@ namespace ChattyBones.Logic
                 // is said into a quiet field with nothing to compete against.
                 ChatterEvent.RaidEnded => 35,
 
+                // Above the small talk below it because a greeting goes off if it is
+                // not said now - somebody walks up, and either the squad says hello in
+                // the next few seconds or the moment has passed. It stays under
+                // everything in a fight on purpose: a skeleton breaking off from a
+                // greydwarf to say hail reads as a bug rather than as manners.
+                ChatterEvent.Visitor => 33,
+
                 // Everything from here down is small talk, and it is spaced in twos
                 // rather than packed. The band ran out of free integers once already,
                 // and the next event to want a home in it would have had to renumber a

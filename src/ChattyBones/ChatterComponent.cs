@@ -14,9 +14,9 @@ namespace ChattyBones
     ///
     /// One of these goes on every summon on every client, but only the ZDO's owner
     /// decides anything: it is the only machine where the AI is running, so it is the
-    /// only one that can see a target being picked. The rest are here so that another
-    /// client can read what the owner left in the ZDO and draw that instead.
-    /// <see cref="IsOwned"/> is the line between the two.
+    /// only one that can see a target being picked. Every client reads what is in the
+    /// ZDO and draws it, the owner included. <see cref="IsOwned"/> is the line between
+    /// deciding and drawing, not between drawing and doing nothing.
     /// </remarks>
     internal sealed class ChatterComponent : MonoBehaviour
     {
@@ -151,6 +151,12 @@ namespace ChattyBones
         /// creature first existed, so it survives the reload that Start does not - a
         /// skeleton raised ten minutes ago reports six hundred seconds however many
         /// times you have walked past it since.
+        ///
+        /// It also writes that timestamp when it finds none, and unlike BaseAI.Awake,
+        /// which guards the same write, it does no owner check of its own. So the
+        /// IsOwned test below has to stay above it: writing to a ZDO we do not own
+        /// pushes our copy's data revision past the world's, after which the real
+        /// owner's updates are discarded until it catches up.
         /// </remarks>
         private void Start()
         {
@@ -199,9 +205,39 @@ namespace ChattyBones
         /// </remarks>
         internal void Sweep(float dt)
         {
+            // Asked on every sweep rather than only while somebody else owns it. A
+            // client can be handed ownership in the same packet that carries the line
+            // the old owner just said - ZDOMan applies the owner change and the data
+            // together - and under the old shape that line was dropped on the spot and
+            // then said minutes later, when ownership went back and the counter finally
+            // looked new. Safe while we own it because OnSpoke records what we said
+            // ourselves; see ListenState.
+            //
+            // Having drawn a line we stop for the sweep, because only one of them can
+            // be seen: Speech.Say keys world text by talker, so a second line over the
+            // same skeleton in the same frame replaces the first. The first owned sweep
+            // after a handover is where two would meet - Forget has just cleared the
+            // target, so TargetAcquired fires again immediately - and the line we were
+            // handed is the one that would have lost. Our own bookkeeping waits a
+            // quarter of a second.
+            bool drew = Listen();
+
+            // Folded together because both answers mean the same thing here: there is
+            // nothing for us to decide. Somebody else's skeleton is drawn for above,
+            // and one of ours with no AI is one we can learn nothing from.
+            //
+            // Ahead of the stop above, because Forget has to happen on every sweep we
+            // do not own. Skipping it for the one sweep we happened to hear something
+            // leaves a dead creature in _lastTarget, and if ownership comes back on the
+            // very next sweep we boast about a kill we just finished listening to.
             if (!IsOwned || _ai == null)
             {
                 Forget();
+                return;
+            }
+
+            if (drew)
+            {
                 return;
             }
 
@@ -242,13 +278,17 @@ namespace ChattyBones
             {
                 _untilIdle = NextIdleGap();
 
-                // A companion so the idle lines can rib each other by name.
+                // No companion passed, and that is not a loss: Idle does not name a
+                // particular skeleton, so Chatter fills one in from whoever is standing
+                // about, exactly as it does for every other event now. Handing one over
+                // here also meant looking one up before the budget had said yes, on
+                // every idle timer that expired.
                 _ = Chatter.TrySpeak(
                     this,
                     ChatterEvent.Idle,
                     subject: 0,
                     targetName: null,
-                    companion: Chatter.AnotherOf(this));
+                    companion: null);
             }
         }
 
@@ -442,15 +482,27 @@ namespace ChattyBones
         /// <param name="kind">What was reacted to.</param>
         /// <param name="lineRef">Which line, in the form that survives a different pack.</param>
         /// <param name="subject">The prefab hash the remark was about, or 0.</param>
+        /// <param name="companion">The skeleton it named, or <c>ZDOID.None</c>.</param>
+        /// <param name="ally">The player it named, or <c>ZDOID.None</c>.</param>
+        /// <param name="details">What was known about the event, still as keys.</param>
         /// <remarks>
-        /// Writing only. Nobody reads these yet, but the write belongs with the
-        /// speaking.
+        /// Five fields, and the utterance goes last. That is habit rather than
+        /// necessity - a ZDO is serialized whole, so everything written here reaches a
+        /// listener in one piece - but the utterance is the field <see cref="Listen"/>
+        /// watches, and writing the thing that triggers the read after the things it
+        /// reads is the ordering worth being in the habit of.
+        ///
+        /// A skeleton and a player get a field each rather than sharing one. Sharing
+        /// worked while only the arrival event named a player, and stopped the moment a
+        /// line was allowed to want both - "Careful, {ally}! {companion}, with me!" is
+        /// two people in one sentence.
         ///
         /// The counter is what makes a repeat visible: two identical remarks in a row
         /// would otherwise write the same int twice and a watcher polling the field
         /// would see no change at all. See <see cref="Utterance.Counter"/>.
         /// </remarks>
-        internal void OnSpoke(ChatterEvent kind, int lineRef, int subject)
+        internal void OnSpoke(
+            ChatterEvent kind, int lineRef, int subject, ZDOID companion, ZDOID ally, LineDetails details)
         {
             if (!IsOwned)
             {
@@ -468,7 +520,109 @@ namespace ChattyBones
             Utterance said = new(Utterance.NextCounter(previous), kind, lineRef, subject);
 
             zdo.Set(SubjectKey, subject);
+            zdo.Set(CompanionKey, companion);
+            zdo.Set(AllyKey, ally);
+            zdo.Set(DetailsKey, DetailWire.Pack(details));
             zdo.Set(UtteranceKey, said.Pack());
+
+            // Anything we said ourselves is already accounted for, so that we can never
+            // later be told about it once ownership has moved on. See ListenState.
+            _heard.Recorded(said.Counter);
+        }
+
+        /// <summary>What this client has already been told by this skeleton.</summary>
+        private readonly ListenState _heard = new();
+
+        /// <summary>Treat the next look at this skeleton as a first look.</summary>
+        internal void ForgetWhatWasHeard()
+        {
+            _heard.Forget();
+        }
+
+        /// <summary>Draw whatever this skeleton has said that we have not accounted for.</summary>
+        /// <returns>True when a line reached the screen, so the caller can stop.</returns>
+        /// <remarks>
+        /// The other half of <see cref="OnSpoke"/>, and the reason one of these rides on
+        /// every summon on every client rather than only on the owner's. Polled from the
+        /// sweep rather than subscribed to, because a ZDO field has nothing to subscribe
+        /// to - four times a second is fast enough that a line lands while the moment is
+        /// still the moment. <see cref="ListenState"/> holds the rules about what counts
+        /// as news.
+        ///
+        /// Polling means only the latest line survives a sweep, so a skeleton speaking
+        /// twice inside a quarter of a second would be heard once here. It cannot: the
+        /// owner's own <see cref="ChatterSettings.SpeakerCooldownSeconds"/> is measured
+        /// in seconds, and it is the same skeleton on both sides of the wire.
+        /// </remarks>
+        private bool Listen()
+        {
+            if (_view == null || !_view.IsValid())
+            {
+                return false;
+            }
+
+            ZDO zdo = _view.GetZDO();
+
+            bool have = Utterance.TryUnpack(
+                zdo.GetInt(UtteranceKey, 0), zdo.GetInt(SubjectKey, 0), out Utterance said);
+
+            if (!_heard.ShouldDraw(have, have ? said.Counter : 0))
+            {
+                return false;
+            }
+
+            return Chatter.Hear(
+                this, said, DetailsIn(zdo), zdo.GetZDOID(CompanionKey), zdo.GetZDOID(AllyKey));
+        }
+
+        /// <summary>Read everything this skeleton is currently broadcasting.</summary>
+        /// <returns>False when it has never said anything.</returns>
+        /// <param name="said">The utterance.</param>
+        /// <param name="details">What it carried, still as keys.</param>
+        /// <param name="companion">The skeleton it named, or <c>ZDOID.None</c>.</param>
+        /// <param name="ally">The player it named, or <c>ZDOID.None</c>.</param>
+        /// <remarks>
+        /// For <c>cb_mirror</c>, which draws a skeleton's own broadcast back at you so
+        /// the whole mirrored path can be exercised without a second machine.
+        /// <see cref="Listen"/> does not use this: it reads the counter first and only
+        /// touches the rest when something has changed, which is the difference between
+        /// splitting a string four times a second per skeleton and not.
+        /// </remarks>
+        internal bool TryReadBroadcast(
+            out Utterance said, out LineDetails details, out ZDOID companion, out ZDOID ally)
+        {
+            said = default;
+            details = default;
+            companion = ZDOID.None;
+            ally = ZDOID.None;
+
+            if (_view == null || !_view.IsValid())
+            {
+                return false;
+            }
+
+            ZDO zdo = _view.GetZDO();
+
+            if (!Utterance.TryUnpack(zdo.GetInt(UtteranceKey, 0), zdo.GetInt(SubjectKey, 0), out said))
+            {
+                return false;
+            }
+
+            details = DetailsIn(zdo);
+            companion = zdo.GetZDOID(CompanionKey);
+            ally = zdo.GetZDOID(AllyKey);
+
+            return true;
+        }
+
+        /// <summary>The details field, whatever state it is in.</summary>
+        /// <returns>What was written, or nothing at all.</returns>
+        /// <param name="zdo">The skeleton's ZDO.</param>
+        private static LineDetails DetailsIn(ZDO zdo)
+        {
+            _ = DetailWire.TryUnpack(zdo.GetString(DetailsKey), out LineDetails details);
+
+            return details;
         }
 
         /// <summary>Which personality this skeleton has, assigning one if it has none yet.</summary>
@@ -538,5 +692,17 @@ namespace ChattyBones
         private static readonly int PersonalityKey = "cb_personality".GetStableHashCode();
         private static readonly int UtteranceKey = "cb_utterance".GetStableHashCode();
         private static readonly int SubjectKey = "cb_subject".GetStableHashCode();
+        private static readonly int DetailsKey = "cb_details".GetStableHashCode();
+
+        /// <summary>The keys the two identities are filed under, which are pairs.</summary>
+        /// <remarks>
+        /// A ZDOID is a long and a uint, and vanilla stores it as two separate fields -
+        /// so each "key" is one hash for each half. Worked out once here rather than per
+        /// write, since ZDO.Set(string, ZDOID) hashes both halves on every call.
+        /// </remarks>
+        private static readonly KeyValuePair<int, int> CompanionKey = ZDO.GetHashZDOID("cb_companion");
+
+        /// <summary>Where the other player an utterance named is filed.</summary>
+        private static readonly KeyValuePair<int, int> AllyKey = ZDO.GetHashZDOID("cb_ally");
     }
 }

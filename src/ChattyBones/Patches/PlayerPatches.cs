@@ -7,10 +7,13 @@ namespace ChattyBones.Patches
     /// <summary>Names the things you pick up, eat and get better at.</summary>
     internal static class Doings
     {
-        /// <summary>An item's own name, localized.</summary>
-        /// <returns>Something like "Grilled Neck Tail", or null when it has not got one.</returns>
+        /// <summary>An item's own name, as the key rather than the words.</summary>
+        /// <returns>Something like "$item_necktailgrilled", or null when it has not got one.</returns>
         /// <param name="item">The item to name.</param>
         /// <remarks>
+        /// Unlocalized, like every other detail, so it can travel and be resolved in
+        /// the reader's own language - see <see cref="Mirror.Localize"/>.
+        ///
         /// Null rather than empty, so LineTokens passes a line over rather than
         /// rendering a hole - the same reason as Hits.NameOf.
         /// </remarks>
@@ -21,13 +24,13 @@ namespace ChattyBones.Patches
                 return null;
             }
 
-            string name = Localization.instance.Localize(item.m_shared.m_name);
+            string name = item.m_shared.m_name;
 
             return string.IsNullOrEmpty(name) ? null : name;
         }
 
         /// <summary>What to call a skill in a line.</summary>
-        /// <returns>The localized name, e.g. "Blocking", or null.</returns>
+        /// <returns>Its key, e.g. "$skill_blocking", or null.</returns>
         /// <param name="skill">The skill that went up.</param>
         /// <remarks>
         /// Vanilla's own spelling, taken from the message Skills.RaiseSkill puts on
@@ -41,9 +44,7 @@ namespace ChattyBones.Patches
                 return null;
             }
 
-            string name = Localization.instance.Localize("$skill_" + skill.ToString().ToLowerInvariant());
-
-            return string.IsNullOrEmpty(name) ? null : name;
+            return "$skill_" + skill.ToString().ToLowerInvariant();
         }
     }
 
