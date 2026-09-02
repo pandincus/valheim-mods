@@ -76,35 +76,32 @@ namespace ChattyBones
             Enabled = cfg.Bind(
                 "General", "Enabled", true,
                 new ConfigDescription(
-                    "Master switch. Off means complete silence. Safe to flip while playing.",
+                    "Master switch; if disabled, this mod does nothing.",
                     null, At(100)));
 
             Bubble = cfg.Bind(
                 "Appearance", "BubbleStyle", BubbleStyle.FloatingText,
                 new ConfigDescription(
-                    "How a line is drawn. FloatingText follows the skeleton's head. " +
-                    "DialoguePanel is the trader's box - it sits still, but is the safer one " +
-                    "if a game update breaks the other.",
+                    "How Skelett chat is rendered. FloatingText follows the Skelett's head with no background. " +
+                    "DialoguePanel is the Hugin box, and is a little easier to read, but maybe more obtrusive.",
                     null, At(100)));
 
             DialoguePanelSeconds = cfg.Bind(
                 "Appearance", "DialoguePanelSeconds", 5f,
                 new ConfigDescription(
-                    "How long a DialoguePanel line stays up. Ignored by FloatingText.",
+                    "[DialoguePanel only] How long a DialoguePanel line stays up.",
                     new AcceptableValueRange<float>(1f, 30f), Adv(70)));
 
             DialoguePanelCullDistance = cfg.Bind(
                 "Appearance", "DialoguePanelCullDistance", 20f,
                 new ConfigDescription(
-                    "How far away you can still see a DialoguePanel line, in meters. Ignored " +
-                    "by FloatingText.",
+                    "[DialoguePanel only] How far away you can still see a DialoguePanel line, in meters.",
                     new AcceptableValueRange<float>(5f, 100f), Adv(60)));
 
             TextHeight = cfg.Bind(
                 "Appearance", "TextHeight", 0.3f,
                 new ConfigDescription(
-                    "Height above the skeleton's head, in meters. 0.3 clears the name label; " +
-                    "by 1.0 the text looks detached.",
+                    "Height above the skeleton's head, in meters. Recommend a minimum of 0.3 to avoid clashing with the name.",
                     new AcceptableValueRange<float>(0f, 2f), Adv(80)));
 
             TextColor = cfg.Bind(
@@ -112,20 +109,20 @@ namespace ChattyBones
                 new ConfigDescription(
                     "One color for everything, as a hex code like #C8FFC8. Leave it empty and " +
                     "the line pack colors by event instead.",
-                    null, At(90)));
+                    null, Adv(90)));
 
             ChatterFrequency = cfg.Bind(
                 "Chatter", "ChatterFrequency", ChatterAmount.Often,
                 new ConfigDescription(
-                    "How much the squad reacts to things. Never still leaves idle chatter " +
-                    "running, and this caps that too. Custom uses the numbers below.",
+                    "How often the Skeletts react to events, players, and the world around them. These are presets around several " +
+                    "advanced settings you can feel free to tweak. Note that Never is not silence - idle chatter has its own dial.",
                     null, At(100)));
 
             IdleChatter = cfg.Bind(
                 "Chatter", "IdleChatter", ChatterAmount.Sometimes,
                 new ConfigDescription(
-                    "How often they mutter when nothing is happening. Custom uses IdleSeconds " +
-                    "below.",
+                    "How often the Skeletts mutter idly when nothing is going on. These are presets around several " +
+                    "advanced settings you can feel free to tweak.",
                     null, At(90)));
 
             SilencedEvents = cfg.Bind(
@@ -139,87 +136,83 @@ namespace ChattyBones
             MinGapSeconds = cfg.Bind(
                 "Chatter", "MinGapSeconds", 1.5f,
                 new ConfigDescription(
-                    "How long the whole squad stays quiet after one of them speaks. Set by " +
+                    "How long the whole group stays quiet after one of them speaks. Set by " +
                     "ChatterFrequency; editing it switches that to Custom.",
                     new AcceptableValueRange<float>(0f, 30f), Adv(95)));
 
             PreemptGapSeconds = cfg.Bind(
                 "Chatter", "PreemptGapSeconds", 0.5f,
                 new ConfigDescription(
-                    "How long something important waits before cutting in on something " +
-                    "trivial.",
+                    "How long a higher-priority event waits before cutting in on something less important.",
                     new AcceptableValueRange<float>(0f, 10f), Adv(70)));
 
             SpeakerCooldownSeconds = cfg.Bind(
                 "Chatter", "SpeakerCooldownSeconds", 5f,
                 new ConfigDescription(
-                    "How long one skeleton waits before speaking again. Set by " +
+                    "How long one Skelett waits before speaking again. Set by " +
                     "ChatterFrequency; editing it switches that to Custom.",
                     new AcceptableValueRange<float>(0f, 120f), Adv(94)));
 
             SquadEchoWindowSeconds = cfg.Bind(
                 "Chatter", "SquadEchoWindowSeconds", 4f,
                 new ConfigDescription(
-                    "How long one remark about a thing stops the others repeating it. Set by " +
+                    "How long one remark about a 'thing' stops the others repeating it. Set by " +
                     "ChatterFrequency; editing it switches that to Custom.",
                     new AcceptableValueRange<float>(0f, 60f), Adv(93)));
 
             IdleSeconds = cfg.Bind(
                 "Chatter", "IdleSeconds", 45f,
                 new ConfigDescription(
-                    "Roughly how often a bored skeleton says something anyway. Set by " +
+                    "Roughly how often a bored Skelett says something anyway. Set by " +
                     "IdleChatter; editing it switches that to Custom.",
                     new AcceptableValueRange<float>(5f, 600f), Adv(89)));
 
             SummonGreetingSeconds = cfg.Bind(
                 "Chatter", "SummonGreetingSeconds", 5f,
                 new ConfigDescription(
-                    "How new a skeleton has to be to greet you. Only raise it if greetings " +
-                    "are being missed.",
+                    "How new a Skelett has to be to greet you.",
                     new AcceptableValueRange<float>(1f, 60f), Adv(60)));
 
             HurtFraction = cfg.Bind(
                 "Chatter", "HurtFraction", 0.15f,
                 new ConfigDescription(
-                    "How big a hit has to be before a skeleton mentions it, as a share of its " +
-                    "own health.",
+                    "How much damage a Skelett takes in a hit before it complains, as a % of its own total health. " +
+                    "e.g. a Skelett has 400 health, if this is 0.15 it will complain at any damage over 60.",
                     new AcceptableValueRange<float>(0.01f, 1f), Adv(50)));
 
             BigHitFraction = cfg.Bind(
                 "Chatter", "BigHitFraction", 0.15f,
                 new ConfigDescription(
-                    "How hard you have to hit something before the squad is impressed, as a " +
-                    "share of THAT creature's health. Kills count separately. Tough enemies " +
-                    "are harder to impress, so lower it if you never hear these.",
+                    "How hard you have to hit something before the Skeletts are impressed, as a " +
+                    "share of THAT creature's health.",
                     new AcceptableValueRange<float>(0.01f, 1f), Adv(40)));
 
             HearOthers = cfg.Bind(
                 "Multiplayer", "HearOthers", true,
                 new ConfigDescription(
-                    "Whether other players' skeletons talk on your screen. ChatterFrequency " +
-                    "and SilencedEvents apply to them too. Players without the mod see " +
-                    "nothing either way.",
+                    "Whether other players' Skeletts talk on your screen. You can suppress a little with " +
+                    "ChatterFrequency or IdleChatter set to Never, or using SilencedEvents. Otherwise, " +
+                    "you hear whatever the other player emits, even if their settings are different from yours.",
                     null, At(100)));
 
             AllyGreetingDistance = cfg.Bind(
                 "Multiplayer", "AllyGreetingDistance", 15f,
                 new ConfigDescription(
-                    "How close another player has to come before your skeletons say hail, in " +
-                    "meters. Measured from the skeletons rather than from you.",
+                    "How close another player has to come before your Skeletts say hi, in " +
+                    "meters. Measured from the Skelett rather than from you.",
                     new AcceptableValueRange<float>(2f, 60f), Adv(90)));
 
             AllyGreetingForgetSeconds = cfg.Bind(
                 "Multiplayer", "AllyGreetingForgetSeconds", 60f,
                 new ConfigDescription(
-                    "How long somebody has to stay out of range before being greeted again. " +
-                    "Err high - you cross that boundary more often than you would think.",
+                    "How long in seconds somebody has to stay out of range before being greeted again.",
                     new AcceptableValueRange<float>(5f, 600f), Adv(80)));
 
             LogChatter = cfg.Bind(
                 "Debug", "LogChatter", false,
                 new ConfigDescription(
-                    "Log every line the squad was about to say and what came of it, for " +
-                    "working out why they are quiet. It is a lot of log.",
+                    "Useful for debugging, this logs every moment a Skelett is considering speech, whether they decide "
+                    + "to speak, and then renders every line they actually say. VERY noisy log, use with caution.",
                     null, At(100)));
         }
 
