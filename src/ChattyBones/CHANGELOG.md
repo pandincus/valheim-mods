@@ -42,12 +42,24 @@ cry reads as bad news before you have read a word of it. The palette is part of
 the pack. `TextColor` in the config still overrides the lot if you would rather
 have one color and no argument.
 
-How talkative they are is configurable. The squad stays quiet for a moment after
-any one of them speaks, an individual waits rather longer, and one remark about a
-thing stops the others repeating it — five skeletons all reacting to the same
-greydwarf would be an unreadable wall of text otherwise. Important things
-interrupt trivial ones, and a death or a new arrival gets an answer from somebody
-else in the same breath.
+How talkative they are is configurable, and it is two words rather than seven
+numbers. `ChatterFrequency` and `IdleChatter` each run from Never to Always, and
+they are kept apart because they are different complaints — a squad that talks
+over a fight and a squad that will not stop musing on the weather want opposite
+answers. Between them they can also say "only mutter to yourselves" and "only
+speak when something happens", neither of which the master switch can express.
+
+Picking one writes the numbers it stands for, so the settings file never shows a
+value that is not in force; move one of those numbers yourself and the dial says
+Custom. Everything else is marked advanced and stays out of the way until you tick
+the box that asks for it, and `SilencedEvents` switches off events by name for
+anyone who wants one thing quiet rather than all of it.
+
+Underneath, the squad stays quiet for a moment after any one of them speaks, an
+individual waits rather longer, and one remark about a thing stops the others
+repeating it — five skeletons all reacting to the same greydwarf would be an
+unreadable wall of text otherwise. Important things interrupt trivial ones, and a
+death or a new arrival gets an answer from somebody else in the same breath.
 
 In a shared world everybody with the mod sees everybody's skeletons talk, and
 there is nothing to install on a server to get it. A skeleton records what it
