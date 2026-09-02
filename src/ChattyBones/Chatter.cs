@@ -149,11 +149,84 @@ namespace ChattyBones
         /// </remarks>
         private static ChatterSettings SettingsFromConfig()
         {
+            // Never falls through to the numbers along with Custom, and that costs
+            // nothing: it switches every event off below, so which gaps it would have
+            // kept between lines it is not going to say is not a question.
+            if (!ChatterPresets.TryGaps(ModConfig.ChatterFrequency.Value, out ChatterGaps gaps))
+            {
+                gaps = new ChatterGaps(
+                    ModConfig.MinGapSeconds.Value,
+                    ModConfig.SpeakerCooldownSeconds.Value,
+                    ModConfig.SquadEchoWindowSeconds.Value);
+            }
+
+            // PreemptGapSeconds is not in the preset. It is not a frequency - it is what
+            // stops a death cry landing in the same frame as the mutter it interrupts -
+            // so it means the same thing however talkative you have asked them to be.
             return new ChatterSettings(
-                minGapSeconds: ModConfig.MinGapSeconds.Value,
+                minGapSeconds: gaps.MinGapSeconds,
                 preemptGapSeconds: ModConfig.PreemptGapSeconds.Value,
-                speakerCooldownSeconds: ModConfig.SpeakerCooldownSeconds.Value,
-                squadEchoWindowSeconds: ModConfig.SquadEchoWindowSeconds.Value);
+                speakerCooldownSeconds: gaps.SpeakerCooldownSeconds,
+                squadEchoWindowSeconds: gaps.SquadEchoWindowSeconds,
+                disabledEvents: Silenced());
+        }
+
+        /// <summary>How long a skeleton with nothing to do waits before speaking anyway.</summary>
+        internal static float IdleSeconds =>
+            ChatterPresets.TryIdleSeconds(ModConfig.IdleChatter.Value, out float seconds)
+                ? seconds
+                : ModConfig.IdleSeconds.Value;
+
+        /// <summary>What the player has typed that does not name an event, last time we looked.</summary>
+        private static string _reportedBadEvents;
+
+        /// <summary>Every event switched off, whether by a dial or by name.</summary>
+        /// <returns>The events that must never be spoken about.</returns>
+        /// <remarks>
+        /// Two dials set to Never are the same thing as a long list, so they are folded
+        /// into one here rather than checked separately at the point of speaking.
+        /// Reactions Never leaves Idle alone on purpose: between them the two dials can
+        /// say "only mutter to yourselves" and "only speak when something happens",
+        /// which the master switch cannot.
+        /// </remarks>
+        private static IReadOnlyList<ChatterEvent> Silenced()
+        {
+            List<ChatterEvent> off =
+                [.. EventList.Parse(ModConfig.SilencedEvents.Value, out IReadOnlyList<string> unknown)];
+
+            // Only when it changes. This runs again on every SettingChanged, and a
+            // player fixing a typo should not be told off once per keystroke.
+            string bad = unknown.Count == 0 ? null : string.Join(", ", [.. unknown]);
+            if (bad != _reportedBadEvents)
+            {
+                _reportedBadEvents = bad;
+
+                if (bad != null)
+                {
+                    ChattyBonesPlugin.Log.LogWarning(
+                        "SilencedEvents names something that is not an event, so it does"
+                        + " nothing: " + bad + ". The spellings are listed at the top of "
+                        + PackFile.ReferenceFileName + ".");
+                }
+            }
+
+            if (ModConfig.IdleChatter.Value == ChatterAmount.Never && !off.Contains(ChatterEvent.Idle))
+            {
+                off.Add(ChatterEvent.Idle);
+            }
+
+            if (ModConfig.ChatterFrequency.Value == ChatterAmount.Never)
+            {
+                foreach (ChatterEvent kind in System.Enum.GetValues(typeof(ChatterEvent)))
+                {
+                    if (kind != ChatterEvent.Idle && !off.Contains(kind))
+                    {
+                        off.Add(kind);
+                    }
+                }
+            }
+
+            return off;
         }
 
         /// <summary>Say which group a speaker would draw from right now.</summary>

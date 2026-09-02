@@ -684,7 +684,7 @@ namespace ChattyBones
         /// </remarks>
         private static float NextIdleGap()
         {
-            float mean = ModConfig.IdleSeconds.Value;
+            float mean = Chatter.IdleSeconds;
 
             return mean * Random.Range(0.75f, 1.25f);
         }
