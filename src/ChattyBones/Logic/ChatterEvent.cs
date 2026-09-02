@@ -268,7 +268,7 @@ namespace ChattyBones.Logic
         /// <remarks>
         /// The only event that does nothing whatever on your own, and the reason it
         /// arrived alongside the mirroring rather than with the other world events: a
-        /// greeting one person can see is not a greeting. The visitor's client draws
+        /// greeting one person can see is not a greeting. Their own client draws
         /// it from the same broadcast, so "Hail, Hella!" floats over the skeleton for
         /// Hella too.
         ///
@@ -280,6 +280,6 @@ namespace ChattyBones.Logic
         /// the game filters it per user, so shipping the string would route around
         /// somebody else's settings.
         /// </remarks>
-        Visitor,
+        AllyArrived,
     }
 }

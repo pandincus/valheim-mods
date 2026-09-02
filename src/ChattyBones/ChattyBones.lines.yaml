@@ -89,7 +89,7 @@
 #   PlayerAte            you ate something             .  .  .  .  .  .  .  .  I  .
 #   PlayerCooked         you made food or mead         .  .  .  .  .  .  .  .  I  .
 #   PlayerSkilledUp      you got better at something   .  .  .  .  .  .  .  .  .  L
-#   Visitor              another player came over      .  .  A  .  .  .  .  .  .  .
+#   AllyArrived          another player came near      .  .  A  .  .  .  .  .  .  .
 #
 # The D column is the one worth a second look. {damage} only reaches the events
 # that catch a blow as it lands, because that is the only moment the numbers
@@ -318,7 +318,7 @@
 # languages and through each of your own name filtering.
 #
 # HearOthers in the config switches the whole thing off for your screen, and
-# VisitorForgetSeconds decides how often the same person gets hailed again.
+# AllyGreetingForgetSeconds decides how often the same person gets hailed again.
 #
 #
 # YAML, BRIEFLY
@@ -544,7 +544,7 @@ lines:
       - "Your {skill} improves, {player}."
       - "Practice does it."
       - "You will be dangerous eventually."
-    Visitor:
+    AllyArrived:
       - "Hail, {ally}."
       - "Company, {player}."
       - "Somebody's coming."
@@ -634,7 +634,7 @@ lines:
     Afflicted:
       - "{status}! {status}! Get it off!"
       - "I knew this would happen."
-    Visitor:
+    AllyArrived:
       - "Who's that!? Oh. H-hello, {ally}."
       - "Friend? Friend. Yes. Hello."
       - "Please don't be here to fight."
@@ -720,7 +720,7 @@ lines:
       - "The dark holds no fear for me. I am the interesting part of it."
       - "Night suits me. Better lighting for my singing."
       - "Anything out there in the dark is welcome to try, {player}."
-    Visitor:
+    AllyArrived:
       - "AH! {ally}! You have HEARD of me, surely."
       - "Look who has come to see the legend."
       - "{ally}! Come, come. Sit. Listen."
@@ -814,10 +814,10 @@ lines:
       - "Nothing to report. Yet."
       - "Keep the fire between us and the trees, {player}."
       - "We would do well to return to camp soon."
-    Visitor:
+    AllyArrived:
       - "{ally} approaching. Friendly."
       - "Hail, {ally}. Welcome to the line."
-      - "Visitor logged."
+      - "{ally} logged."
       - "Stand easy. It's {ally}."
       - "Good to have another pair of hands, {ally}."
       - "One more for the roster."
@@ -894,7 +894,7 @@ lines:
     CompanionSummoned:
       - "Another one. Marvellous."
       - "Don't get comfortable, {companion}."
-    Visitor:
+    AllyArrived:
       - "{ally}. Still breathing, I see."
       - "Hail. Mind the ground here."
       - "Another one out this far. Right."

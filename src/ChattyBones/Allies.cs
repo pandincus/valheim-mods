@@ -20,11 +20,11 @@ namespace ChattyBones
     /// Asked once for the squad rather than once per skeleton, the way raids are, and
     /// measured from the skeletons rather than from you. Nearly all the time those are
     /// the same question, because a summon follows you around - but the version that
-    /// reads right is the skeleton's, because the skeleton is the thing the visitor can
+    /// reads right is the skeleton's, because the skeleton is the thing they can
     /// see talking. One left behind at your base greets somebody who walks past it, and
     /// does not greet somebody standing next to you a hundred metres away.
     /// </remarks>
-    internal static class Visitors
+    internal static class Allies
     {
         /// <summary>Somebody we have already said hello to, and how long since we saw them.</summary>
         /// <remarks>Named apart from <see cref="Nearby"/>, which answers a different question.</remarks>
@@ -66,7 +66,7 @@ namespace ChattyBones
         /// It is here because retrying at the sweep rate is not free: each attempt asks
         /// the budget, resolves a biome and builds two names, five times over, four
         /// times a second, for as long as somebody stands there ungreeted. Usually that
-        /// is under a second. For a pack with no Visitor lines in it at all, it is the
+        /// is under a second. For a pack with no AllyArrived lines in it at all, it is the
         /// whole session.
         ///
         /// A second is short enough that a greeting still lands while the moment is the
@@ -87,7 +87,7 @@ namespace ChattyBones
         /// so the next sweep sees the same person as new and asks again.
         ///
         /// Recording them first and greeting second was the first version and it lost
-        /// greetings for good: <see cref="ChatterEvent.Visitor"/> ranks below everything
+        /// greetings for good: <see cref="ChatterEvent.AllyArrived"/> ranks below everything
         /// in a fight, on purpose, so meeting somebody mid-fight was refused by the
         /// whole squad and the arrival was spent on the refusal. It could not come back
         /// until they had walked away for a minute and returned.
@@ -119,7 +119,7 @@ namespace ChattyBones
                 Seen[i] = Seen[i].Missed(dt);
             }
 
-            float range = ModConfig.VisitorDistance.Value;
+            float range = ModConfig.AllyGreetingDistance.Value;
             float rangeSq = range * range;
 
             List<Player> players = Player.GetAllPlayers();
@@ -169,7 +169,7 @@ namespace ChattyBones
             }
 
             // Backwards, so removing one does not skip the next.
-            float forget = ModConfig.VisitorForgetSeconds.Value;
+            float forget = ModConfig.AllyGreetingForgetSeconds.Value;
             for (int i = Seen.Count - 1; i >= 0; i--)
             {
                 if (Seen[i].Missing >= forget)
@@ -181,7 +181,7 @@ namespace ChattyBones
 
         /// <summary>Have somebody say hail.</summary>
         /// <returns>True if a greeting actually appeared. False means try again later.</returns>
-        /// <param name="visitor">Whoever has just walked up.</param>
+        /// <param name="ally">Whoever has just walked up.</param>
         /// <param name="nearest">The skeleton standing closest to them.</param>
         /// <remarks>
         /// The nearest gets first refusal and the squad covers for it, which is the
@@ -198,32 +198,32 @@ namespace ChattyBones
         /// particular ones - and a party arriving together wanting one hail rather than
         /// four is arguably the better reading anyway.
         /// </remarks>
-        private static bool Greet(Player visitor, ChatterComponent nearest)
+        private static bool Greet(Player ally, ChatterComponent nearest)
         {
-            int subject = Summons.PrefabOf(visitor);
+            int subject = Summons.PrefabOf(ally);
 
             if (Chatter.TrySpeak(
                     nearest,
-                    ChatterEvent.Visitor,
+                    ChatterEvent.AllyArrived,
                     subject,
                     targetName: null,
                     companion: null,
-                    ally: visitor))
+                    ally: ally))
             {
                 return true;
             }
 
             return Chatter.SpeakAny(
-                ChatterEvent.Visitor,
+                ChatterEvent.AllyArrived,
                 subject,
                 targetName: null,
                 companion: null,
-                ally: visitor);
+                ally: ally);
         }
 
         /// <summary>Whichever of ours is standing closest to a point.</summary>
         /// <returns>The nearest skeleton we own, or null when we have none loaded.</returns>
-        /// <param name="point">Where the visitor is.</param>
+        /// <param name="point">Where they are standing.</param>
         /// <param name="distanceSq">How far away it is, squared. <c>MaxValue</c> when there is none.</param>
         /// <remarks>
         /// Ours only. <see cref="ChatterComponent.All"/> holds every summon loaded on
@@ -286,7 +286,7 @@ namespace ChattyBones
                 return null;
             }
 
-            float range = ModConfig.VisitorDistance.Value;
+            float range = ModConfig.AllyGreetingDistance.Value;
             float rangeSq = range * range;
 
             Player found = null;

@@ -335,7 +335,7 @@ namespace ChattyBones
             Player nearby = ally;
             if (EventTokens.ShouldFillIn(kind, TokenSet.Ally))
             {
-                nearby = Visitors.Nearby(character.transform.position);
+                nearby = Allies.Nearby(character.transform.position);
                 namedAlly = Mirror.PlayerName(nearby);
             }
 
@@ -440,7 +440,7 @@ namespace ChattyBones
 
             // The target is gated on what the event promises, and that is load-bearing
             // rather than tidy. The subject field is the *budget's* dedup key, and for
-            // several events it is not a creature at all: Visitor sends the Player
+            // several events it is not a creature at all: AllyArrived sends the Player
             // prefab, CompanionHurt sends the companion's, Looted sends the item's.
             // Filling {target} from it unasked would have this side rendering a line the
             // owner's side refused, and naming a stone as the thing being fought.
@@ -696,11 +696,11 @@ namespace ChattyBones
             // guarded separately so a bad answer to one does not cost the other.
             try
             {
-                Visitors.Poll(elapsed);
+                Allies.Poll(elapsed);
             }
             catch (System.Exception e)
             {
-                ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over a visitor: " + e);
+                ChattyBonesPlugin.Log.LogWarning("ChattyBones stumbled over an ally: " + e);
             }
 
             // Guarded per skeleton rather than around the loop, so one of them failing

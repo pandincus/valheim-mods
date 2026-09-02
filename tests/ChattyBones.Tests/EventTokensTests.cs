@@ -171,7 +171,7 @@ namespace ChattyBones.Tests
                 TokenSet.Target | TokenSet.Companion | TokenSet.Weapon | TokenSet.WeaponType,
                 EventTokens.PromisedFor(ChatterEvent.CompanionKilled));
 
-            Assert.Equal(TokenSet.Ally, EventTokens.PromisedFor(ChatterEvent.Visitor));
+            Assert.Equal(TokenSet.Ally, EventTokens.PromisedFor(ChatterEvent.AllyArrived));
             Assert.Equal(TokenSet.Status, EventTokens.PromisedFor(ChatterEvent.Afflicted));
             Assert.Equal(TokenSet.Target, EventTokens.PromisedFor(ChatterEvent.PlayerParried));
             Assert.Equal(TokenSet.None, EventTokens.PromisedFor(ChatterEvent.PlayerDodged));
@@ -209,7 +209,7 @@ namespace ChattyBones.Tests
             {
                 bool named = (EventTokens.PromisedFor(kind) & TokenSet.Ally) != 0;
 
-                Assert.Equal(kind == ChatterEvent.Visitor, named);
+                Assert.Equal(kind == ChatterEvent.AllyArrived, named);
             }
         }
 
@@ -221,7 +221,7 @@ namespace ChattyBones.Tests
             // would mourn a living skeleton, with the right grammar and the wrong name.
             Assert.False(EventTokens.ShouldFillIn(ChatterEvent.CompanionDied, TokenSet.Companion));
             Assert.False(EventTokens.ShouldFillIn(ChatterEvent.CompanionKilled, TokenSet.Companion));
-            Assert.False(EventTokens.ShouldFillIn(ChatterEvent.Visitor, TokenSet.Ally));
+            Assert.False(EventTokens.ShouldFillIn(ChatterEvent.AllyArrived, TokenSet.Ally));
 
             // And the other way, which is what lets a token go in any line at all.
             Assert.True(EventTokens.ShouldFillIn(ChatterEvent.Killed, TokenSet.Companion));

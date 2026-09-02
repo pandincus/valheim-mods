@@ -382,7 +382,7 @@ namespace ChattyBones.Logic
                 // the next few seconds or the moment has passed. It stays under
                 // everything in a fight on purpose: a skeleton breaking off from a
                 // greydwarf to say hail reads as a bug rather than as manners.
-                ChatterEvent.Visitor => 33,
+                ChatterEvent.AllyArrived => 33,
 
                 // Everything from here down is small talk, and it is spaced in twos
                 // rather than packed. The band ran out of free integers once already,

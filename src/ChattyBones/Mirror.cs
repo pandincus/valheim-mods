@@ -11,7 +11,7 @@ namespace ChattyBones
     /// </summary>
     /// <remarks>
     /// Everything an utterance carries is an identity rather than a word: a prefab
-    /// hash for the creature, a ZDOID for the companion or the visitor, a
+    /// hash for the creature, a ZDOID for the companion or the ally, a
     /// localization key for the weapon. That is what lets a German player read
     /// "Grauzwerg" from the same broadcast that gave you "Greydwarf", and it is what
     /// keeps a player's own name inside their own UGC filter. The cost is that every
@@ -75,15 +75,15 @@ namespace ChattyBones
         /// <returns>Their name, or null when they are not loaded here.</returns>
         /// <param name="id">The ZDOID out of the skeleton's ZDO, or <c>ZDOID.None</c>.</param>
         /// <remarks>
-        /// One field serves both {companion} and {visitor}, because no event has both
-        /// and the event says which it is. Both answers come from the same method name
-        /// on two different components, and both of those apply the game's own UGC
-        /// filter - which is the entire reason we send the identity rather than the
-        /// string.
+        /// {companion} and {ally} arrive as a ZDOID each - see
+        /// <see cref="ChatterComponent.OnSpoke"/> for why they are not one field. Both
+        /// answers come from the same method name on two different components, and both
+        /// of those apply the game's own UGC filter, which is the entire reason we send
+        /// the identity rather than the string.
         ///
         /// Null when the subject is out of range on this client. Practically speaking
         /// that is rare for the two cases that matter: a companion stands next to the
-        /// speaker, and a visitor is by definition close enough to be greeted.
+        /// speaker, and an ally was close enough to be greeted in the first place.
         /// </remarks>
         internal static string NameFor(ZDOID id)
         {

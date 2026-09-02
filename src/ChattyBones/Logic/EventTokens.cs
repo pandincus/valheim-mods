@@ -171,7 +171,7 @@ namespace ChattyBones.Logic
                 set |= TokenSet.Skill;
             }
 
-            if (kind == ChatterEvent.Visitor)
+            if (kind == ChatterEvent.AllyArrived)
             {
                 set |= TokenSet.Ally;
             }

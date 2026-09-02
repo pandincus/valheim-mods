@@ -511,10 +511,10 @@ namespace ChattyBones.Tests
             // events it would otherwise queue behind. It stays under everything in a
             // fight because a skeleton breaking off from a greydwarf to say hail reads
             // as a bug rather than as manners.
-            Assert.True(CanInterrupt(ChatterEvent.Visitor, ChatterEvent.Buffed));
-            Assert.True(CanInterrupt(ChatterEvent.Visitor, ChatterEvent.Summoned));
-            Assert.True(CanInterrupt(ChatterEvent.RaidEnded, ChatterEvent.Visitor));
-            Assert.True(CanInterrupt(ChatterEvent.Hurt, ChatterEvent.Visitor));
+            Assert.True(CanInterrupt(ChatterEvent.AllyArrived, ChatterEvent.Buffed));
+            Assert.True(CanInterrupt(ChatterEvent.AllyArrived, ChatterEvent.Summoned));
+            Assert.True(CanInterrupt(ChatterEvent.RaidEnded, ChatterEvent.AllyArrived));
+            Assert.True(CanInterrupt(ChatterEvent.Hurt, ChatterEvent.AllyArrived));
         }
 
         [Fact]

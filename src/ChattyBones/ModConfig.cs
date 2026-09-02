@@ -47,8 +47,8 @@ namespace ChattyBones
         internal static ConfigEntry<float> BigHitFraction;
 
         internal static ConfigEntry<bool> HearOthers;
-        internal static ConfigEntry<float> VisitorDistance;
-        internal static ConfigEntry<float> VisitorForgetSeconds;
+        internal static ConfigEntry<float> AllyGreetingDistance;
+        internal static ConfigEntry<float> AllyGreetingForgetSeconds;
 
         internal static ConfigEntry<bool> LogChatter;
 
@@ -172,7 +172,7 @@ namespace ChattyBones
                     new AcceptableValueRange<float>(0.01f, 1f)));
 
             BigHitFraction = cfg.Bind(
-                "Chatter", "BigHitFraction", 0.35f,
+                "Chatter", "BigHitFraction", 0.15f,
                 new ConfigDescription(
                     "How hard you have to hit something before the squad is impressed, as a " +
                     "share of THAT CREATURE'S maximum health - not of the damage you usually " +
@@ -180,11 +180,15 @@ namespace ChattyBones
                     "not quite finish the job.\n" +
                     "Being a share of the victim's health has an awkward consequence worth " +
                     "knowing before you tune it: the tougher the enemy, the harder it is to " +
-                    "impress anybody. A hit that takes half a greydwarf usually kills it " +
-                    "outright and is counted as a kill instead, while the same hit is a small " +
-                    "fraction of a troll and says nothing at all. So if you never hear these, " +
-                    "lower it - and expect the lines to come from mid-sized enemies rather " +
-                    "than from your best swings.",
+                    "impress anybody. At 0.15 a draugr with a hundred health notices anything " +
+                    "taking fifteen of it, while a troll's six hundred wants ninety - a real " +
+                    "two-handed swing - and a boss is out of reach at any setting you would " +
+                    "want. A hit that takes half a greydwarf usually kills it outright and is " +
+                    "counted as a kill instead. So the lines come from mid-sized enemies more " +
+                    "than from your best ones, and lowering this is what brings the big " +
+                    "creatures in at all.\n" +
+                    "0.15 is deliberately generous. How often you actually hear it is decided " +
+                    "by the gaps the squad keeps anyway, so this only decides what counts.",
                     new AcceptableValueRange<float>(0.01f, 1f)));
 
             HearOthers = cfg.Bind(
@@ -197,19 +201,19 @@ namespace ChattyBones
                 "the mod writes what it needs into fields the game already syncs, and an " +
                 "unmodded client ignores a field it does not recognize.");
 
-            VisitorDistance = cfg.Bind(
-                "Multiplayer", "VisitorDistance", 15f,
+            AllyGreetingDistance = cfg.Bind(
+                "Multiplayer", "AllyGreetingDistance", 15f,
                 new ConfigDescription(
                     "How close another player has to come to one of your skeletons before it " +
                     "says hail, in metres. Measured from the skeletons rather than from you, " +
                     "so one told to hold position at home greets whoever walks past it. The " +
                     "same distance decides whether an ordinary line can use {ally}.\n" +
-                    "Pairs with VisitorForgetSeconds below: a large value here means a " +
+                    "Pairs with AllyGreetingForgetSeconds below: a large value here means a " +
                     "greeting from further off, not a greeting more often.",
                     new AcceptableValueRange<float>(2f, 60f)));
 
-            VisitorForgetSeconds = cfg.Bind(
-                "Multiplayer", "VisitorForgetSeconds", 60f,
+            AllyGreetingForgetSeconds = cfg.Bind(
+                "Multiplayer", "AllyGreetingForgetSeconds", 60f,
                 new ConfigDescription(
                     "How long somebody has to stay out of range before the squad will greet " +
                     "them again, in seconds. This is the dial that decides whether a greeting " +
