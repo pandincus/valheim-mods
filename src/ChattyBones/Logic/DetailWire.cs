@@ -12,13 +12,16 @@ namespace ChattyBones.Logic
     /// numbers packed tight and this is text, and squeezing text into an int is a job
     /// with no happy ending.
     ///
-    /// Text, and not the finished words. Everything in a LineDetails is either a
-    /// localization key the game already ships - "$item_sword_iron", "$se_burning" -
-    /// or one of the mod's own English words like "sword". Both are the same on every
-    /// machine, so each client localizes for itself and a German player reads
-    /// "Nebelwandler" from the same broadcast that gave you "Mistwalker". That is the
-    /// property <see cref="LineTokens"/> already relies on for {target}, arrived at a
-    /// different way: a prefab hash there, a localization key here.
+    /// Text, and not the finished words. Every field of a LineDetails is a localization
+    /// key the game already ships - "$item_sword_iron", "$se_burning", "$skill_swords" -
+    /// which is the same on every machine, so each client localizes for itself and a
+    /// German player reads "Nebelwandler" from the same broadcast that gave you
+    /// "Mistwalker". That is the property <see cref="LineTokens"/> already relies on for
+    /// {target}, arrived at a different way: a prefab hash there, a key here.
+    ///
+    /// Two of the seven were the mod's own English until the keys went in, which is why
+    /// anything added here has to be a key too - a plain word would be one field that
+    /// only works for players reading English.
     ///
     /// I did weigh the tidier version, which is prefab hashes in two more int fields
     /// with the enums packed alongside. It is a third of the bytes and it needs

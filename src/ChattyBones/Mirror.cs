@@ -25,14 +25,17 @@ namespace ChattyBones
     internal static class Mirror
     {
         /// <summary>Turn the keys a hook recorded into the words this client reads.</summary>
-        /// <returns>The same details with the five localizable fields resolved.</returns>
+        /// <returns>The same details with all seven fields resolved.</returns>
         /// <param name="raw">What the hook worked out, and what goes on the wire.</param>
         /// <remarks>
-        /// Weapon type and damage are passed straight through, because they are the
-        /// mod's own English words out of the tables in <c>Hits</c> and
-        /// <see cref="DamageKind"/> rather than anything the game knows how to
-        /// translate. Running them through Localize would be harmless and would also
-        /// be a small lie about what they are.
+        /// All seven, which was not always true: weapon skill and damage used to be the
+        /// mod's own English words and were passed through raw. They are the game's own
+        /// keys now, so a pack can be written in any language.
+        ///
+        /// That has a consequence worth knowing before adding a field. <see cref="Text"/>
+        /// answers null for a key it cannot resolve, and a null token makes a line
+        /// unrenderable - so a key we spell wrong does not fall back to English, it makes
+        /// every line using that token quietly unavailable. LogChatter names the key.
         /// </remarks>
         internal static LineDetails Localize(LineDetails raw)
         {

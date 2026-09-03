@@ -31,7 +31,7 @@ namespace ChattyBones.Logic
         /// <summary>{weapon} - the weapon's own name.</summary>
         Weapon = 4,
 
-        /// <summary>{weaponskill} - what kind of weapon it was.</summary>
+        /// <summary>{weaponskill} - the skill it is used with.</summary>
         WeaponSkill = 8,
 
         /// <summary>{damage} - the dominant damage type.</summary>

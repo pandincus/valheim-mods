@@ -3,10 +3,12 @@
 # Everything your skeletons can say. Edit and save while the game is running and
 # the change takes effect immediately. If you break something they keep using the
 # last version that worked, and the reason, with a line number, goes to
-# BepInEx/LogOutput.log.
+# BepInEx/LogOutput.log, which is the first place to look when an edit does not do
+# what you expected.
 #
 # ChattyBones.lines.default.yaml next door is rewritten every launch with what the
-# mod shipped with. Read that one, edit this one.
+# mod shipped with. This file is never touched once it exists. Read that one, edit
+# this one.
 #
 #
 # WRITING LINES
@@ -22,6 +24,7 @@
 #
 # Write more lines per group than feels necessary. Nobody repeats the line they
 # just said, but that memory is one line deep, so a group of three audibly cycles.
+# A dozen is where it stops sounding like a loop.
 #
 # Personalities are whatever you name here. Two traps:
 #
@@ -32,6 +35,9 @@
 #   - "common" must be lower case. "Common" is read as an ordinary personality of
 #     that name, and everything relying on the fallback goes quiet without a word.
 #
+# "common" is not a personality and takes no place in that sorted list, so adding
+# or removing it shifts nobody.
+#
 #
 # EVENTS
 #
@@ -39,7 +45,7 @@
 # {name} and {player} are left out - every event has them.
 #
 #     T {target}       C {companion}     A {ally}
-#     W {weapon}       K {weaponskill}    D {damage}
+#     W {weapon}       K {weaponskill}  D {damage}
 #     S {status}       B {biome}         I {item}
 #     L {skill}
 #
@@ -162,16 +168,18 @@
 # Seven describe what happened and where:
 #
 #   {weapon}      the weapon by name, e.g. "Mistwalker"
-#   {weaponskill}  the skill it is used with, e.g. "Swords", "Unarmed"
-#   {damage}      the damage type, e.g. "Blunt", "Fire"
+#   {weaponskill} the skill it is used with, e.g. "Swords", "Unarmed"
+#   {damage}      the damage type: Blunt, Slash, Pierce, Fire, Frost, Lightning,
+#                 Poison or Spirit
 #   {status}      a status effect by name, e.g. "Burning"
 #   {biome}       where it is standing, e.g. "Black Forest"
 #   {item}        something you ate or picked up, e.g. "Carrot Soup"
 #   {skill}       the skill that just went up, e.g. "Blocking"
 #
 # Only {name} and {player} are always there. A line asking for something we do not
-# know is passed over and another chosen, so write a plain version beside any line
-# that uses a token, or it will never be said:
+# know is passed over and another chosen - including {ally} whenever you are
+# playing alone - so write a plain version beside any line that uses a token, or
+# it will never be said:
 #
 #   - "Get lost, {target}!"
 #   - "Get lost!"
@@ -179,31 +187,31 @@
 # A typo like {targat} is left alone rather than guessed at, so you will see it
 # floating over a skeleton's head. Tokens are lower case and case sensitive.
 #
-# Four things about wording:
+# Five things about wording:
 #
 #   - the weapon tokens belong only where the wielder is you or one of ours: a
 #     kill, a companion's kill, a blow you landed. On an incoming blow they name
-#     the attacker's hands, and a creature with no real weapon reports "sword", so
-#     a skeleton mauled by a greydwarf announces it was done in by a sword. The
-#     grid still marks those events - it says what CAN be filled, this says what
-#     reads well, and it is the one place the two deliberately differ.
+#     the attacker's hands, and a creature with no real weapon reports Swords, so
+#     a skeleton mauled by a greydwarf announces it was done in by Swords. The
+#     shipped pack keeps them out of Hurt, PlayerHurt, CompanionHurt and Died for
+#     that reason, though the grid marks all four - the grid says what CAN be
+#     filled, this says what reads well.
 #   - {weapon} is a plain name, and "Bronze sword" turns up far more often than
 #     "Mistwalker", so give it "my" or "the" rather than opening a line with it.
 #   - {damage} is not a noun you can put "the" in front of. Write it attributively
 #     - "{damage} damage" or "a {damage} hit" - or the other way round gets you
 #     "Mind the Pierce". "the {damage} damage" is fine.
-#   - {weaponskill} is the SKILL, plural, so it is "a fine use of Swords" and not
-#     "handy with the Swords". "Unarmed" and "Blood Magic" are in that list too.
+#   - {weaponskill} is a skill name rather than a weapon - Swords, Unarmed, Blood
+#     Magic - so do not put an article in front of it. "A fine use of Swords"
+#     works; "handy with the Swords" does not.
 #   - {status}, {biome}, {item}, {damage} and {weaponskill} all arrive capitalized,
 #     the way the game names them. That suits most of them mid-sentence; "My bones
 #     are Wet." reads oddly, so put {status} where a capital is welcome.
 #
-# {ally} is empty when you play alone, which is what makes it safe to scatter
-# about: the line is simply passed over until somebody is there to hear it.
-#
-# WRITING IN ANOTHER LANGUAGE. Write the lines in yours and every token follows -
-# creatures, items, biomes, skills, status effects and damage types are all named
-# by the game, in whatever language the person reading is playing in. In a shared
+# WRITING IN ANOTHER LANGUAGE. Write the lines in yours and every token that names
+# a thing follows - creatures, items, biomes, skills, status effects and damage
+# types are all named by the game, in whatever language the person reading is
+# playing in. The four that name a person are of course just names. In a shared
 # world each player reads their own pack, so yours does not have to match anyone
 # else's.
 #
@@ -218,20 +226,22 @@
 # game chose asks for something yours cannot work out, yours moves on to the next
 # in the group - one more reason not to leave a group with a single line in it.
 #
-# HearOthers switches it off for your screen, and AllyGreetingForgetSeconds decides
-# how often the same person is hailed again.
+# HearOthers in the mod config switches it off for your screen, and
+# AllyGreetingForgetSeconds there decides how often the same person is hailed.
 #
 #
 # YAML, BRIEFLY
 #
 # Indentation is meaningful. Spaces, never tabs, the same amounts you see here.
 #
-# Two things break the whole file, and quoting does not help with either:
+# Two things go wrong before your lines are ever read, and quoting helps with
+# neither:
 #
-#   - --- starts a second document and everything after it is ignored. Use a
-#     comment line to separate sections.
-#   - the same name twice in the same place: two "cowardly" blocks, or two "Idle"
-#     under one personality.
+#   - --- starts a second document, and everything after it is quietly dropped -
+#     the file still loads, with half of it missing and only a note in the log.
+#     Use a comment line to separate sections.
+#   - the same name twice in the same place - two "cowardly" blocks, or two "Idle"
+#     under one personality - refuses the file outright.
 #
 # Keep the "double quotes" around every line below. Without them YAML reads several
 # ordinary ways of opening a line as syntax - three of these fail loudly, two

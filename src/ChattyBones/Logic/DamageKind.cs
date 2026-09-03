@@ -15,7 +15,7 @@ namespace ChattyBones.Logic
     internal static class DamageKind
     {
         /// <summary>Name the damage type that did the most of the work.</summary>
-        /// <returns>A lower-case word for the dominant type, or null when nothing stands out.</returns>
+        /// <returns>The game's key for the dominant type, or null when nothing stands out.</returns>
         /// <param name="blunt">Blunt damage.</param>
         /// <param name="slash">Slash damage.</param>
         /// <param name="pierce">Pierce damage.</param>

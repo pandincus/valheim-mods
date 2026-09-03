@@ -27,7 +27,7 @@ namespace ChattyBones
 
             return new LineDetails(
                 weapon: WeaponName(hit),
-                weaponSkill: TypeName(hit.m_skill),
+                weaponSkill: SkillName(hit.m_skill),
                 damage: DamageKind.Dominant(
                     damage.m_blunt,
                     damage.m_slash,
@@ -61,7 +61,7 @@ namespace ChattyBones
 
             return weapon?.m_shared == null
                 ? default
-                : new LineDetails(weapon: NameOf(weapon), weaponSkill: TypeName(weapon.m_shared.m_skillType));
+                : new LineDetails(weapon: NameOf(weapon), weaponSkill: SkillName(weapon.m_shared.m_skillType));
         }
 
         /// <summary>What the attacker is holding, by its own name.</summary>
@@ -70,7 +70,7 @@ namespace ChattyBones
         /// <remarks>
         /// The weapon in hand *now*, which is not quite the weapon that landed this
         /// hit - an arrow arrives long after the bow was drawn, a thrown spear leaves
-        /// the hand entirely, and nothing stops a swap mid-swing. <see cref="TypeName"/>
+        /// the hand entirely, and nothing stops a swap mid-swing. <see cref="SkillName"/>
         /// is the more reliable of the two, though not exact either.
         /// </remarks>
         private static string WeaponName(HitData hit)
@@ -110,8 +110,8 @@ namespace ChattyBones
             return string.IsNullOrEmpty(name) ? null : name;
         }
 
-        /// <summary>What kind of weapon landed the blow.</summary>
-        /// <returns>A lower-case word, or null for skills that are not a weapon.</returns>
+        /// <summary>Which weapon skill landed the blow.</summary>
+        /// <returns>The game's name for it, or null for skills that are not a weapon.</returns>
         /// <param name="skill">The skill riding on the hit.</param>
         /// <remarks>
         /// The skill rides on the HitData itself, so this is what actually landed
@@ -120,27 +120,31 @@ namespace ChattyBones
         /// to Swords, so it is honest about players and a guess about monsters.
         ///
         /// Pickaxes and woodcutting are left out - they are tools, not weapons.
+        ///
+        /// The name comes from <see cref="Patches.Doings.NameOf(Skills.SkillType)"/>
+        /// rather than from a table here, so {weaponskill} and {skill} can never spell the
+        /// same skill two different ways. A key spelled by hand would be a token that
+        /// silently never renders, and none of this file is compiled by the tests.
         /// </remarks>
-        private static string TypeName(Skills.SkillType skill)
+        private static string SkillName(Skills.SkillType skill)
         {
-            return WeaponWords.TryGetValue(skill, out string word) ? word : null;
+            return WeaponSkills.Contains(skill) ? Patches.Doings.NameOf(skill) : null;
         }
 
-        /// <summary>What to call each weapon skill in a line.</summary>
-
-        private static readonly Dictionary<Skills.SkillType, string> WeaponWords = new()
-        {
-            [Skills.SkillType.Swords] = "$skill_swords",
-            [Skills.SkillType.Knives] = "$skill_knives",
-            [Skills.SkillType.Clubs] = "$skill_clubs",
-            [Skills.SkillType.Polearms] = "$skill_polearms",
-            [Skills.SkillType.Spears] = "$skill_spears",
-            [Skills.SkillType.Axes] = "$skill_axes",
-            [Skills.SkillType.Bows] = "$skill_bows",
-            [Skills.SkillType.Crossbows] = "$skill_crossbows",
-            [Skills.SkillType.ElementalMagic] = "$skill_elementalmagic",
-            [Skills.SkillType.BloodMagic] = "$skill_bloodmagic",
-            [Skills.SkillType.Unarmed] = "$skill_unarmed",
-        };
+        /// <summary>The skills that mean somebody swung something.</summary>
+        private static readonly HashSet<Skills.SkillType> WeaponSkills =
+        [
+            Skills.SkillType.Swords,
+            Skills.SkillType.Knives,
+            Skills.SkillType.Clubs,
+            Skills.SkillType.Polearms,
+            Skills.SkillType.Spears,
+            Skills.SkillType.Axes,
+            Skills.SkillType.Bows,
+            Skills.SkillType.Crossbows,
+            Skills.SkillType.ElementalMagic,
+            Skills.SkillType.BloodMagic,
+            Skills.SkillType.Unarmed,
+        ];
     }
 }

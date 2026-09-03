@@ -26,8 +26,8 @@ namespace ChattyBones.Logic
     {
         /// <summary>Gather whatever this event happens to know.</summary>
         /// <param name="weapon">The weapon's own name, e.g. "$item_sword_mistwalker".</param>
-        /// <param name="weaponSkill">What kind of weapon it is, e.g. "sword".</param>
-        /// <param name="damage">The dominant damage type, e.g. "fire".</param>
+        /// <param name="weaponSkill">The skill it is used with, e.g. "$skill_swords".</param>
+        /// <param name="damage">The dominant damage type, e.g. "$inventory_fire".</param>
         /// <param name="status">A status effect's name, e.g. "$se_burning".</param>
         /// <param name="biome">Where it is, e.g. "$biome_blackforest".</param>
         /// <param name="item">Something you ate or picked up, e.g. "$item_necktailgrilled".</param>

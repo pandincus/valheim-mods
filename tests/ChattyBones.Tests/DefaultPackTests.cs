@@ -60,11 +60,10 @@ namespace ChattyBones.Tests
         [Fact]
         public void NoLineGluesAnArticleToAWeaponSkill()
         {
-            // "That is what a {weaponskill} is for." reads fine until somebody swings
-            // an axe, and "a fists" is worse. No rendering test can catch it: the
-            // fixture below renders {weaponskill} as "sword", which is the one word in
-            // the vocabulary under which every such line happens to work - and the
-            // vocabulary itself lives in the Unity half, out of reach.
+            // "That is what a {weaponskill} is for." renders as "a Swords". No rendering
+            // test can catch it: the fixture below supplies a placeholder, and the real
+            // vocabulary is the game's own skill names, which live in Unity assets out of
+            // reach of anything here.
             //
             // This has now been introduced twice, so it gets a rule rather than a fix.
             foreach (string raw in DefaultPack.Yaml.Split('\n'))
@@ -136,11 +135,11 @@ namespace ChattyBones.Tests
         [Fact]
         public void TheBareDamageTokenNeverTakesAnArticle()
         {
-            // {damage} is one of eight bare words, and "blunt" and "pierce" are not nouns
-            // you can put "the" in front of - so "Mind the {damage}, {player}." reads in
-            // play as "Mind the pierce". Fifteen lines shipped that way at once and
-            // passed everything, because the fixture renders {damage} as "slash", which
-            // is a word they all happen to survive.
+            // {damage} is one of eight damage-type names, and "Blunt" and "Pierce" are
+            // not nouns you can put "the" in front of - so "Mind the {damage}, {player}."
+            // reads in play as "Mind the Pierce". Fifteen lines shipped that way at once
+            // and passed everything, because the fixture supplies a placeholder rather
+            // than any of the real values.
             //
             // Attributive is the fix and stays legal, so "the {damage} damage" and "the
             // {damage} hit" are both fine and only the bare token is refused - hence any
@@ -157,7 +156,7 @@ namespace ChattyBones.Tests
 
                 Assert.False(
                     Regex.IsMatch(line, @"\b[Tt]he \{damage\}(?! \w)"),
-                    "An article on the bare damage token, which reads as \"the pierce\": "
+                    "An article on the bare damage token, which reads as \"the Pierce\": "
                     + line.Trim());
             }
         }
