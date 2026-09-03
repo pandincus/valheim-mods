@@ -392,7 +392,7 @@ namespace ChattyBones.Tests
                 ally: "Sigrid",
                 details: new LineDetails(
                     weapon: "Mistwalker",
-                    weaponType: "sword",
+                    weaponSkill: "sword",
                     damage: "slash",
                     status: "Burning",
                     biome: "Black Forest",

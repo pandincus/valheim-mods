@@ -43,14 +43,14 @@ namespace ChattyBones.Logic
             string best = null;
             float most = 0f;
 
-            Consider("blunt", blunt, ref best, ref most);
-            Consider("slash", slash, ref best, ref most);
-            Consider("pierce", pierce, ref best, ref most);
-            Consider("fire", fire, ref best, ref most);
-            Consider("frost", frost, ref best, ref most);
-            Consider("lightning", lightning, ref best, ref most);
-            Consider("poison", poison, ref best, ref most);
-            Consider("spirit", spirit, ref best, ref most);
+            Consider("$inventory_blunt", blunt, ref best, ref most);
+            Consider("$inventory_slash", slash, ref best, ref most);
+            Consider("$inventory_pierce", pierce, ref best, ref most);
+            Consider("$inventory_fire", fire, ref best, ref most);
+            Consider("$inventory_frost", frost, ref best, ref most);
+            Consider("$inventory_lightning", lightning, ref best, ref most);
+            Consider("$inventory_poison", poison, ref best, ref most);
+            Consider("$inventory_spirit", spirit, ref best, ref most);
 
             return best;
         }

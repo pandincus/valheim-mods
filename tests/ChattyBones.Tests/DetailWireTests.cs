@@ -19,7 +19,7 @@ namespace ChattyBones.Tests
         {
             LineDetails sent = new(
                 weapon: "$item_sword_mistwalker",
-                weaponType: "sword",
+                weaponSkill: "sword",
                 damage: "slash",
                 status: "$se_burning",
                 biome: "$biome_blackforest",
@@ -29,7 +29,7 @@ namespace ChattyBones.Tests
             Assert.True(DetailWire.TryUnpack(DetailWire.Pack(sent), out LineDetails got));
 
             Assert.Equal(sent.Weapon, got.Weapon);
-            Assert.Equal(sent.WeaponType, got.WeaponType);
+            Assert.Equal(sent.WeaponSkill, got.WeaponSkill);
             Assert.Equal(sent.Damage, got.Damage);
             Assert.Equal(sent.Status, got.Status);
             Assert.Equal(sent.Biome, got.Biome);
@@ -59,7 +59,7 @@ namespace ChattyBones.Tests
             Assert.True(DetailWire.TryUnpack(DetailWire.Pack(sent), out LineDetails got));
 
             Assert.Equal("$item_axe_bronze", got.Weapon);
-            Assert.Null(got.WeaponType);
+            Assert.Null(got.WeaponSkill);
             Assert.Equal("slash", got.Damage);
         }
 
@@ -70,7 +70,7 @@ namespace ChattyBones.Tests
             // so that the common case - one field, near the front - reads as itself in
             // a log rather than as a row of pipes.
             Assert.Equal("$item_sword_iron", DetailWire.Pack(new LineDetails(weapon: "$item_sword_iron")));
-            Assert.Equal("|sword", DetailWire.Pack(new LineDetails(weaponType: "sword")));
+            Assert.Equal("|sword", DetailWire.Pack(new LineDetails(weaponSkill: "sword")));
         }
 
         [Fact]
@@ -110,12 +110,12 @@ namespace ChattyBones.Tests
             // prevents is the nasty kind: one field with a pipe in it shifts every
             // field after it along by one, so the reader gets a biome in the item slot
             // and says something confidently wrong.
-            LineDetails sent = new(weapon: "bad|name", weaponType: "sword", damage: "slash");
+            LineDetails sent = new(weapon: "bad|name", weaponSkill: "sword", damage: "slash");
 
             Assert.True(DetailWire.TryUnpack(DetailWire.Pack(sent), out LineDetails got));
 
             Assert.Null(got.Weapon);
-            Assert.Equal("sword", got.WeaponType);
+            Assert.Equal("sword", got.WeaponSkill);
             Assert.Equal("slash", got.Damage);
         }
 
@@ -131,7 +131,7 @@ namespace ChattyBones.Tests
 
             Assert.True(DetailWire.TryUnpack("not a record at all", out LineDetails odd));
             Assert.Equal("not a record at all", odd.Weapon);
-            Assert.Null(odd.WeaponType);
+            Assert.Null(odd.WeaponSkill);
         }
     }
 }

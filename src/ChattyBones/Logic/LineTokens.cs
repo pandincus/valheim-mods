@@ -15,7 +15,7 @@ namespace ChattyBones.Logic
     /// - {name} is the skeleton's own name
     /// - {companion} is another of your skeletons, for lines about each other
     /// - {ally} is another player standing near enough to talk to
-    /// - {weapon}, {weapontype}, {damage}, {status}, {biome}, {item} and {skill}
+    /// - {weapon}, {weaponskill}, {damage}, {status}, {biome}, {item} and {skill}
     ///   describe what happened and where, and live on <see cref="LineDetails"/>
     ///
     /// Every client fills these in for itself rather than being sent the words. For
@@ -213,7 +213,7 @@ namespace ChattyBones.Logic
         private static bool IsKnown(string token)
         {
             return token is "target" or "player" or "name" or "companion" or "ally"
-                or "weapon" or "weapontype" or "damage" or "status" or "biome"
+                or "weapon" or "weaponskill" or "damage" or "status" or "biome"
                 or "item" or "skill";
         }
 
@@ -230,7 +230,7 @@ namespace ChattyBones.Logic
                 "companion" => Companion,
                 "ally" => Ally,
                 "weapon" => Details.Weapon,
-                "weapontype" => Details.WeaponType,
+                "weaponskill" => Details.WeaponSkill,
                 "damage" => Details.Damage,
                 "status" => Details.Status,
                 "biome" => Details.Biome,

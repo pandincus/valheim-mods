@@ -26,7 +26,7 @@ namespace ChattyBones.Logic
     {
         /// <summary>Gather whatever this event happens to know.</summary>
         /// <param name="weapon">The weapon's own name, e.g. "$item_sword_mistwalker".</param>
-        /// <param name="weaponType">What kind of weapon it is, e.g. "sword".</param>
+        /// <param name="weaponSkill">What kind of weapon it is, e.g. "sword".</param>
         /// <param name="damage">The dominant damage type, e.g. "fire".</param>
         /// <param name="status">A status effect's name, e.g. "$se_burning".</param>
         /// <param name="biome">Where it is, e.g. "$biome_blackforest".</param>
@@ -34,7 +34,7 @@ namespace ChattyBones.Logic
         /// <param name="skill">A skill by name, e.g. "$skill_blocking".</param>
         internal LineDetails(
             string weapon = null,
-            string weaponType = null,
+            string weaponSkill = null,
             string damage = null,
             string status = null,
             string biome = null,
@@ -42,7 +42,7 @@ namespace ChattyBones.Logic
             string skill = null)
         {
             Weapon = weapon;
-            WeaponType = weaponType;
+            WeaponSkill = weaponSkill;
             Damage = damage;
             Status = status;
             Biome = biome;
@@ -54,7 +54,7 @@ namespace ChattyBones.Logic
         internal string Weapon { get; }
 
         /// <summary>What kind of weapon it was, or null. Read off the hit - see Hits.TypeName.</summary>
-        internal string WeaponType { get; }
+        internal string WeaponSkill { get; }
 
         /// <summary>The dominant damage type, or null when nothing stood out.</summary>
         internal string Damage { get; }

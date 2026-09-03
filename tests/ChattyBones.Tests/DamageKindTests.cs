@@ -40,7 +40,9 @@ namespace ChattyBones.Tests
         [InlineData("spirit")]
         public void EachTypeCanBeNamed(string type)
         {
-            Assert.Equal(type, Only(type));
+            // The word is what the caller asks for; the answer is the key vanilla
+            // uses for it on an item tooltip, so it reaches a player in their language.
+            Assert.Equal("$inventory_" + type, Only(type));
         }
 
         [Fact]
@@ -48,7 +50,7 @@ namespace ChattyBones.Tests
         {
             // A frostner-ish hit: mostly blunt, some frost.
             Assert.Equal(
-                "blunt",
+                "$inventory_blunt",
                 DamageKind.Dominant(
                     blunt: 40f, slash: 0f, pierce: 0f, fire: 0f,
                     frost: 15f, lightning: 0f, poison: 0f, spirit: 0f));
@@ -60,7 +62,7 @@ namespace ChattyBones.Tests
             // The case the tie-break exists for. A fire sword is a sword, and "nice
             // slash hit" describes it better than "nice fire hit" would.
             Assert.Equal(
-                "slash",
+                "$inventory_slash",
                 DamageKind.Dominant(
                     blunt: 0f, slash: 30f, pierce: 0f, fire: 30f,
                     frost: 0f, lightning: 0f, poison: 0f, spirit: 0f));
@@ -93,7 +95,7 @@ namespace ChattyBones.Tests
         {
             // No threshold, deliberately. If the only thing a hit did was a sliver of
             // poison, poison is what it was.
-            Assert.Equal("poison", Only("poison", 0.01f));
+            Assert.Equal("$inventory_poison", Only("poison", 0.01f));
         }
     }
 }

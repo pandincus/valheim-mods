@@ -142,7 +142,7 @@ namespace ChattyBones
             List<string> had = [];
 
             if (details.Weapon != null) { had.Add("weapon=" + details.Weapon); }
-            if (details.WeaponType != null) { had.Add("weapontype=" + details.WeaponType); }
+            if (details.WeaponSkill != null) { had.Add("weaponskill=" + details.WeaponSkill); }
             if (details.Damage != null) { had.Add("damage=" + details.Damage); }
             if (details.Status != null) { had.Add("status=" + details.Status); }
             if (details.Biome != null) { had.Add("biome=" + details.Biome); }

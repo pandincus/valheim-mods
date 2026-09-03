@@ -1,59 +1,45 @@
 # ChattyBones - the line pack
 #
-# This is everything your skeletons can say. Edit it, save it, and the change
-# takes effect straight away - there is no need to restart the game or even to
-# leave the world. If you break something, the skeletons keep using the last
-# version that worked and the reason, with a line number, is written to the log
-# at BepInEx/LogOutput.log. That file is the first place to look whenever an edit
-# does not do what you expected.
+# Everything your skeletons can say. Edit and save while the game is running and
+# the change takes effect immediately. If you break something they keep using the
+# last version that worked, and the reason, with a line number, goes to
+# BepInEx/LogOutput.log.
 #
-# The copy next to this one, ChattyBones.lines.default.yaml, is rewritten every
-# time the game starts. Yours is never touched once it exists, so that file is
-# where to look when you want to see what the mod shipped with. Do not edit it;
-# edit this one.
+# ChattyBones.lines.default.yaml next door is rewritten every launch with what the
+# mod shipped with. Read that one, edit this one.
 #
 #
 # WRITING LINES
 #
-# Lines are grouped by personality and then by what just happened:
-#
 #   lines:
 #     cowardly:
 #       Summoned:
-#         - Do I have to?
+#         - "Do I have to?"
 #
-# A skeleton is given one of the personalities below when you summon it, and
-# keeps it for as long as it exists. When its own personality has nothing to say
-# about something, it falls back to "common" - so you can write the lines you
-# had a good idea for and let the rest fall through. That fallback is per event,
-# not per personality: a cowardly skeleton with its own idle lines but no death
-# lines uses its own idle lines and the shared death ones.
+# A skeleton is given a personality when you summon it and keeps it. Where its
+# personality has nothing for an event it falls back to "common", per event - its
+# own idle lines with the shared death lines is normal.
 #
-# Write more lines per group than feels necessary. Nobody says the same line
-# twice in a row, but that memory is only one line deep, so a group of three
-# audibly cycles. A dozen is where it stops sounding like a loop.
+# Write more lines per group than feels necessary. Nobody repeats the line they
+# just said, but that memory is one line deep, so a group of three audibly cycles.
 #
-# The personalities are whatever you name here. Four come with the mod, and you
-# can rename them, delete them or add your own. One thing to know before you do:
-# a skeleton stores its personality as a position in the list of them *sorted
-# alphabetically*, not in the order you wrote them. So renaming one, or adding or
-# removing one, reshuffles which personality your existing skeletons have. New
-# summons are unaffected, and nothing breaks - they just change character.
+# Personalities are whatever you name here. Two traps:
 #
-# "common" is not a personality. Nothing is ever summoned as one, and it does
-# not count towards that list. Put everything there and every skeleton sounds
-# the same, which is a perfectly reasonable pack to want. Spell it in lower case:
-# "Common" is read as an ordinary personality named Common, and everything that
-# was relying on the fallback goes quiet without a word of complaint.
+#   - a skeleton stores its personality as a position in the list SORTED
+#     ALPHABETICALLY, so adding, removing or renaming one reshuffles which
+#     personality your existing skeletons have. Nothing breaks - they change
+#     character.
+#   - "common" must be lower case. "Common" is read as an ordinary personality of
+#     that name, and everything relying on the fallback goes quiet without a word.
 #
 #
 # EVENTS
 #
 # Thirty-two things a skeleton reacts to, and which tokens each one can fill in.
-# {name} and {player} are left out of the table because every event has them.
+# {name} and {player} are left out - every event has them.
 #
 #     T {target}       C {companion}     A {ally}
-#     W {weapon}       K {weapontype}    D {damage}
+#     W {weapon}       K {weaponskill}    D {damage}
 #     S {status}       B {biome}         I {item}
 #     L {skill}
 #
@@ -91,42 +77,29 @@
 #   PlayerSkilledUp      you got better at something   .  .  .  .  .  .  .  .  .  L
 #   AllyArrived          another player came near      .  .  A  .  .  .  .  .  .  .
 #
-# The D column is the one worth a second look. {damage} only reaches the events
-# that catch a blow as it lands, because that is the only moment the numbers
-# still exist - by the time a body is examined, the game has taken the fire and
-# poison off its last hit. So a near-miss can say "nice fire hit" and a kill
-# cannot.
+# A mark means the token CAN be filled, not that it always is. Keep a plain line
+# in every group.
 #
-# A mark means the token can be filled, not that it always is: a kill's {weapon}
-# is missing when whatever made it was not holding one, and a mourned skeleton's
-# {companion} is missing to everybody but the player who owned it. Keep plain
-# lines in every group.
+# D only reaches events that catch a blow as it lands: by the time a body is
+# examined, the game has taken the fire and poison off its last hit.
 #
-# The C and A columns mean something stronger than the rest, and it is worth
-# knowing before you write either token. {companion} and {ally} can go in ANY
-# line at all - a skeleton will name another of the squad, or another player
-# standing nearby, wherever you ask it to. What a mark in those two columns means
-# is that the event names a PARTICULAR person: the skeleton that just died, the
-# player who just walked up. So "Oh no, {companion}!" under CompanionDied mourns
-# the one that fell, while the same words under Killed name whoever happens to be
+# C and A mean something stronger than the rest. Both tokens work in ANY line - a
+# skeleton will name a squadmate or a nearby player wherever you ask. A mark means
+# the event names a PARTICULAR person, so "Oh no, {companion}!" under CompanionDied
+# mourns the one that fell, while the same words under Killed name whoever is
 # standing about.
 #
-# Weather is mostly rain, but the same effect comes from wading in, swimming, and
-# simply being in the Swamp - so a line that commits to falling rain will
-# sometimes be wrong. "My bones are wet" travels better than "it is raining".
+# Spelling counts, capitals included. An event name that is not one of these is
+# logged and skipped, and an event you leave out entirely is simply never commented
+# on - a fine way to switch off a kind of chatter.
 #
-# Spelling counts, capitals included: "idle" is not "Idle", and a name that is
-# not exactly one of the thirty-two above is reported in the log and skipped.
-#
-# An event you leave out entirely is simply never commented on, which is a fine
-# way to switch off the idle chatter.
+# Weather is mostly rain, but wading, swimming and the Swamp all raise it, so
+# "My bones are wet" travels better than "it is raining".
 #
 #
 # LINES THAT ONLY SUIT ONE MOMENT
 #
-# An event can be tagged with something about the moment - where the skeleton is,
-# what time it is, whether you are safely at home - and then those lines are used
-# only then:
+# Tag an event and those lines are used only then:
 #
 #   cowardly:
 #     Idle:
@@ -134,87 +107,51 @@
 #     Idle[biome=Swamp]:
 #       - "I do not like it here."
 #
-# In the Swamp that skeleton draws from the tagged group; anywhere else it draws
-# from the plain one. This is the thing {biome} cannot do for you - a token puts a
-# word in a line, but it cannot stop a line being said in the wrong place.
-#
-# There are three tags. The values are exact, capitals and all:
+# Three tags. The values are exact, capitals and all:
 #
 #   biome=    Meadows   BlackForest   Swamp   Mountain   Plains
 #             Mistlands   AshLands   DeepNorth   Ocean
-#
-#             ("None" and "All" are reported at load - they are spellings the game
-#              keeps for its own bookkeeping and no skeleton is ever standing in
-#              one, so a group tagged with either is silent. For "anywhere", write
-#              a plain group with no brackets.)
-#
 #   time=     morning   afternoon   evening   night
-#
 #   home=     yes   no
 #
-# "time" is the quarter of the day, cut where the game cuts it: morning is dawn
-# to noon, afternoon is noon to sunset, evening is sunset to midnight, night is
-# midnight to dawn.
+# time is cut where the game cuts it: morning is dawn to noon, afternoon noon to
+# sunset, evening sunset to midnight, night midnight to dawn.
 #
-# "home" is not simply "indoors" or "near a workbench". It is the game's own idea
-# of being settled - resting, under a roof, near a fire, within your base, and
-# with nothing hunting you - so home=yes is a quiet moment and not merely an
-# address. It is also about *you* rather than about the skeleton, so a skeleton
-# left out in the woods still says home lines while you sit by the fire.
+# home is the game's own idea of being settled - resting, roofed, near a fire, in
+# your base, nothing hunting you. It asks about YOU rather than the skeleton, so
+# one left out in the woods still says home lines while you sit by the fire.
 #
-# A "biome" name that is not one of those is reported in the log at load. It has
-# to be, because a group tagged with a place that does not exist reads perfectly
-# and is silent forever, which is the least helpful kind of mistake a file can
-# contain. A wrong "time" or "home" value is caught sooner, when the file is read,
-# and reported with the line it is on, and that group is skipped.
+# "None" and "All" are real biome spellings the game keeps for its own bookkeeping.
+# No skeleton is ever standing in one, so a group tagged with either is silent; for
+# "anywhere", write a plain group. A bad biome is reported at load, a bad time or
+# home value when the file is read, with its line number.
 #
-# The rule for which group wins, in order:
+# Which group wins:
 #
 #   1. your personality's lines for this exact moment
 #   2. your personality's plain lines
 #   3. the shared lines for this exact moment
 #   4. the shared plain lines
 #
-# So a personality with plain lines of its own uses those before it will touch a
-# shared group tagged for where it is standing. Personality first, moment second.
+# Personality first, moment second. Where the plain group sits in the file makes no
+# difference - a tagged group is tried before it either way.
 #
-# Where the plain group sits in the file does not matter - a tagged group is tried
-# before it either way - so you can leave your plain lines at the top of an event.
+# One tag per group: "Idle[biome=Swamp,time=night]" is refused and logged.
 #
-# One tag per group. "Idle[biome=Swamp,time=night]" is refused rather than
-# guessed at, and reported in the log.
-#
-# Which matters more than it used to, now that there is more than one tag: a
-# skeleton standing in the Swamp at night matches a [biome=Swamp] group and a
-# [time=night] group at the same time, and the one written HIGHER UP THE FILE
-# wins. Nothing warns you about the other one.
-#
-# So the rule for writing them is: PUT YOUR RAREST GROUPS FIRST. This file goes
+# WHEN TWO TAGS BOTH MATCH, THE ONE HIGHER UP THE FILE WINS, and nothing warns you
+# about the loser. So put your rarest groups first. This file goes
 #
 #   home=yes, then biome, then time, and home=no last of all
 #
-# because home=yes is the hardest thing to be - resting, roofed, warm, in your
-# base, with nothing hunting you - while time is true a quarter of every day and
-# would drown the other two if it went first. If you want a different order, move
-# the groups; that is the whole mechanism.
-#
-# Note that the VALUE can matter and not just the tag. Every skeleton is either
-# home or not, so [home=no] is true almost always: put one high in a group and
-# everything below it stops being reachable. That is why the order above names
-# home twice, at opposite ends.
-#
-# It is easy to get wrong and quiet when you do. The first draft of this file put
-# the home groups last, which meant the cozy-fireside lines could only be said in
-# daylight - the one time of day nobody is sitting by the fire.
-#
-# The same warning about short groups applies here and bites harder. A tagged
-# group with one line in it means that skeleton says that one line every single
-# time it is in that moment, and the lines beside it are never reached.
+# The value matters and not just the tag: every skeleton is either home or not, so
+# [home=no] is true nearly always and will drown anything below it. That is why
+# home appears twice, at opposite ends. A tagged group with one line in it repeats
+# that line every time the moment comes round.
 #
 #
 # TOKENS
 #
-# Twelve things a line can drop into itself. Five are about the people involved:
+# Five are people:
 #
 #   {name}        the skeleton speaking
 #   {player}      you
@@ -222,121 +159,83 @@
 #   {companion}   another of your skeletons
 #   {ally}        another player standing near you
 #
-# ...and seven describe what happened and where:
+# Seven describe what happened and where:
 #
 #   {weapon}      the weapon by name, e.g. "Mistwalker"
-#   {weapontype}  what kind it is, e.g. "sword"
-#   {damage}      the main damage type: blunt, slash, pierce, fire, frost,
-#                 lightning, poison or spirit
+#   {weaponskill}  the skill it is used with, e.g. "Swords", "Unarmed"
+#   {damage}      the damage type, e.g. "Blunt", "Fire"
 #   {status}      a status effect by name, e.g. "Burning"
 #   {biome}       where it is standing, e.g. "Black Forest"
 #   {item}        something you ate or picked up, e.g. "Carrot Soup"
 #   {skill}       the skill that just went up, e.g. "Blocking"
 #
-# Neither weapon token is exact, in different ways. {weapon} is read from the
-# attacker's hands a moment after the blow, so an arrow still in the air, a
-# thrown spear or a mid-swing swap can leave it naming the wrong thing.
-# {weapontype} comes off the blow itself, so it names what actually landed - but
-# a creature with no real weapon reports "sword", because that is the default on
-# an attack nobody filled in. Prefer {weapontype} where a mistake would read
-# badly, and expect the occasional well-armed greydwarf.
-#
-# That default is also why both weapon tokens belong only where the wielder is
-# you or one of ours: a kill, a companion's kill, or a blow you landed. On a blow
-# coming in they name the attacker's hands instead, so a skeleton torn apart by a
-# greydwarf announces it was done in by a sword. The shipped pack keeps them out
-# of Hurt, PlayerHurt, CompanionHurt and Died for that reason. The grid above
-# still marks all four, and that is not a contradiction: the grid says what the
-# hooks CAN fill, and this is about what reads well once they have. It is the one
-# place in this file where the two deliberately differ.
-#
-# {weapon} arrives as a plain name, and "Bronze sword" turns up far more often
-# than "Mistwalker" - so give it "my" or "the" rather than opening a line with it
-# as though it were somebody's name.
-#
-# {damage} is a bare word, and "blunt" and "pierce" are not nouns you can put
-# "the" in front of. They are also two you meet most of the way through a game.
-# So write it attributively and all eight land: "{damage} damage" or "a {damage}
-# hit". "Mind the {damage}" is what the other way round gets you, and what it
-# gets you is "Mind the pierce". Note the rule is about the bare token - "the
-# {damage} damage" is attributive and perfectly fine.
-#
-# {biome} and {item} arrive capitalized too - "Black Forest", "Carrot Soup",
-# "Wood". That is fine mid-sentence, because the game capitalizes them
-# everywhere else as well, so "More Wood, then." reads the way the rest of the
-# interface does. {status} is the exception, and this is why:
-#
-# {status} arrives capitalized, because that is how the game names it on your
-# status bar - "Burning", "Wet", "Tarred". Worth knowing when you place it:
-# "My bones are {status}." comes out as "My bones are Wet.", which some people
-# read as a typo and others read as emphasis. Putting it at the start of a
-# sentence or after a full stop sidesteps the question entirely. Your call.
-#
-# {ally} is empty whenever you are playing on your own, which is what makes it
-# safe to scatter about: "So, how are things, {ally}?" is simply passed over until
-# somebody is actually there to ask. Write a plain line beside it, as with any
-# other token, and you will never notice the difference.
-#
-# {name} and {player} are always available. The rest are not, and that is useful
-# rather than a limitation: a line asking for something we do not know is quietly
-# passed over and a different one is chosen instead. So you can write
+# Only {name} and {player} are always there. A line asking for something we do not
+# know is passed over and another chosen, so write a plain version beside any line
+# that uses a token, or it will never be said:
 #
 #   - "Get lost, {target}!"
 #   - "Get lost!"
 #
-# side by side, and the first is used when we know what it is shouting at. Write
-# a plain version of any line that uses a token, or it will simply never be said.
-#
 # A typo like {targat} is left alone rather than guessed at, so you will see it
-# floating over a skeleton's head and know immediately what happened. Tokens are
-# case sensitive and always lower case.
+# floating over a skeleton's head. Tokens are lower case and case sensitive.
+#
+# Four things about wording:
+#
+#   - the weapon tokens belong only where the wielder is you or one of ours: a
+#     kill, a companion's kill, a blow you landed. On an incoming blow they name
+#     the attacker's hands, and a creature with no real weapon reports "sword", so
+#     a skeleton mauled by a greydwarf announces it was done in by a sword. The
+#     grid still marks those events - it says what CAN be filled, this says what
+#     reads well, and it is the one place the two deliberately differ.
+#   - {weapon} is a plain name, and "Bronze sword" turns up far more often than
+#     "Mistwalker", so give it "my" or "the" rather than opening a line with it.
+#   - {damage} is not a noun you can put "the" in front of. Write it attributively
+#     - "{damage} damage" or "a {damage} hit" - or the other way round gets you
+#     "Mind the Pierce". "the {damage} damage" is fine.
+#   - {weaponskill} is the SKILL, plural, so it is "a fine use of Swords" and not
+#     "handy with the Swords". "Unarmed" and "Blood Magic" are in that list too.
+#   - {status}, {biome}, {item}, {damage} and {weaponskill} all arrive capitalized,
+#     the way the game names them. That suits most of them mid-sentence; "My bones
+#     are Wet." reads oddly, so put {status} where a capital is welcome.
+#
+# {ally} is empty when you play alone, which is what makes it safe to scatter
+# about: the line is simply passed over until somebody is there to hear it.
+#
+# WRITING IN ANOTHER LANGUAGE. Write the lines in yours and every token follows -
+# creatures, items, biomes, skills, status effects and damage types are all named
+# by the game, in whatever language the person reading is playing in. In a shared
+# world each player reads their own pack, so yours does not have to match anyone
+# else's.
 #
 #
 # OTHER PLAYERS
 #
-# In a shared world, everybody running ChattyBones sees everybody's skeletons
-# talk. It costs you nothing to set up and there is nothing to install on a
-# server: a skeleton records what it said in the same place the game already
-# keeps its name and its health, and the other players read it from there.
-# Players without the mod see nothing at all, and nothing goes wrong for them.
+# Everybody running ChattyBones sees everybody's skeletons talk. There is nothing
+# to install on a server, and players without the mod see nothing at all.
 #
-# You do not need the same file as your friends. What travels is which line, not
-# the line itself - so your skeletons say your lines on your screen and theirs on
-# theirs, and neither of you has to know anything about the other's pack. If your
-# files do happen to match, you both read the same words.
+# You do not need the same file as your friends. What travels is WHICH LINE rather
+# than the line itself, so each of you reads your own pack. When the line their
+# game chose asks for something yours cannot work out, yours moves on to the next
+# in the group - one more reason not to leave a group with a single line in it.
 #
-# One consequence worth knowing when you write: a line is sometimes drawn on your
-# screen with less information than the player who owns the skeleton had. If the
-# line their game chose asks for something yours cannot work out, yours moves on
-# to the next line in the group rather than saying nothing. So a group with one
-# line in it is worth avoiding here for a second reason - there is nothing to
-# move on to.
-#
-# {ally} is the token this all exists for. Whoever the skeleton is talking to is
-# chosen once, by the machine that owns it, and everybody else is told which
-# person it picked - so you and they read the same name, in each of your own
-# languages and through each of your own name filtering.
-#
-# HearOthers in the config switches the whole thing off for your screen, and
-# AllyGreetingForgetSeconds decides how often the same person gets hailed again.
+# HearOthers switches it off for your screen, and AllyGreetingForgetSeconds decides
+# how often the same person is hailed again.
 #
 #
 # YAML, BRIEFLY
 #
-# Indentation is meaningful - use spaces, never tabs, and keep the amounts the
-# same as you see here.
+# Indentation is meaningful. Spaces, never tabs, the same amounts you see here.
 #
-# These two break the whole file, and quoting does not help with either:
+# Two things break the whole file, and quoting does not help with either:
 #
-#   - do not use --- to separate sections. It starts a second document and
-#     everything after it is ignored. A comment line is what you want
-#   - the same name twice in the same place - two "cowardly" blocks, or two
-#     "Idle" under one personality - is refused, and takes the file with it
+#   - --- starts a second document and everything after it is ignored. Use a
+#     comment line to separate sections.
+#   - the same name twice in the same place: two "cowardly" blocks, or two "Idle"
+#     under one personality.
 #
-# The other thing to copy is the "double quotes" around every line below. Not
-# decoration: without them YAML reads several perfectly ordinary ways of opening
-# a line as syntax, and three of these five fail loudly while two quietly change
-# what your skeleton says.
+# Keep the "double quotes" around every line below. Without them YAML reads several
+# ordinary ways of opening a line as syntax - three of these fail loudly, two
+# quietly change what your skeleton says:
 #
 #   - "{player}! Watch it!"        unquoted, { starts an object
 #   - "'Tis but a scratch!"        unquoted, ' starts a quoted string
@@ -344,22 +243,16 @@
 #   - "Listen up: here's the plan" unquoted, a colon makes it a setting
 #   - "You're # 1!"                unquoted, everything from # is dropped
 #
-# So: keep the quotes and stop thinking about it.
-#
-# One exception, and it is the only one. Inside double quotes a backslash starts
-# an escape rather than being a backslash, so write it twice:
+# One exception, and it is the only one: inside double quotes a backslash starts an
+# escape, so write two.
 #
 #   - "\\o/"                       one backslash refuses the file
 #   - "shrug: ¯\\_(o_o)_/¯"        one backslash silently eats a character
 
-# Color is by event rather than by personality. Who is speaking is already
-# clear from the name plate and from the words; what is worth knowing at a
-# glance is whether something has gone wrong. A death cry in red reads as bad
-# news before you have read a syllable of it.
-#
-# Keep this short. Twelve colors on screen is the same unreadable wall that
-# having five skeletons talk at once would be, and pale, washed-out shades are
-# the ones that stay readable over grass, snow and lava alike.
+# Color is by event rather than by personality: who is speaking is already clear
+# from the name plate and the words, while whether something has gone wrong is
+# worth knowing at a glance. Keep to a few pale shades - they are the ones that
+# stay readable over grass, snow and lava alike.
 colors:
 
   # Name as many or as few as you like. "normal" is the one every event uses
@@ -423,7 +316,7 @@ lines:
       - "Down it goes."
       - "That {target} won't get up."
       - "Next."
-      - "That is what we have the {weapontype} for."
+      - "That is what we have the {weaponskill} for."
       - "My {weapon} does not miss."
     Died:
       - "Bugger."
@@ -450,11 +343,11 @@ lines:
       - "Did you see that?"
       - "Lovely swing, {player}."
       - "Nice {damage} hit with that {weapon}!"
-      - "The {weapontype} did its work."
+      - "The {weaponskill} did its work."
     PlayerGotAKill:
       - "Got him!"
       - "Nice one, {player}."
-      - "Nice {weapontype} work, {player}."
+      - "Nice {weaponskill} work, {player}."
     CompanionHurt:
       - "{companion}!"
       - "They're on {companion}!"
@@ -463,7 +356,7 @@ lines:
       - "It's {damage} damage on {companion}, {player}!"
     CompanionKilled:
       - "Leave some for me, {companion}."
-      - "Handy with the {weapontype}, {companion}."
+      - "Handy with the {weaponskill}, {companion}."
       - "{companion} got the {target}."
       - "Show-off."
     CompanionDied:
@@ -593,7 +486,7 @@ lines:
       - "Did I do that?"
       - "It was mostly {player}, honestly."
       - "Now I never want to fight another {target} again!"
-      - "The {weapontype} did it! Not me! The {weapontype}!"
+      - "The {weaponskill} did it! Not me! The {weaponskill}!"
       - "Is it over? Can I open my eyes?"
       - "My {weapon} did the work. I just held on."
     Idle:
@@ -689,9 +582,9 @@ lines:
       - "As foretold!"
       - "Another {target} for the ballad."
       - "Odin? You seeing this? I am worthy!"
-      - "Did you SEE what I did with the {weapontype}?"
+      - "Did you SEE what I did with the {weaponskill}?"
       - "My {weapon} and I are LEGENDS, {player}!"
-      - "The {weapontype} sang, and the {target} fell."
+      - "The {weaponskill} sang, and the {target} fell."
     Idle:
       - "Ask me about the ballad."
       - "Pretty sure they still sing about me in Midgard."
@@ -771,11 +664,11 @@ lines:
     Killed:
       - "Target down."
       - "{target} neutralized."
-      - "{target} neutralized. The {weapontype} performed as expected."
-      - "Clean work with the {weapontype}."
+      - "{target} neutralized. The {weaponskill} performed as expected."
+      - "Clean work with the {weaponskill}."
       - "My {weapon} did its part. Noted."
     PlayerGotAKill:
-      - "Excellent demonstration of {weapontype}, {player}."
+      - "Excellent demonstration of {weaponskill}, {player}."
       - "{player} eliminated the {target}."
       - "One fewer {target} amongst the enemy's numbers."
     Idle:
@@ -866,9 +759,9 @@ lines:
     Killed:
       - "That's that, then."
       - "Anticlimactic."
-      - "The {weapontype} held up. It usually does."
+      - "The {weaponskill} held up. It usually does."
       - "My {weapon} has seen a hundred of these."
-      - "Another one for the {weapontype}."
+      - "Another one for the {weaponskill}."
     Idle:
       - "I've stood in worse fields."
       - "Wake me when it's interesting."

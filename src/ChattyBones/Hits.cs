@@ -27,7 +27,7 @@ namespace ChattyBones
 
             return new LineDetails(
                 weapon: WeaponName(hit),
-                weaponType: TypeName(hit.m_skill),
+                weaponSkill: TypeName(hit.m_skill),
                 damage: DamageKind.Dominant(
                     damage.m_blunt,
                     damage.m_slash,
@@ -61,7 +61,7 @@ namespace ChattyBones
 
             return weapon?.m_shared == null
                 ? default
-                : new LineDetails(weapon: NameOf(weapon), weaponType: TypeName(weapon.m_shared.m_skillType));
+                : new LineDetails(weapon: NameOf(weapon), weaponSkill: TypeName(weapon.m_shared.m_skillType));
         }
 
         /// <summary>What the attacker is holding, by its own name.</summary>
@@ -130,17 +130,17 @@ namespace ChattyBones
 
         private static readonly Dictionary<Skills.SkillType, string> WeaponWords = new()
         {
-            [Skills.SkillType.Swords] = "sword",
-            [Skills.SkillType.Knives] = "knife",
-            [Skills.SkillType.Clubs] = "club",
-            [Skills.SkillType.Polearms] = "polearm",
-            [Skills.SkillType.Spears] = "spear",
-            [Skills.SkillType.Axes] = "axe",
-            [Skills.SkillType.Bows] = "bow",
-            [Skills.SkillType.Crossbows] = "crossbow",
-            [Skills.SkillType.ElementalMagic] = "staff",
-            [Skills.SkillType.BloodMagic] = "staff",
-            [Skills.SkillType.Unarmed] = "fists",
+            [Skills.SkillType.Swords] = "$skill_swords",
+            [Skills.SkillType.Knives] = "$skill_knives",
+            [Skills.SkillType.Clubs] = "$skill_clubs",
+            [Skills.SkillType.Polearms] = "$skill_polearms",
+            [Skills.SkillType.Spears] = "$skill_spears",
+            [Skills.SkillType.Axes] = "$skill_axes",
+            [Skills.SkillType.Bows] = "$skill_bows",
+            [Skills.SkillType.Crossbows] = "$skill_crossbows",
+            [Skills.SkillType.ElementalMagic] = "$skill_elementalmagic",
+            [Skills.SkillType.BloodMagic] = "$skill_bloodmagic",
+            [Skills.SkillType.Unarmed] = "$skill_unarmed",
         };
     }
 }

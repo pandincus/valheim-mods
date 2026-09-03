@@ -31,8 +31,8 @@ namespace ChattyBones.Logic
         /// <summary>{weapon} - the weapon's own name.</summary>
         Weapon = 4,
 
-        /// <summary>{weapontype} - what kind of weapon it was.</summary>
-        WeaponType = 8,
+        /// <summary>{weaponskill} - what kind of weapon it was.</summary>
+        WeaponSkill = 8,
 
         /// <summary>{damage} - the dominant damage type.</summary>
         Damage = 16,
@@ -132,7 +132,7 @@ namespace ChattyBones.Logic
                 or ChatterEvent.CompanionHurt
                 or ChatterEvent.PlayerLandedABigHit)
             {
-                set |= TokenSet.Weapon | TokenSet.WeaponType | TokenSet.Damage;
+                set |= TokenSet.Weapon | TokenSet.WeaponSkill | TokenSet.Damage;
             }
 
             // A kill or a death knows only what the killer was holding. m_lastHit is
@@ -144,7 +144,7 @@ namespace ChattyBones.Logic
                 or ChatterEvent.Died
                 or ChatterEvent.PlayerGotAKill)
             {
-                set |= TokenSet.Weapon | TokenSet.WeaponType;
+                set |= TokenSet.Weapon | TokenSet.WeaponSkill;
             }
 
             if (kind is ChatterEvent.Buffed or ChatterEvent.Afflicted or ChatterEvent.Weather)
@@ -216,7 +216,7 @@ namespace ChattyBones.Logic
             if (companion != null) { set |= TokenSet.Companion; }
             if (ally != null) { set |= TokenSet.Ally; }
             if (details.Weapon != null) { set |= TokenSet.Weapon; }
-            if (details.WeaponType != null) { set |= TokenSet.WeaponType; }
+            if (details.WeaponSkill != null) { set |= TokenSet.WeaponSkill; }
             if (details.Damage != null) { set |= TokenSet.Damage; }
             if (details.Status != null) { set |= TokenSet.Status; }
             if (details.Biome != null) { set |= TokenSet.Biome; }

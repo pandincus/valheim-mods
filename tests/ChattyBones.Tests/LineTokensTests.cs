@@ -21,10 +21,10 @@ namespace ChattyBones.Tests
                 player: "Ragnar",
                 name: "Botvid",
                 details: new LineDetails(
-                    weapon: "Mistwalker", weaponType: "sword", damage: "slash", status: "Burning"));
+                    weapon: "Mistwalker", weaponSkill: "sword", damage: "slash", status: "Burning"));
 
             Assert.True(tokens.TryRender(
-                "Nice {damage} hit with that {weapon}, {player} - {weapontype} work. {status}!", out string line));
+                "Nice {damage} hit with that {weapon}, {player} - {weaponskill} work. {status}!", out string line));
 
             Assert.Equal("Nice slash hit with that Mistwalker, Ragnar - sword work. Burning!", line);
         }

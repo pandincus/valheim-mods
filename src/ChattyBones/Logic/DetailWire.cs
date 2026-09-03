@@ -60,7 +60,7 @@ namespace ChattyBones.Logic
             string[] parts =
             [
                 details.Weapon,
-                details.WeaponType,
+                details.WeaponSkill,
                 details.Damage,
                 details.Status,
                 details.Biome,
@@ -122,7 +122,7 @@ namespace ChattyBones.Logic
 
             details = new LineDetails(
                 weapon: At(parts, 0),
-                weaponType: At(parts, 1),
+                weaponSkill: At(parts, 1),
                 damage: At(parts, 2),
                 status: At(parts, 3),
                 biome: At(parts, 4),

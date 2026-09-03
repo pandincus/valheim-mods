@@ -58,11 +58,11 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void NoLineGluesAnArticleToAWeaponType()
+        public void NoLineGluesAnArticleToAWeaponSkill()
         {
-            // "That is what a {weapontype} is for." reads fine until somebody swings
+            // "That is what a {weaponskill} is for." reads fine until somebody swings
             // an axe, and "a fists" is worse. No rendering test can catch it: the
-            // fixture below renders {weapontype} as "sword", which is the one word in
+            // fixture below renders {weaponskill} as "sword", which is the one word in
             // the vocabulary under which every such line happens to work - and the
             // vocabulary itself lives in the Unity half, out of reach.
             //
@@ -72,7 +72,7 @@ namespace ChattyBones.Tests
                 string line = raw.TrimEnd('\r');
 
                 Assert.False(
-                    Regex.IsMatch(line, @"\b[Aa]n? \{weapon(type)?\}"),
+                    Regex.IsMatch(line, @"\b[Aa]n? \{weapon(skill)?\}"),
                     "An article glued to a weapon token, which reads as \"a axe\": " + line.Trim());
             }
         }
@@ -120,7 +120,7 @@ namespace ChattyBones.Tests
                 }
 
                 Assert.False(
-                    Array.IndexOf(incoming, current) >= 0 && Regex.IsMatch(line, @"\{weapon(type)?\}"),
+                    Array.IndexOf(incoming, current) >= 0 && Regex.IsMatch(line, @"\{weapon(skill)?\}"),
                     "A weapon token on a blow coming in, which names whatever hit us and "
                     + "reads as \"done in by the sword\": " + current + " " + line.Trim());
             }
@@ -536,7 +536,7 @@ namespace ChattyBones.Tests
                     Mark('C', tokens.TryRender("{companion}", out _)),
                     Mark('A', tokens.TryRender("{ally}", out _)),
                     Mark('W', tokens.TryRender("{weapon}", out _)),
-                    Mark('K', tokens.TryRender("{weapontype}", out _)),
+                    Mark('K', tokens.TryRender("{weaponskill}", out _)),
                     Mark('D', tokens.TryRender("{damage}", out _)),
                     Mark('S', tokens.TryRender("{status}", out _)),
                     Mark('B', tokens.TryRender("{biome}", out _)),
@@ -604,7 +604,7 @@ namespace ChattyBones.Tests
                 ally: Fill(promised, TokenSet.Ally, "Sigrid"),
                 details: new LineDetails(
                     weapon: Fill(promised, TokenSet.Weapon, "Mistwalker"),
-                    weaponType: Fill(promised, TokenSet.WeaponType, "sword"),
+                    weaponSkill: Fill(promised, TokenSet.WeaponSkill, "sword"),
                     damage: Fill(promised, TokenSet.Damage, "slash"),
                     status: Fill(promised, TokenSet.Status, "Burning"),
                     biome: Fill(promised, TokenSet.Biome, "Black Forest"),

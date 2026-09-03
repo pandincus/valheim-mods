@@ -38,8 +38,8 @@ namespace ChattyBones
         {
             return new LineDetails(
                 weapon: Text(raw.Weapon),
-                weaponType: raw.WeaponType,
-                damage: raw.Damage,
+                weaponSkill: Text(raw.WeaponSkill),
+                damage: Text(raw.Damage),
                 status: Text(raw.Status),
                 biome: Text(raw.Biome),
                 item: Text(raw.Item),

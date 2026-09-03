@@ -29,7 +29,7 @@ namespace ChattyBones.Tests
         /// <summary>A hit that filled in everything a live blow promises.</summary>
         private static LineDetails FullHit()
         {
-            return new LineDetails(weapon: "Mistwalker", weaponType: "sword", damage: "slash");
+            return new LineDetails(weapon: "Mistwalker", weaponSkill: "sword", damage: "slash");
         }
 
         /// <summary>The report line for one event.</summary>
@@ -54,8 +54,8 @@ namespace ChattyBones.Tests
             string hurt = LineFor(ChatterEvent.Hurt);
 
             Assert.NotNull(hurt);
-            Assert.Contains("promises {weapon}, {weapontype}, {damage}", hurt, StringComparison.Ordinal);
-            Assert.Contains("never seen {weapon}, {weapontype}, {damage}", hurt, StringComparison.Ordinal);
+            Assert.Contains("promises {weapon}, {weaponskill}, {damage}", hurt, StringComparison.Ordinal);
+            Assert.Contains("never seen {weapon}, {weaponskill}, {damage}", hurt, StringComparison.Ordinal);
         }
 
         [Fact]
@@ -77,7 +77,7 @@ namespace ChattyBones.Tests
             // leaves the judgement to whoever is reading, because nothing in the data
             // separates "the hook stopped passing it" from "no hit has had one yet".
             EventTokens.Note(
-                ChatterEvent.Hurt, null, null, null, new LineDetails(weapon: "Mistwalker", weaponType: "sword"));
+                ChatterEvent.Hurt, null, null, null, new LineDetails(weapon: "Mistwalker", weaponSkill: "sword"));
 
             string hurt = LineFor(ChatterEvent.Hurt);
 
@@ -164,11 +164,11 @@ namespace ChattyBones.Tests
         public void TheTableStillAgreesWithTheGroupsItIsBuiltFrom()
         {
             Assert.Equal(
-                TokenSet.Weapon | TokenSet.WeaponType | TokenSet.Damage,
+                TokenSet.Weapon | TokenSet.WeaponSkill | TokenSet.Damage,
                 EventTokens.PromisedFor(ChatterEvent.Hurt));
 
             Assert.Equal(
-                TokenSet.Target | TokenSet.Companion | TokenSet.Weapon | TokenSet.WeaponType,
+                TokenSet.Target | TokenSet.Companion | TokenSet.Weapon | TokenSet.WeaponSkill,
                 EventTokens.PromisedFor(ChatterEvent.CompanionKilled));
 
             Assert.Equal(TokenSet.Ally, EventTokens.PromisedFor(ChatterEvent.AllyArrived));
@@ -258,7 +258,7 @@ namespace ChattyBones.Tests
             TokenSet killed = EventTokens.PromisedFor(ChatterEvent.Killed);
 
             Assert.True((killed & TokenSet.Weapon) != 0);
-            Assert.True((killed & TokenSet.WeaponType) != 0);
+            Assert.True((killed & TokenSet.WeaponSkill) != 0);
             Assert.True((killed & TokenSet.Damage) == 0);
         }
     }
