@@ -1,48 +1,79 @@
-# ChattyBones - the line pack
+# ChattyBones Line Pack
 #
-# Everything your skeletons can say. Edit and save while the game is running and
-# the change takes effect immediately. If you break something they keep using the
-# last version that worked, and the reason, with a line number, goes to
-# BepInEx/LogOutput.log, which is the first place to look when an edit does not do
-# what you expected.
+# This file holds what Skeletts can say. This file gets copied into your config
+# upon first loading up Valheim with the mod, at which point you can make any edits
+# you'd like. This is hot reloadable: edit and save while the game is running and
+# the change takes effect ~immediately. If you break something, you should see
+# an error in the log, and the Skeletts keep using the last version that worked.
 #
-# ChattyBones.lines.default.yaml next door is rewritten every launch with what the
-# mod shipped with. This file is never touched once it exists. Read that one, edit
-# this one.
-#
-#
-# WRITING LINES
+# 1. LINES AND PERSONALITIES: OVERVIEW
 #
 #   lines:
 #     cowardly:
 #       Summoned:
 #         - "Do I have to?"
 #
-# A skeleton is given a personality when you summon it and keeps it. Where its
-# personality has nothing for an event it falls back to "common", per event - its
-# own idle lines with the shared death lines is normal.
+# A Skelett is given a 'personality' when you summon it. Personalities have lines
+# with a little more specific character. If a personality doesn't have a line covering
+# a particular event or situation, it falls back to "common", per event.
 #
-# Write more lines per group than feels necessary. Nobody repeats the line they
-# just said, but that memory is one line deep, so a group of three audibly cycles.
-# A dozen is where it stops sounding like a loop.
+# Feel free to write more lines per group than feels necessary, to keep dialogue variable,
+# fun, and interesting.
 #
 # Personalities are whatever you name here. Two traps:
 #
-#   - a skeleton stores its personality as a position in the list SORTED
-#     ALPHABETICALLY, so adding, removing or renaming one reshuffles which
-#     personality your existing skeletons have. Nothing breaks - they change
-#     character.
-#   - "common" must be lower case. "Common" is read as an ordinary personality of
-#     that name, and everything relying on the fallback goes quiet without a word.
+#   - adding, removing, or renaming personalities reshuffles which personality
+#     your existing Skeletts have
+#   - "common" is special: it isn't a personality, per se, it is a default. It must be lower case.
+#     This is hard-coded.
 #
-# "common" is not a personality and takes no place in that sorted list, so adding
-# or removing it shifts nobody.
+# There are three concepts that you need to know to write lines: events, tokens, context
 #
 #
-# EVENTS
+# 2. EVENTS AND TOKENS
 #
-# Thirty-two things a skeleton reacts to, and which tokens each one can fill in.
-# {name} and {player} are left out - every event has them.
+# There are currently (as of 0.1.0) thirty-two things a Skelett can react to! This 'thing'
+# is an event: e.g. a player killing an enemy or getting hurt, or the Skelett being summoned.
+# We also have tokens: words that can be substituted into lines, such as the player's name,
+# an ally's name, a damage type, etc.
+#
+# The following two tokens can go in any line, and are always available:
+#
+#   {name}: The speaking Skelett's own name
+#   {player}: The name of the summoning player (you); e.g. whose Skeletts are these
+#
+# The following two tokens can go in any line, but are only available if another
+# Skelett or co-op player is in the vicinity:
+#
+#   {companion}: another of your Skeletts, picked arbitrarily
+#   {ally}: another player, picked arbitrarily
+#
+# The following other tokens are available depending on the event that triggered the dialogue:
+#
+#   {target}: The Skelett's or Player's target; e.g. in combat, "Greydwarf Shaman" etc
+#   {weapon}: A weapon used or wielded by a fellow Skelett or the Player; e.g. "Mistwalker"
+#   {weaponskill}: The weapon skill used; e.g. "Swords", "Unarmed", "Elemental Magic" for example.
+#   {damage}: The name of the damage type; e.g. Blunt, Slash, Pierce, Fire, Frost, Lightning, etc
+#   {status}: A status effect, positive or negative. e.g. "Magic Barrier", or "Burning"
+#   {biome}: The name of the biome the Skelett is in, e.g. "Plains", "Mistlands"
+#   {item}: An item that was just picked up or eaten, e.g. "Stone", "Greydwarf Trophy", "Mushroom Omelette"
+#   {skill}: A skill being used or improved, e.g. "Dodge", "Blocking"
+
+# A line asking for a token we don't have is passed over and another is picked,
+# including {ally} whenever you are playing alone, so write a plain version beside
+# any line that uses a token, or it will never be said. This is good:
+#
+#   - "Get lost, {target}!"
+#   - "Get lost!"
+#
+# A typo like {targat} is left alone rather than guessed at, so you will see it
+# floating over a Skelett's head. Tokens are lower case and case sensitive.
+#
+# Refer to the table below for a quick reference of what events SHOULD hand
+# a token ready for use in dialogue. Usually these tokens are populated relevant to the event.
+# For example, 'CompanionDied', {companion} should be the Skelett that just fell.
+# (as opposed to idle dialogue where {companion} is picked from any nearby npc)
+# 'AllyArrived', using {ally} would refer to the player who just walked up.
 #
 #     T {target}       C {companion}     A {ally}
 #     W {weapon}       K {weaponskill}  D {damage}
@@ -83,186 +114,124 @@
 #   PlayerSkilledUp      you got better at something   .  .  .  .  .  .  .  .  .  L
 #   AllyArrived          another player came near      .  .  A  .  .  .  .  .  .  .
 #
-# A mark means the token CAN be filled, not that it always is. Keep a plain line
-# in every group.
+# The above table is unfortunately not a 100% guarantee; there are edge cases where
+# the token might not be available.
 #
-# D only reaches events that catch a blow as it lands: by the time a body is
-# examined, the game has taken the fire and poison off its last hit.
+# Weather is tricky, and I might remove it in the future or find a better way to
+# work it. Mostly this is reacting to the Wet condition, so swimming in water also
+# triggers it.
 #
-# C and A mean something stronger than the rest. Both tokens work in ANY line - a
-# skeleton will name a squadmate or a nearby player wherever you ask. A mark means
-# the event names a PARTICULAR person, so "Oh no, {companion}!" under CompanionDied
-# mourns the one that fell, while the same words under Killed name whoever is
-# standing about.
+# Event names are case-sensitive, like tokens.
 #
-# Spelling counts, capitals included. An event name that is not one of these is
-# logged and skipped, and an event you leave out entirely is simply never commented
-# on - a fine way to switch off a kind of chatter.
+# 3. CONTEXT
 #
-# Weather is mostly rain, but wading, swimming and the Swamp all raise it, so
-# "My bones are wet" travels better than "it is raining".
-#
-#
-# LINES THAT ONLY SUIT ONE MOMENT
-#
-# Tag an event and those lines are used only then:
+# Context is how we can limit lines to certain conditions. For example:
 #
 #   cowardly:
 #     Idle:
-#       - "It's very open out here."
+#       - "Ho humm, ho humm, I'm a little Skelett-ton."
 #     Idle[biome=Swamp]:
-#       - "I do not like it here."
+#       - "Why... is it... so wet?!"
 #
-# Three tags. The values are exact, capitals and all:
+# With this, we can filter dialogue to specific token values.
+# Only the following are provided as of version 0.1.0:
 #
 #   biome=    Meadows   BlackForest   Swamp   Mountain   Plains
 #             Mistlands   AshLands   DeepNorth   Ocean
 #   time=     morning   afternoon   evening   night
 #   home=     yes   no
 #
-# time is cut where the game cuts it: morning is dawn to noon, afternoon noon to
-# sunset, evening sunset to midnight, night midnight to dawn.
+# biome: Hopefully self-explanatory ;-)
 #
-# home is the game's own idea of being settled - resting, roofed, near a fire, in
-# your base, nothing hunting you. It asks about YOU rather than the skeleton, so
-# one left out in the woods still says home lines while you sit by the fire.
+# time: self-explanatory, should be aligned with game-time.
+# (morning is dawn to noon, afternoon noon to sunset, evening sunset to midnight, night midnight to dawn)
 #
-# "None" and "All" are real biome spellings the game keeps for its own bookkeeping.
-# No skeleton is ever standing in one, so a group tagged with either is silent; for
-# "anywhere", write a plain group. A bad biome is reported at load, a bad time or
-# home value when the file is read, with its line number.
+# home: resting, sheltered, near a fire, in a 'base'.
+# This is relative to the player and not the Skelett, because I couldn't get access
+# to these properties on the Skelett (or couldn't figure out how), so in theory
+# you could have some Skeletts outside your home saying nice things about it.
 #
-# Which group wins:
+# At this time, this mod does not handle multiple context in a single line;
+# e.g. Idle[biome=Swamp,time=night] is refused.
 #
-#   1. your personality's lines for this exact moment
-#   2. your personality's plain lines
-#   3. the shared lines for this exact moment
-#   4. the shared plain lines
+# 4. ORDERING
+# 
+# Obviously, many lines might apply to any given situation. We pick in the following order:
 #
-# Personality first, moment second. Where the plain group sits in the file makes no
-# difference - a tagged group is tried before it either way.
+#   1. Skelett personality lines that apply to this context, in file order (higher up wins)
+#   2. Skelett personality lines
+#   3. Common lines that apply to this context, in file order (higher up wins)
+#   4. Common lines
 #
-# One tag per group: "Idle[biome=Swamp,time=night]" is refused and logged.
+# 5. WORDING TIPS:
 #
-# WHEN TWO TAGS BOTH MATCH, THE ONE HIGHER UP THE FILE WINS, and nothing warns you
-# about the loser. So put your rarest groups first. This file goes
-#
-#   home=yes, then biome, then time, and home=no last of all
-#
-# The value matters and not just the tag: every skeleton is either home or not, so
-# [home=no] is true nearly always and will drown anything below it. That is why
-# home appears twice, at opposite ends. A tagged group with one line in it repeats
-# that line every time the moment comes round.
-#
-#
-# TOKENS
-#
-# Five are people:
-#
-#   {name}        the skeleton speaking
-#   {player}      you
-#   {target}      the creature it is reacting to
-#   {companion}   another of your skeletons
-#   {ally}        another player standing near you
-#
-# Seven describe what happened and where:
-#
-#   {weapon}      the weapon by name, e.g. "Mistwalker"
-#   {weaponskill} the skill it is used with, e.g. "Swords", "Unarmed"
-#   {damage}      the damage type: Blunt, Slash, Pierce, Fire, Frost, Lightning,
-#                 Poison or Spirit
-#   {status}      a status effect by name, e.g. "Burning"
-#   {biome}       where it is standing, e.g. "Black Forest"
-#   {item}        something you ate or picked up, e.g. "Carrot Soup"
-#   {skill}       the skill that just went up, e.g. "Blocking"
-#
-# Only {name} and {player} are always there. A line asking for something we do not
-# know is passed over and another chosen - including {ally} whenever you are
-# playing alone - so write a plain version beside any line that uses a token, or
-# it will never be said:
-#
-#   - "Get lost, {target}!"
-#   - "Get lost!"
-#
-# A typo like {targat} is left alone rather than guessed at, so you will see it
-# floating over a skeleton's head. Tokens are lower case and case sensitive.
-#
-# Five things about wording:
-#
-#   - the weapon tokens belong only where the wielder is you or one of ours: a
-#     kill, a companion's kill, a blow you landed. On an incoming blow they name
+#   - the weapon tokens only work when the wielder is the player or the player's Skeletts.
+#     e.g. your kill, a Skelett's kill, a blow you landed. On an incoming blow they name
 #     the attacker's hands, and a creature with no real weapon reports Swords, so
-#     a skeleton mauled by a greydwarf announces it was done in by Swords. The
-#     shipped pack keeps them out of Hurt, PlayerHurt, CompanionHurt and Died for
-#     that reason, though the grid marks all four - the grid says what CAN be
-#     filled, this says what reads well.
-#   - {weapon} is a plain name, and "Bronze sword" turns up far more often than
-#     "Mistwalker", so give it "my" or "the" rather than opening a line with it.
-#   - {damage} is not a noun you can put "the" in front of. Write it attributively
-#     - "{damage} damage" or "a {damage} hit" - or the other way round gets you
-#     "Mind the Pierce". "the {damage} damage" is fine.
-#   - {weaponskill} is a skill name rather than a weapon - Swords, Unarmed, Blood
-#     Magic - so do not put an article in front of it. "A fine use of Swords"
-#     works; "handy with the Swords" does not.
+#     a skeleton mauled by a greydwarf announces it was done in by Swords. As a result,
+#     the default lines don't have these tokens in Hurt, PlayerHurt, CompanionHurt and Died,
+#     just because it doesn't read that well.
+#   - {damage} is just the damage type, capitalized; e.g. Pierce. So consider how that should
+#     be used in a sentence. "Ouch, the Pierce!" doesn't sound that good. "Hurt by Pierce damage"
+#     sounds better. "A Blunt hit!" reads fine.
+#   - {weaponskill} is a skill name rather than a weapon: Swords, Unarmed, Blood
+#     Magic, so be cautious how it is used in a sentence. "A fine use of Swords"
+#     works; "handy with the Swords" feels clunky.
 #   - {status}, {biome}, {item}, {damage} and {weaponskill} all arrive capitalized,
-#     the way the game names them. That suits most of them mid-sentence; "My bones
-#     are Wet." reads oddly, so put {status} where a capital is welcome.
+#     the way the game names them, and we don't adjust capitalization.
 #
-# WRITING IN ANOTHER LANGUAGE. Write the lines in yours and every token that names
-# a thing follows - creatures, items, biomes, skills, status effects and damage
-# types are all named by the game, in whatever language the person reading is
-# playing in. The four that name a person are of course just names. In a shared
-# world each player reads their own pack, so yours does not have to match anyone
-# else's.
+# 6. LOCALIZATION:
+# 
+# Right now the mod only ships in English by default, as it is unfortunately
+# the only language I know how to speak.
+# 
+# You can definitely write the entire pack in any language, though!
+# The tokens all come from the game, and should be localized by Valheim itself.
 #
-#
-# OTHER PLAYERS
-#
-# Everybody running ChattyBones sees everybody's skeletons talk. There is nothing
-# to install on a server, and players without the mod see nothing at all.
-#
-# You do not need the same file as your friends. What travels is WHICH LINE rather
-# than the line itself, so each of you reads your own pack. When the line their
-# game chose asks for something yours cannot work out, yours moves on to the next
-# in the group - one more reason not to leave a group with a single line in it.
-#
-# HearOthers in the mod config switches it off for your screen, and
-# AllyGreetingForgetSeconds there decides how often the same person is hailed.
+# If this mod is enjoyed by the community and people wish to contribute more languages,
+# I'll look into adding full localization support so the mod can ship with multiple versions
+# of the pack based on the player's language.
 #
 #
-# YAML, BRIEFLY
+# 7. MULTIPLAYER
 #
-# Indentation is meaningful. Spaces, never tabs, the same amounts you see here.
+# Everybody running ChattyBones sees everybody's Skeletts talk. No need to install
+# server-side, and if you're playing with friends that don't have the mod, that's fine!
+# They just own't see anything.
 #
-# Two things go wrong before your lines are ever read, and quoting helps with
-# neither:
+# You do NOT need the same lines file as your friends. When transmitting what line is
+# spoken, we send a pack of context and indices, but their lines can differ from yours
+# and that's fine. However, we do recommend keeping the same pack if you want consistent
+# dialogue; e.g. if you both want to hear, 'Nice hit, {player}' at the same time.
 #
-#   - --- starts a second document, and everything after it is quietly dropped -
-#     the file still loads, with half of it missing and only a note in the log.
-#     Use a comment line to separate sections.
-#   - the same name twice in the same place - two "cowardly" blocks, or two "Idle"
-#     under one personality - refuses the file outright.
+# Only want to hear your own Skeletts? That's fine! Toggle 'HearOthers' in the mod config.
+#
+#
+# 8. YAML, BRIEFLY
+#
+# This is a YAML file. It's a collection of organized key-value pairs, like JSON.
+# Indentation is meaningful and how the mod processes organization.
+# Use spaces (not tabs), the same amounts you see in the file.
 #
 # Keep the "double quotes" around every line below. Without them YAML reads several
-# ordinary ways of opening a line as syntax - three of these fail loudly, two
-# quietly change what your skeleton says:
+# ordinary ways of opening a line as syntax, and it'll cause problems.
+# Bad examples (don't do these):
 #
-#   - "{player}! Watch it!"        unquoted, { starts an object
-#   - "'Tis but a scratch!"        unquoted, ' starts a quoted string
-#   - "*rattles bones*"            unquoted, * starts a reference
-#   - "Listen up: here's the plan" unquoted, a colon makes it a setting
-#   - "You're # 1!"                unquoted, everything from # is dropped
+#   - {player}! Watch it!           { starts an object
+#   - 'Tis but a scratch!           ' starts a quoted string
+#   - *rattles bones*               * starts a reference
+#   - Listen up: here's the plan    YAML thinks this is a new key value pair now
+#   - You're # 1!                   everything from # is dropped (like a comment)
 #
-# One exception, and it is the only one: inside double quotes a backslash starts an
-# escape, so write two.
+# Even inside double quotes, a backslash starts an escape, so write two.
 #
 #   - "\\o/"                       one backslash refuses the file
 #   - "shrug: ¯\\_(o_o)_/¯"        one backslash silently eats a character
+#
+# 9. COLOR
+# 
+# This mod supports colored text, organized by 'event' category.
 
-# Color is by event rather than by personality: who is speaking is already clear
-# from the name plate and the words, while whether something has gone wrong is
-# worth knowing at a glance. Keep to a few pale shades - they are the ones that
-# stay readable over grass, snow and lava alike.
 colors:
 
   # Name as many or as few as you like. "normal" is the one every event uses
@@ -290,10 +259,12 @@ colors:
     Raid: alarm
     RaidEnded: triumph
 
+# 10. THE LINES
+#
+# That's it, no more documentation. These are the lines!
+
 lines:
 
-  # Lines anybody falls back on. Every event has something here, so a skeleton
-  # is never stuck for words no matter which personality it drew.
   common:
     Summoned:
       - "Up we get."
@@ -313,7 +284,6 @@ lines:
       - "Much obliged."
       - "{status}? Don't mind if I do."
     Afflicted:
-      - "{status}. Right through to the bones."
       - "Ah. {status}. Wonderful."
       - "I do not care for this."
       - "{status}! Somebody do something!"
@@ -321,6 +291,7 @@ lines:
       - "{status}. Right through to the bones."
       - "{status}. Marvellous."
       - "This is why I stayed buried."
+      - "I feel {status}."
       - "Does anyone else feel that?"
     Killed:
       - "Down it goes."
@@ -341,7 +312,7 @@ lines:
       - "I miss having skin."
       - "Hmm."
       - "{companion}, your insides are showing."
-      - "Do you ever think about it, {companion}? Being alive?"
+      - "Do you still have dreams, {player}?"
     PlayerHurt:
       - "{player}! Watch it!"
       - "They got you!"
@@ -351,13 +322,14 @@ lines:
     PlayerLandedABigHit:
       - "Ooooh."
       - "Did you see that?"
-      - "Lovely swing, {player}."
+      - "Lovely hit, {player}."
       - "Nice {damage} hit with that {weapon}!"
       - "The {weaponskill} did its work."
     PlayerGotAKill:
       - "Got him!"
       - "Nice one, {player}."
       - "Nice {weaponskill} work, {player}."
+      - "Leave some for me, {player}."
     CompanionHurt:
       - "{companion}!"
       - "They're on {companion}!"
@@ -376,7 +348,7 @@ lines:
     CompanionSummoned:
       - "Welcome to the party, {companion}."
       - "Look who's up."
-      - "Budge up, {companion}."
+      - "Get ready, {companion}."
     PlayerParried:
       - "Oh, that was clean."
       - "Turned it! Straight back at it."
@@ -400,7 +372,7 @@ lines:
     Dawn:
       - "Ugh. Daylight."
       - "Morning over the {biome}. Joy."
-      - "Is it always this bright?"
+      - "Well, at least it'll be safer outside, now."
       - "Another day of this, then."
     Nightfall:
       - "Ah. Better."
@@ -455,33 +427,41 @@ lines:
       - "{ally}. You are a long way out."
       - "Another warm one. Hello."
 
-  # Would rather be somewhere else.
+  # The cowardly Skelett: doesn't want to be here, is afraid of everything, wants to spend
+  # as much time as possible back at base
   cowardly:
     PlayerCooked:
-      - "Is that {item} for me, {player}? ...No. Of course not."
-      - "Must you do that s-so near the fire?"
+      - "Is that {item} for me, {player}? N-nevermind. I can't eat."
+      - "Doesn't the cooking oil s-splatter a little?"
       - "{item} must s-smell nice, if I had a nose."
+      - "Wow, I really wish I could taste {item}."
+      - "H-hey, that looks pretty good!"
     Looted:
-      - "Is that safe to carry?"
+      - "Is that {item} safe to carry?"
       - "That looks heavy."
+      - "Ooh. {item}."
     Raid:
       - "I want to go inside!"
       - "Can we not be here?"
       - "WHY DOES THIS ALWAYS HAPPEN TO ME!?"
+      - "OH NO THE ENEMY IS HERE!! AAAAH!!!!"
     AtHome:
       - "Oh thank goodness, we're home."
       - "We are staying, yes? We are staying."
+      - "I just w-wanna stay here. If that's okay."
+      - "Maybe if I close my eyes I can pretend I'm sitting in a corner, reading a book..."
     PlayerStaggered:
       - "We are losing! We are losing!"
       - "Get up! Please get up!"
-      - "This was a terrible idea!"
+      - "This was a terrible idea!!!"
     PlayerDodged:
       - "Do that again, {player}! Do that every time!"
-      - "Teach me that. Teach me that now."
-      - "I would have just been hit. Every time."
+      - "How did you do that dodge?!"
+      - "Whoaaaa that would have totally hit me if I were you!"
     Summoned:
       - "Do I have to?"
       - "Oh no, not again."
+      - "Oh, uh, h-hey. How's it going {player}?"
     TargetAcquired:
       - "Is that a {target}? I'd rather not."
       - "Uh, I'm r-right behind you, {player}."
@@ -525,6 +505,12 @@ lines:
       - "W-why does this feel like the meadows, but wrong?"
       - "You haven't seen any of those Tar Growths, have you?"
       - "Can't s-stand that laughter from the little guys..."
+    Idle[biome=Ashlands]:
+      - "Why is it so hot here?!"
+      - "And I thought the Mistlands was bad..."
+      - "I'm not liking the look of that lava..."
+      - "What IS this accursed place?!"
+      - "Odin save me, I never did anything to deserve this..."
     Idle[time=night]:
       - "It's dark. It's dark and we are still outside."
       - "Can we light something? Anything at all?"
@@ -545,7 +531,7 @@ lines:
       - "Someone's coming! Someone's- oh."
       - "Stand near me, {ally}. No reason."
 
-  # Convinced of its own legend.
+  # The boastful Skelett is convinced that they are LEGENDARY.
   boastful:
     PlayerCooked:
       - "{item}! Now that is a batch."
@@ -556,9 +542,9 @@ lines:
       - "I knew you had promise, {player}."
       - "Keep that {skill} training up, {player}, and you'll be as good as me!"
     Raid:
-      - "Let them come."
+      - "Let them come. They will see there is still a Skelett that was once a viking. FOR VALHALLA!"
       - "Finally, something worth my time."
-      - "Oho, this will be a TALE to TELL!"
+      - "Oho, now this will be a TALE to TELL!"
       - "I was BORN ready for this! Except I'm dead, but you know what I mean!"
     RaidEnded:
       - "Barely a warm-up."
@@ -566,6 +552,7 @@ lines:
     PlayerParried:
       - "I taught you that, {player}."
       - "Nearly as good as me."
+      - "Ah, {player}, you must have read my book of parrying!"
     StaggeredIt:
       - "Finish it, and I will say I helped."
       - "I loosened it up for you."
@@ -581,6 +568,7 @@ lines:
       - "Watch this, {player}."
       - "That {target} is about to see the LEGEND in action."
       - "Ohoho, a {target}? Let's do this!"
+      - "This {target} is nothing compared to my might! {player}, let me show you how it is done."
     Hurt:
       - "A scratch!"
       - "I meant to do that."
@@ -619,6 +607,12 @@ lines:
       - "I am not lost in the mist. I am scouting."
       - "Whatever is out there has not met me, {name}, yet."
       - "I think we should build a great hall here in the Mists, worthy of Valhalla."
+    Idle[biome=Ashlands]:
+      - "These charred have never encountered the legend that is {name}."
+      - "Whatever the Ashlands is going to bring, I AM READY."
+      - "Lava? Pah! Bring it on."
+      - "Now this place is fit for the ballad of {name}!"
+      - "This. Is. Going. To. Be. AWESOME."
     Idle[time=night]:
       - "The dark holds no fear for me. I am the interesting part of it."
       - "Night suits me. Better lighting for my singing."
@@ -631,7 +625,7 @@ lines:
       - "You are in luck, {ally}. I am in a storytelling mood."
       - "Another witness. Splendid."
 
-  # Takes the job seriously.
+  # The dutiful Skelett takes the job seriously, as though it were a hired guard.
   dutiful:
     PlayerCooked:
       - "{item} prepared. Noted."
@@ -641,19 +635,31 @@ lines:
     Looted:
       - "{item}. Logged in the records."
       - "Recovered and accounted for."
+      - "Good. More {item} for the stockpile."
     Raid:
-      - "Perimeter. Now."
+      - "Make a perimeter. Now."
       - "Prepare yourselves. Food, potions, spells. They are coming."
       - "Forming up."
       - "I want a tight formation, troops."
+      - "{companion}, get in formation with me."
+      - "Ready up {ally}, prepare for battle."
     AtHome:
       - "Position secured."
       - "Standing down. For now."
       - "At ease."
+      - "I'll maintain a watch."
+    Buffed:
+      - "{status} noted. This will be helpful, {player}."
+      - "With {status} we have the advantage."
+      - "Good team-work, {player} and {ally}."
+      - "Excellent. With {status} we are well prepared."
+      - "Good team-work, {player}. Preparation is key."
+      - "That {status} will keep the troops going."
     PlayerParried:
-      - "Textbook parry, {player}."
+      - "A textbook parry, {player}."
       - "Correct form."
       - "That is how the drill goes."
+      - "Perfect parry, {player}, now press the advantage!"
     StaggeredIt:
       - "{target} destabilised. Press the advantage."
       - "Opening. Take it."
@@ -662,13 +668,14 @@ lines:
     Summoned:
       - "Reporting for duty."
       - "Orders, {player}?"
+      - "My oath to you, {player}."
     TargetAcquired:
       - "Engaging the {target}."
       - "Target sighted."
     Hurt:
       - "Wound sustained. Continuing."
       - "Still fit to fight."
-      - "Taking {damage} damage. Adjusting."
+      - "Taking {damage} damage. Could use a barrier, if you've one, {player}."
       - "Damage type: {damage}. Logged."
       - "The {damage} damage is manageable. Holding."
     Killed:
@@ -687,10 +694,6 @@ lines:
       - "{ally} is accounted for."
       - "Two on the line. Better odds."
       - "Glad to have you with us, {ally}."
-    Buffed:
-      - "Excellent. With {status} we are well prepared."
-      - "Good team-work, {player}. Preparation is key."
-      - "That {status} will keep the troops going."
     Idle[home=yes]:
       - "Perimeter's quiet. I will keep watching anyway."
       - "Everything in its place. As it should be."
@@ -725,7 +728,7 @@ lines:
       - "Good to have another pair of hands, {ally}."
       - "One more for the roster."
 
-  # Has done this too many times.
+  # The veteran has done this too many times, and is tired.
   veteran:
     PlayerCooked:
       - "{item}. Seen better. Seen far worse."
