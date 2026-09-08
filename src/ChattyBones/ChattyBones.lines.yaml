@@ -505,7 +505,7 @@ lines:
       - "W-why does this feel like the meadows, but wrong?"
       - "You haven't seen any of those Tar Growths, have you?"
       - "Can't s-stand that laughter from the little guys..."
-    Idle[biome=Ashlands]:
+    Idle[biome=AshLands]:
       - "Why is it so hot here?!"
       - "And I thought the Mistlands was bad..."
       - "I'm not liking the look of that lava..."
@@ -607,7 +607,7 @@ lines:
       - "I am not lost in the mist. I am scouting."
       - "Whatever is out there has not met me, {name}, yet."
       - "I think we should build a great hall here in the Mists, worthy of Valhalla."
-    Idle[biome=Ashlands]:
+    Idle[biome=AshLands]:
       - "These charred have never encountered the legend that is {name}."
       - "Whatever the Ashlands is going to bring, I AM READY."
       - "Lava? Pah! Bring it on."
