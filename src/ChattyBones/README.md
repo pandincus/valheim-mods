@@ -1,93 +1,93 @@
 # ChattyBones
 
-Summon a skeleton with the Dead Raiser and it just... works, silently, forever.
-This mod gives it a mouth.
+Tired of your summoned Skeletts being silent companions? Now they can chat with you, with ChattyBones!
 
-Your skeletons call out what they are charging at, yelp when something hits them,
-thank you when you drop a shield on them, and mutter to themselves when there is
-nothing to fight. They also notice each other — congratulating a kill by name,
-welcoming a new arrival, and mourning one that falls. Each is assigned a
-personality the moment you summon it, so the cowardly one and the boastful one
-react to the same greydwarf very differently.
+![An example of them chattering after having killed a Greydwarf](https://raw.githubusercontent.com/pandincus/valheim-mods/main/src/ChattyBones/docs/chattybones-squad.jpg)
 
-**Status: not released.** It works, and it is not finished. See below.
+## What the heck does this do?
 
-## What it does
+This mod is truly a silly thing, and provides no mechanical benefit (that I can think of, at least).
 
-- Reacts to thirty-one things: being raised, picking a target, getting hurt, gaining
-  a status effect, catching fire or poison, killing something, dying, being
-  unsummoned, and idling — plus the same happening to you, and to the skeleton
-  standing next to it
-- Notices how a fight is going rather than only how it ends: a parry, a dodge
-  that turned a blow, and either of you being knocked off balance
-- And notices the world around it: sunrise and nightfall, crossing into a new
-  biome, a raid arriving and being seen off, settling in somewhere safe, and
-  what you pick up, eat, cook and get better at
-- Lines can name the weapon that hit them, what kind it was, the damage type,
-  the status effect, the biome, what you just picked up, ate or made, the skill
-  that went up, and the skeleton standing next to them
-- A personality per skeleton, assigned at summon and remembered in your save
-- A squad of five will not all talk over each other. The group stays quiet for a
-  moment after any one of them speaks, an individual waits rather longer, and one
-  remark about a thing stops the others repeating it
-- Important things interrupt trivial ones, and a death or an arrival gets an
-  answer from somebody else in the same breath
-- Every line lives in a plain file you can edit, swap and hand to somebody else
-- Chattiness settings in the config, editable in-game with ConfigurationManager
-  (F1)
+It enables your Skeletts to react to things happening around them (combat, getting hurt, catching fire, dying, transitioning to new biomes, looting, eating, cooking, etc.). There are **32** event-types in total that I support today!
 
-## The line pack
+They can reference things in the world (you, themselves, each other, the enemies, other players) by name, and when you summon a Skelett, it will randomly get assigned a 'personality' to give them a little unique character.
 
-Everything the skeletons say is in one file, and it is yours to rewrite:
+The lines are totally customizable via a YML file, and there's configuration options for how frequently they speak and several other things, too.
+
+## Does this work in multiplayer?
+
+It does! But only if all players who want to see the dialogue have the mod installed. References to lines are sent over the wire (packed into an int so it should be very efficient), so if all players have the same lines and version of the mod, they should see the same dialogue play out. It should also work back and forth between different skeletons summoned by different players! (Though I haven't tested that much)
+
+## Known Bugs
+
+There's a lot of little bugs, but none of them stop the mod from working.
+
+* The Skeletts sometimes react to things based on where the player is, not necessarily where they are, for a variety of reasons. I might not be able to do anything about this one, and you likely won't notice it unless the Skeletts get separated from you. (e.g. you go to your base and they comment on how nice and cozy it is, but they're still outside)
+* Not all of the 'tokens' (the references they make to things in the game) work all the time, e.g. I don't have an easy way for the Skeletts to comment about their own weapons, but they can comment on the players' easily. It isn't a problem; if you write a line with a token that isn't available, that line simply won't be picked to be spoken.
+* The code could use a nice, big ole' pass through and I'm pretty sure we could make the mod a bit more efficient. Shout at me if you notice any performance issues. I haven't in my testing, though.
+
+## Localization?
+
+Because all the lines are in a YML file, we can definitely localize! Sorry, all the lines are just in English right now. I haven't yet built the support for multiple line packs of different languages to be stored in the mod at the same time.  But if you are interested in localizing, let me know! I'll build that support and then we can ship this with multiple languages, too.
+
+All of the 'things' referenced by the Skeletts (biomes, items, etc) are all coming straight from Valheim, so the built-in localization SHOULD take care of that.
+
+## How to Edit Lines
+
+In your BepInEx config folder for this mod, you'll find a file like this:
 
 ```
 BepInEx/config/ChattyBones.lines.yaml
 ```
 
-It is written for you the first time you run the game, and never touched again.
-**Edit it and save it while the game is running** — the change takes effect on
-the spot, with no restart and without leaving the world. If you break something,
-your skeletons keep using the last version that worked and the reason, with a
-line number, goes to the BepInEx log.
+Go ahead and edit it and save it **while the game is running**! The change takes effect with a hot reload, so no restart of the game is needed. If you break the formatting of the file, you should see a warning in the console, but your Skeletts keep using the last version that worked.
 
-The file explains itself: which events exist, which tokens each one can fill in,
-and how the personalities and the colors work. A second file next to it,
-`ChattyBones.lines.default.yaml`, is refreshed on every launch with exactly what
-the mod shipped with — so there is always a known-good copy to compare against or
-start over from.
+The file has some comments that should explain how it is organized. A second file next to it,
+`ChattyBones.lines.default.yaml`, is delivered with new updates to the mod, so if you ever see something not working you can compare against it — or copy it over your `ChattyBones.lines.yaml` to start fresh, though that will replace any edits you have made.
 
-The point of a file rather than a config screen is that a pack is something you
-can hand to somebody. A group playing together can agree on one, drop it in, and
-hear the same skeletons say the same things.
+## Config
 
-## Not yet
+When you first run the mod, the config file `BepInEx/config/pandincus.chattybones.cfg` will appear. Can be edited in the file, but I recommend the BepInEx ConfigurationManager (F1 key). Changes apply immediately.
 
-- **Other players see nothing.** Everything is decided and drawn on the machine
-  that owns a skeleton, so your squad talks on your screen alone. If you both run
-  the mod, you each hear your own — which is also why a shared pack is currently
-  a matter of you both installing the same file.
-- The lines that come with it are thin. The machinery is finished; writing a
-  proper pack on top of it is the next job.
-- Per-event toggles, so you can switch off just the idle chatter. For now,
-  deleting an event from the pack does the same thing.
-
-## Settings
-
-| Setting | Default | What it does |
+| Setting | Default | Meaning |
 |---|---|---|
-| `Enabled` | `true` | Master switch. Off means complete silence. Safe to flip mid-game. |
-| `MinGapSeconds` | `2.5` | How long the whole squad stays quiet after any one of them speaks. The main dial for how talkative they are. |
-| `SpeakerCooldownSeconds` | `8` | How long one skeleton waits before speaking again. |
-| `SquadEchoWindowSeconds` | `6` | How long one remark about a thing stops the others repeating it. |
-| `IdleSeconds` | `45` | Roughly how often a skeleton with nothing to do says something anyway. |
-| `HurtFraction` | `0.15` | How big a hit has to be before it is worth mentioning, as a share of the victim's health. Lower it if you are well armored for where you are. |
-| `TextHeight` | `0.3` | How far above the head the line sits, in meters. |
-| `TextColor` | *(empty)* | One color for everything, as a hex code like `#C8FFC8`. Empty — the default — lets the pack color by event instead. |
+| `General.Enabled` | `true` | Master switch. `false` is complete silence; they say nothing. |
+| `Chatter.ChatterFrequency` | `Often` | How much they react to things happening. |
+| `Chatter.IdleChatter` | `Sometimes` | How much they idly mutter when nothing is going on. |
+| `Chatter.SilencedEvents` | *(empty)* | Events to switch off, comma-separated, e.g. `Weather, PlayerAte`. The names are listed at the top of the line pack. |
+| `Appearance.BubbleStyle` | `FloatingText` | Text that follows the head, or `DialoguePanel` for the Hugin box — easier to read, more obtrusive. |
+| `Multiplayer.HearOthers` | `true` | Whether other players' Skeletts running the mod talk on your screen. |
 
-There are a few more; ConfigurationManager lists them all with descriptions.
+There's a bunch more specific dials for controlling individual timing, but those are hidden under **Advanced**. Tick that checkbox and you'll see those show up.
+
+## Why I made this
+
+Truly, I'm not sure. I just liked the idea of your little guys having things to say while you were out braving the ash lands.
+
+## Future Work
+
+This is just a 0.1.0 right now, and it is very basic. I expect to come:
+* more events to react to
+* more unique dialogue based on the environment around them (e.g. a comfy base vs. a rickety one)
+* maybe fixing some of the token bugs
+* better localization support (e.g. multiple languages packed with the mod)
+* more banter back-and-forth between the skeletons
+* maybe something more fun than just straight-up 'personality' types. Unique, named Skeletts? Maybe!
 
 ## Requirements
 
 - [BepInExPack Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/)
-- [YamlDotNet](https://thunderstore.io/c/valheim/p/ValheimModding/YamlDotNet/), for
-  reading the line pack. A mod manager installs it for you.
+- [YamlDotNet](https://thunderstore.io/c/valheim/p/ValheimModding/YamlDotNet/)
+
+## Developing
+
+Build instructions, tooling and tests are in the
+[repo README](https://github.com/pandincus/valheim-mods/blob/main/README.md).
+
+This was built through a combination of code-diving, wiki reading, and usage of Claude Code. Though Claude has helped me generate the code, I reviewed a significant portion (but admittedly, not all) of the generated code.
+
+Please feel free to offer feedback and I would happily accept community contributions.
+
+See the
+[CHANGELOG](https://github.com/pandincus/valheim-mods/blob/main/src/ChattyBones/CHANGELOG.md)
+for release notes. On Thunderstore it is also the Changelog tab on this package's page.
