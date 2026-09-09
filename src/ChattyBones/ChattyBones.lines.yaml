@@ -667,7 +667,6 @@ lines:
       - "Is my left side or my right more portrait-worthy?"
       - "Hey {player}, put in a good word for me with Odin, huh?"
       - "{ally}! Has {player} told you about the ballad yet?"
-      - "An audience of TWO. My finest hour."
       - "You will want to remember this day, {ally}."
     Idle[home=yes]:
       - "A fire, warm walls. A perfect place to listen to my ballad."
