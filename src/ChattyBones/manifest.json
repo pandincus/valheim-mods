@@ -1,10 +1,10 @@
 {
   "name": "ChattyBones",
-  "version_number": "0.1.0",
+  "version_number": "0.1.1",
   "website_url": "https://github.com/pandincus/valheim-mods/tree/main/src/ChattyBones",
   "description": "With ChattyBones, your Dead Raiser Skeletts talk, so your Valheim journeys can get a little more chatty! They call out targets, shout when hit, thank you for a shield, and mutter when nothing is happening. The lines are totally editable.",
   "dependencies": [
-    "denikson-BepInExPack_Valheim-5.4.2333",
+    "denikson-BepInExPack_Valheim-5.4.2350",
     "ValheimModding-YamlDotNet-16.3.1"
   ]
 }

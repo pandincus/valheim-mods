@@ -1,3 +1,4 @@
+using System.Reflection;
 using ChattyBones.Logic;
 using HarmonyLib;
 
@@ -17,9 +18,38 @@ namespace ChattyBones.Patches
     /// or the character refused it. Without that, a shield being refreshed every few
     /// seconds reads as a fresh buff every time.
     /// </remarks>
-    [HarmonyPatch(typeof(SEMan), nameof(SEMan.AddStatusEffect), typeof(StatusEffect), typeof(bool), typeof(int), typeof(float))]
+    [HarmonyPatch]
     internal static class SEManAddStatusEffectPatch
     {
+        /// <summary>Pick the AddStatusEffect overload that takes a StatusEffect.</summary>
+        /// <returns>That overload, or null if it has gone, which Harmony reports.</returns>
+        /// <remarks>
+        /// This used to name every parameter type in the attribute, which pinned the
+        /// overload by its whole signature. Valheim 1.0 appended an optional
+        /// <c>short variant = -1</c> to both overloads and the pinned signature stopped
+        /// existing, so the patch silently had no target and PatchAll threw.
+        ///
+        /// The two overloads differ only in their *first* parameter - one takes a
+        /// StatusEffect, the other an int hash - so that is the whole question, and
+        /// asking only that leaves Iron Gate free to add arguments on the end without
+        /// breaking us again.
+        /// </remarks>
+        private static MethodBase TargetMethod()
+        {
+            foreach (MethodInfo method in AccessTools.GetDeclaredMethods(typeof(SEMan)))
+            {
+                if (method.Name != nameof(SEMan.AddStatusEffect)) continue;
+
+                ParameterInfo[] parameters = method.GetParameters();
+                if (parameters.Length > 0 && parameters[0].ParameterType == typeof(StatusEffect))
+                {
+                    return method;
+                }
+            }
+
+            return null;
+        }
+
         private static void Postfix(SEMan __instance, StatusEffect statusEffect, StatusEffect __result)
         {
             try

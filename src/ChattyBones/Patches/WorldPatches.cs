@@ -109,8 +109,14 @@ namespace ChattyBones.Patches
         /// would land inside vanilla's biome bookkeeping.
         /// </summary>
         /// <param name="__instance">Whoever crossed the line.</param>
-        /// <param name="biome">What they crossed into.</param>
-        private static void Postfix(Player __instance, Heightmap.Biome biome)
+        /// <param name="biome">
+        /// What they crossed into. Valheim 1.0 changed this from a bare
+        /// Heightmap.Biome to a BiomeSector, which carries the biome along with the
+        /// sector's bounds, neighbours and any alt-biomes over it. We still only want
+        /// the biome. It is an ordinary class rather than a UnityEngine.Object, so the
+        /// null check below is a plain reference test and means what it says.
+        /// </param>
+        private static void Postfix(Player __instance, BiomeSector biome)
         {
             try
             {
@@ -119,11 +125,12 @@ namespace ChattyBones.Patches
                 // too. Announcing it spends the squad's quiet time on a line that
                 // cannot name where it is, and the real crossing a second later is
                 // then refused for arriving too soon after it.
-                if (biome != Heightmap.Biome.None
+                if (biome != null
+                    && biome.Biome != Heightmap.Biome.None
                     && Player.m_localPlayer != null
                     && __instance == Player.m_localPlayer)
                 {
-                    WorldEvents.Announce(ChatterEvent.BiomeChanged, biome);
+                    WorldEvents.Announce(ChatterEvent.BiomeChanged, biome.Biome);
                 }
             }
             catch (Exception e)

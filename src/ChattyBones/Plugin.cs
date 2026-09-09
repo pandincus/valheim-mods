@@ -20,7 +20,7 @@ namespace ChattyBones
         public const string PluginGuid = "pandincus.chattybones";
         public const string PluginName = "ChattyBones";
         // Keep in step with <Version> in ChattyBones.csproj.
-        public const string PluginVersion = "0.1.0";
+        public const string PluginVersion = "0.1.1";
 
         internal static ManualLogSource Log;
 
@@ -53,8 +53,8 @@ namespace ChattyBones
 
             // Init reads a file and parses YAML, so unlike everything else here it can
             // fail for reasons outside the mod - and an exception escaping Awake would
-            // stop before PatchAll below, leaving us loaded, unpatched and silent with
-            // only a raw stack trace to go on. Missing YamlDotNet is the likely cause
+            // stop before the patching below, leaving us loaded, unpatched and silent
+            // with only a raw stack trace to go on. Missing YamlDotNet is the likely cause
             // and it fails exactly this way, so name it.
             try
             {
@@ -77,10 +77,31 @@ namespace ChattyBones
             // the one in use. See the note on ChatterSettings.
             Config.SettingChanged += (_, _) => Chatter.RefreshSettings();
 
-            // PatchAll finds every [HarmonyPatch] class in this assembly and
-            // applies it - everything under Patches/.
             _harmony = new Harmony(PluginGuid);
-            _harmony.PatchAll();
+
+            // A class at a time rather than PatchAll, which is what this used to call.
+            // PatchAll stops at the first class that throws and leaves every later one
+            // unapplied, so one moved target silently costs a set of unrelated reactions
+            // and nothing says which. Worse, the exception escapes Awake, _started stays
+            // false, and the sweep below never runs at all - the whole mod goes quiet.
+            // Valheim 1.0 broke three targets at once, so this is not hypothetical.
+            // Patching per class means a moved target costs exactly its own reactions,
+            // and the log names the class that went.
+            foreach (System.Type type in AccessTools.GetTypesFromAssembly(
+                         System.Reflection.Assembly.GetExecutingAssembly()))
+            {
+                try
+                {
+                    _harmony.CreateClassProcessor(type).Patch();
+                }
+                catch (System.Exception e)
+                {
+                    Log.LogError(
+                        PluginName + " could not apply " + type.Name + ", so the reactions it "
+                        + "carries will not fire. The usual cause is a Valheim update having "
+                        + "moved what it hooks. " + e);
+                }
+            }
 
             _started = true;
 

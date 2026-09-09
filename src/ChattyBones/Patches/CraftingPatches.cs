@@ -148,8 +148,15 @@ namespace ChattyBones.Patches
         /// Catch everything, for the same reason the cauldron does.
         /// </summary>
         /// <param name="__instance">The barrel being tapped.</param>
-        /// <param name="___m_delayedTapItem">What was fermenting, as a prefab name.</param>
-        private static void Postfix(Fermenter __instance, string ___m_delayedTapItem)
+        /// <param name="___m_delayedTapItem">
+        /// What was fermenting. Valheim 1.0 changed this from the prefab's name to its
+        /// stable hash, taking GetContent and GetItemConversion with it, so the type
+        /// here had to follow. Leaving it as the old string is worse than it sounds:
+        /// Harmony then emits a field load of an int into a string slot, which fails as
+        /// invalid IL while the patch is being applied rather than as a missing field,
+        /// and the error names the method instead of the field.
+        /// </param>
+        private static void Postfix(Fermenter __instance, int ___m_delayedTapItem)
         {
             try
             {
@@ -158,8 +165,10 @@ namespace ChattyBones.Patches
                     return;
                 }
 
-                Fermenter.ItemConversion conversion = __instance.m_conversion.Find(
-                    c => c?.m_from != null && c.m_from.gameObject.name == ___m_delayedTapItem);
+                // Vanilla's own lookup, which is what DelayedTap itself calls a line
+                // earlier. Matching the hash by hand would mean keeping our own copy of
+                // how the game hashes a prefab name, for no gain.
+                Fermenter.ItemConversion conversion = __instance.GetItemConversion(___m_delayedTapItem);
 
                 Cooking.React(conversion?.m_to?.m_itemData);
             }
