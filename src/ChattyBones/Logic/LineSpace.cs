@@ -156,11 +156,16 @@ namespace ChattyBones.Logic
         /// <param name="offset">Where the chosen group starts in <see cref="All"/>.</param>
         /// <param name="length">How many lines it holds.</param>
         /// <remarks>
+        /// The single most specific window, which is what the diagnostics and the load
+        /// checks want. It is *not* what speaking uses any more - see
+        /// <see cref="SelectBands"/>, which hands back both bands so the chooser can
+        /// draw from the shared lines as well as the personality's.
+        ///
         /// Most specific wins, and personality outranks context. A cowardly skeleton in
-        /// the Swamp with no Swamp lines of its own uses its own plain lines rather than
-        /// the shared Swamp ones - which writes better people at the cost of writing
-        /// slightly worse places, and the four personalities are why the squad reads as
-        /// a group rather than as narrators.
+        /// the Swamp with no Swamp lines of its own reports its own plain lines rather
+        /// than the shared Swamp ones - which writes better people at the cost of
+        /// writing slightly worse places, and the four personalities are why the squad
+        /// reads as a group rather than as narrators.
         ///
         /// Within a band, two context groups that both match are settled by whichever
         /// the pack wrote first. With more than one context that is no longer a corner
@@ -180,12 +185,88 @@ namespace ChattyBones.Logic
                 return true;
             }
 
-            // Unreachable for a space built by Build, which is never empty. Falling back
-            // to the whole numbering rather than returning false keeps a caller that
-            // gets here saying something instead of going silent.
+            // Reached when every group in the space is tagged and nothing it is tagged
+            // for is true right now - the same situation SelectBands covers, and covered
+            // the same way. Returning false is what is unreachable: Build never makes an
+            // empty space, so there is always something here to fall back to.
             offset = 0;
             length = _all.Length;
             return _all.Length > 0;
+        }
+
+        /// <summary>Both windows a skeleton in these contexts can draw from.</summary>
+        /// <param name="contexts">What the skeleton satisfies, or null for the plain groups.</param>
+        /// <param name="own">The best window in the personality's band, empty if it has none.</param>
+        /// <param name="shared">The best window in the shared band, empty if there is none.</param>
+        /// <remarks>
+        /// The difference from <see cref="TrySelect"/> is that this does not choose
+        /// between the two bands - it hands back both and lets the chooser weight them.
+        ///
+        /// Selecting one band was the original rule and it had a trap nobody could see:
+        /// a personality's group *replaces* the shared one rather than adding to it, so
+        /// writing two good cowardly lines for an event where common had five left that
+        /// skeleton with two. Twenty-six groups in the shipped pack had quietly done
+        /// this. Writing more lines made the pack worse, and nothing said so.
+        ///
+        /// The numbering is untouched by any of this - both bands were always numbered
+        /// in, they were simply unreachable - so a listener folding a bare ref is not
+        /// affected and no version of this travels on the wire.
+        /// </remarks>
+        internal void SelectBands(IReadOnlyList<string> contexts, out Window own, out Window shared)
+        {
+            own = Best(contexts, personal: true);
+            shared = Best(contexts, personal: false);
+
+            if (!own.IsEmpty || !shared.IsEmpty)
+            {
+                return;
+            }
+
+            // Neither band has a plain group and nothing it is tagged for is true right
+            // now - a pack whose only Idle lines are Idle[biome=Swamp] and, in common,
+            // Idle[time=night], asked in the Meadows at noon. Every line here is
+            // reachable in principle, so falling back to the whole numbering says
+            // something slightly out of place instead of nothing at all.
+            //
+            // Deliberate, and carried over: the rule this replaced made the same call in
+            // the same situation. Silence is this mod's standing failure mode - it reads
+            // exactly like a hook that does not work - and a swamp line in the meadows is
+            // a far cheaper mistake than a squad that has quietly stopped talking.
+            own = new Window(0, _all.Length);
+        }
+
+        /// <summary>The most specific window in one band.</summary>
+        /// <returns>The window, or an empty one when the band has no group at all.</returns>
+        /// <param name="contexts">What the skeleton satisfies.</param>
+        /// <param name="personal">Which band to look in.</param>
+        private Window Best(IReadOnlyList<string> contexts, bool personal)
+        {
+            return TryBand(contexts, personal, out int offset, out int length)
+                || TryPlain(personal, out offset, out length)
+                ? new Window(offset, length)
+                : default;
+        }
+
+        /// <summary>A run of lines inside the numbering.</summary>
+        internal readonly struct Window
+        {
+            /// <summary>Record one run.</summary>
+            /// <param name="offset">Where it starts in <see cref="All"/>.</param>
+            /// <param name="length">How many lines it holds.</param>
+            internal Window(int offset, int length)
+            {
+                Offset = offset;
+                Length = length;
+            }
+
+            /// <summary>Where it starts in <see cref="All"/>.</summary>
+            internal int Offset { get; }
+
+            /// <summary>How many lines it holds.</summary>
+            internal int Length { get; }
+
+            /// <summary>Nothing to draw from.</summary>
+            internal bool IsEmpty => Length == 0;
         }
 
         /// <summary>Find a context group in one band.</summary>

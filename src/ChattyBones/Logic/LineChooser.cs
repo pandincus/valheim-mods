@@ -59,10 +59,10 @@ namespace ChattyBones.Logic
         /// plain groups, which is exactly what null gives them.
         /// </param>
         /// <remarks>
-        /// Start at a random offset, walk the group, take the first line that renders
-        /// and is not the one just said. Every line is examined at most once, so if a
-        /// usable line exists we find it - which matters for a group where only one
-        /// line in ten can be rendered right now.
+        /// Start at a random offset, walk the window, take the first line that renders
+        /// and is not the one just said. Every line in both windows is examined at most
+        /// once, so if a usable line exists we find it - which matters for a group where
+        /// only one line in ten can be rendered right now.
         ///
         /// Repeating is allowed only when the line just said is the single usable one.
         /// Falling silent would be worse.
@@ -80,49 +80,67 @@ namespace ChattyBones.Logic
             lineRef = 0;
             line = null;
 
-            if (!pack.TrySelect(personality, kind, contexts, out LineSpace space, out int start, out int count))
+            if (!pack.SelectBands(
+                    personality, kind, contexts,
+                    out LineSpace space,
+                    out LineSpace.Window own,
+                    out LineSpace.Window shared))
             {
                 return false;
             }
 
+            Order(own, shared, random, out LineSpace.Window first, out LineSpace.Window second);
+
             IReadOnlyList<string> all = space.All;
             int total = space.Count;
-            int from = random.Next(0, count);
 
             string repeatLine = null;
             int repeatAt = -1;
 
-            for (int offset = 0; offset < count; offset++)
+            for (int band = 0; band < 2; band++)
             {
-                // Walking the window the context chose, but numbering against the whole
-                // space - a listener folds the ref against every line this personality
-                // could reach for this event, because working out which window applied
-                // would mean resolving a context it may not be able to see.
-                int index = start + ((from + offset) % count);
-                string template = all[index];
+                LineSpace.Window window = band == 0 ? first : second;
 
-                if (!tokens.TryRender(template, out string rendered))
+                if (window.IsEmpty)
                 {
                     continue;
                 }
 
-                if (template == _lastSaid)
+                int count = window.Length;
+                int from = random.Next(0, count);
+
+                for (int offset = 0; offset < count; offset++)
                 {
-                    // Hold on to it in case it turns out to be the only thing we can
-                    // say, but keep looking first.
-                    if (repeatAt < 0)
+                    // Walking the window the context chose, but numbering against the
+                    // whole space - a listener folds the ref against every line this
+                    // personality could reach for this event, because working out which
+                    // window applied would mean resolving a context it may not see.
+                    int index = window.Offset + ((from + offset) % count);
+                    string template = all[index];
+
+                    if (!tokens.TryRender(template, out string rendered))
                     {
-                        repeatLine = rendered;
-                        repeatAt = index;
+                        continue;
                     }
 
-                    continue;
-                }
+                    if (template == _lastSaid)
+                    {
+                        // Hold on to it in case it turns out to be the only thing we can
+                        // say, but keep looking first.
+                        if (repeatAt < 0)
+                        {
+                            repeatLine = rendered;
+                            repeatAt = index;
+                        }
 
-                _lastSaid = template;
-                lineRef = LineRefFor(index, total, random);
-                line = rendered;
-                return true;
+                        continue;
+                    }
+
+                    _lastSaid = template;
+                    lineRef = LineRefFor(index, total, random);
+                    line = rendered;
+                    return true;
+                }
             }
 
             if (repeatAt < 0)
@@ -135,10 +153,76 @@ namespace ChattyBones.Logic
             return true;
         }
 
+        /// <summary>How much of the time a skeleton with lines of its own uses them.</summary>
+        /// <remarks>
+        /// A share rather than a per-line weight, and that is the whole design. Weighting
+        /// each personality line by some multiple would leave the *count* deciding how
+        /// strongly a character comes through, so an author would still have to ask "have
+        /// I written enough of these to drown out common?" - which is exactly the question
+        /// that produced twenty-six groups quietly reducing their own variance. A share
+        /// makes presence the thing that counts: two good cowardly lines are as dominant
+        /// as eight.
+        ///
+        /// One caveat, and it only bites at exactly one line. The no-repeat rule below
+        /// outranks this, so a personality with a *single* line of its own cannot say it
+        /// twice running and reaches for the shared band instead - measured at 41% rather
+        /// than 70%, against 69.9% for two lines and every count above. That is the rule
+        /// rescuing a one-line group from being a broken record rather than a fault, but
+        /// "about 70%" is not true down there and it is worth saying so.
+        ///
+        /// 0.7 is a starting guess, and deliberately a constant rather than a setting. A
+        /// probability dial over line selection is hard to describe to a player and easy
+        /// to set badly, and nothing yet says what the right number is.
+        /// </remarks>
+        private const double PersonalityShare = 0.7;
+
+        /// <summary>Decide which band to try first, and keep the other as the follow-up.</summary>
+        /// <param name="own">The personality's window.</param>
+        /// <param name="shared">The shared window.</param>
+        /// <param name="random">Where the roll comes from.</param>
+        /// <param name="first">The band to walk first.</param>
+        /// <param name="second">The band to fall through to, possibly empty.</param>
+        /// <remarks>
+        /// The personality gets <see cref="PersonalityShare"/> of the time, or its
+        /// natural share of the lines when that is larger - so a well-stocked
+        /// personality is not dragged *down* to 70% by two shared lines. Both directions
+        /// of the trap are closed by that one max: writing few lines cannot cost you the
+        /// shared ones, and writing many cannot be undone by them.
+        ///
+        /// Worked through: two cowardly lines against five common ones gives 0.7 rather
+        /// than the natural 0.29, so each cowardly line is said about 35% of the time and
+        /// each common one about 6%. Eight cowardly against two common gives the natural
+        /// 0.8 instead, and the two common lines stay a tail at 10% each.
+        ///
+        /// Losing the roll is not losing the line. The band that goes second is still
+        /// walked when the first has nothing renderable, so a token we cannot fill costs
+        /// variety rather than silence.
+        /// </remarks>
+        private static void Order(
+            LineSpace.Window own,
+            LineSpace.Window shared,
+            Random random,
+            out LineSpace.Window first,
+            out LineSpace.Window second)
+        {
+            if (own.IsEmpty || shared.IsEmpty)
+            {
+                first = own.IsEmpty ? shared : own;
+                second = default;
+                return;
+            }
+
+            double natural = (double)own.Length / (own.Length + shared.Length);
+            bool personalityFirst = random.NextDouble() < Math.Max(PersonalityShare, natural);
+
+            first = personalityFirst ? own : shared;
+            second = personalityFirst ? shared : own;
+        }
+
         /// <summary>Find a line ref that any client will fold back to this index.</summary>
         /// <returns>A value in 0..<see cref="Utterance.MaxLineRef"/> whose remainder by <paramref name="count"/> is <paramref name="index"/>.</returns>
-        /// <param name="index">The line we chose, within its group.</param>
-        /// <param name="count">How many lines the group holds.</param>
+        /// <param name="index">The line we chose, as a position in the whole numbering.</param>
+        /// <param name="count">How many lines the whole numbering holds.</param>
         /// <param name="random">Used to vary which of the many valid line refs we send.</param>
         /// <remarks>
         /// Any of <c>index, index + count, index + 2*count...</c> would do, and we

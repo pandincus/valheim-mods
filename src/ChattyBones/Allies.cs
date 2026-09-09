@@ -104,6 +104,11 @@ namespace ChattyBones
             if (me == null || ChatterComponent.All.Count == 0)
             {
                 Seen.Clear();
+
+                // Blame rides along here rather than finding its own moment. No player
+                // means no world, and the ids it is keyed by mean nothing in the next
+                // one - see Blame.Clear.
+                Blame.Clear();
                 return;
             }
 

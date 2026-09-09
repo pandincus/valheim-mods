@@ -69,29 +69,6 @@ namespace ChattyBones.Tests
             Assert.True(TargetWatch.LostTarget(hadTarget: true, targetPresent, sameTarget));
         }
 
-        [Theory]
-        [InlineData(0.00f, true)]
-        [InlineData(0.25f, true)]
-        [InlineData(1.00f, true)]
-        [InlineData(1.01f, false)]
-        [InlineData(18.13f, false)]
-        public void OnlyAFreshSightingIsWorthGloatingAbout(float secondsSinceSeen, bool expected)
-        {
-            // 0.25 is one sweep, which is what an ordinary kill looks like. 18.13 is
-            // taken from the log that found the bug: the kill was real, but it was not
-            // noticed until a new target turned up eighteen seconds later, and being
-            // thrown away at that point was correct.
-            Assert.Equal(expected, TargetWatch.WorthRemarking(secondsSinceSeen, targetGone: true));
-        }
-
-        [Fact]
-        public void ATargetThatSimplyChangedIsNotAKill()
-        {
-            // Losing interest is not winning. The AI switching targets while the old
-            // one is alive and well must not produce a gloat.
-            Assert.False(TargetWatch.WorthRemarking(secondsSinceSeen: 0.25f, targetGone: false));
-        }
-
         /// <summary>Stands in for a UnityEngine.Object, equality quirk and all.</summary>
         /// <remarks>
         /// The test project cannot reference UnityEngine - that is the whole point of

@@ -186,16 +186,56 @@ namespace ChattyBones.Logic
                 && space.TrySelect(contexts, out offset, out length);
         }
 
-        /// <summary>The lines a skeleton in these contexts would draw from, as a list.</summary>
+        /// <summary>Both bands a skeleton in these contexts can draw from.</summary>
+        /// <returns>False when there is nothing to say at all.</returns>
+        /// <param name="personality">Which personality type is speaking.</param>
+        /// <param name="kind">What just happened.</param>
+        /// <param name="contexts">What the skeleton satisfies, or null for the plain groups.</param>
+        /// <param name="space">The numbering the windows count against.</param>
+        /// <param name="own">The personality's window, possibly empty.</param>
+        /// <param name="shared">The shared window, possibly empty.</param>
+        /// <remarks>
+        /// What <see cref="LineChooser"/> speaks from. Both may be non-empty at once,
+        /// which is the whole point of it - see <see cref="LineSpace.SelectBands"/>.
+        /// </remarks>
+        internal bool SelectBands(
+            string personality,
+            ChatterEvent kind,
+            IReadOnlyList<string> contexts,
+            out LineSpace space,
+            out LineSpace.Window own,
+            out LineSpace.Window shared)
+        {
+            own = default;
+            shared = default;
+
+            if (!TryGetSpace(personality, kind, out space))
+            {
+                return false;
+            }
+
+            space.SelectBands(contexts, out own, out shared);
+
+            return !own.IsEmpty || !shared.IsEmpty;
+        }
+
+        /// <summary>The most specific group a skeleton in these contexts would draw from.</summary>
         /// <returns>False when there is nothing to say.</returns>
         /// <param name="personality">Which personality type is speaking.</param>
         /// <param name="kind">What just happened.</param>
         /// <param name="lines">The window, never empty when we return true.</param>
         /// <param name="contexts">What the skeleton satisfies, or null for the plain groups.</param>
         /// <remarks>
-        /// A convenience over <see cref="TrySelect"/> for tests and diagnostics, which
-        /// want to look at a group rather than walk one. It copies, so the chooser does
-        /// not use it - that runs per utterance and has no reason to allocate.
+        /// A convenience over <see cref="TrySelect"/> for tests, which want to look at a
+        /// group rather than walk one. It copies, so nothing on a per-utterance path uses
+        /// it.
+        ///
+        /// One group, not everything reachable: speaking draws on both bands through
+        /// <see cref="SelectBands"/>, so this answers "which group is most specific"
+        /// rather than "what might it say". That makes this pair - and
+        /// <see cref="LineSpace.TrySelect"/> under it - the test-only view of selection.
+        /// They are kept because specificity within a band is a real rule worth pinning,
+        /// and <see cref="LineSpace.Best"/> resolves it with the same two primitives.
         /// </remarks>
         internal bool TryGetGroup(
             string personality,

@@ -66,7 +66,7 @@ namespace ChattyBones
         /// <param name="subject">The skeleton about to say something.</param>
         /// <remarks>
         /// Null rather than an empty list for "nowhere in particular", because that is
-        /// what <see cref="LineSpace.TrySelect"/> reads as "use the plain groups" - and
+        /// what <see cref="LineSpace.SelectBands"/> reads as "use the plain groups" - and
         /// a caller that gets it wrong gets the plain groups anyway.
         ///
         /// Each context is skipped on its own when the game cannot answer for it, rather

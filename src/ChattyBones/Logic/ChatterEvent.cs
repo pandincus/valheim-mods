@@ -32,18 +32,23 @@ namespace ChattyBones.Logic
 
         /// <summary>It killed something.</summary>
         /// <remarks>
-        /// Not hooked off the victim's death, which sounds like the obvious place and
-        /// is not. Character.OnDeath is reached from CheckDeath, which sits inside an
-        /// IsOwner check, so a creature's death only fires on whichever client owns
-        /// that creature - in a shared world that is often the host or another player,
-        /// and your skeleton's kill would simply go uncommented.
+        /// Credited from the victim's own death. Character.OnDeath still has
+        /// <c>m_lastHit</c>, which names whoever landed the finishing blow - and
+        /// vanilla asks that same field a few lines later to decide whose kill count
+        /// goes up, so it is the game's own answer rather than one of ours.
         ///
-        /// Instead we watch our own skeleton's target go from something to nothing
-        /// and check whether that something is now dead, which reads replicated state
-        /// and works whoever owns it. Attribution gets a little looser - the thing
-        /// might have died to somebody else's axe - but "the creature my skeleton was
-        /// charging at just died" is arguably the better trigger anyway. It fires
-        /// when the skeleton thinks it won, which is the funnier moment.
+        /// Watching our own skeleton's target go from something to nothing is the
+        /// obvious-looking alternative, and this event used to do exactly that. It
+        /// reads as reasonable and is not: send three skeletons at one greydwarf and
+        /// all three lose the same target in the same sweep, so all three claim the
+        /// kill and the credit lands on whichever got to speak first.
+        ///
+        /// The price is that OnDeath is reached from CheckDeath, inside an IsOwner
+        /// check, so it only runs on whichever client owns the victim - in a shared
+        /// world often the host. A kill our skeleton makes on somebody else's
+        /// greydwarf therefore passes unremarked. That is the trade we chose: saying
+        /// nothing is better than crediting the wrong skeleton, and a line that is
+        /// never said is a line nobody misses.
         /// </remarks>
         Killed,
 

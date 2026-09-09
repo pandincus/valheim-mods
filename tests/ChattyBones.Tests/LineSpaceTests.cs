@@ -55,6 +55,71 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
+        public void BothBandsAreHandedBackRatherThanOneChosenBetween()
+        {
+            // The change that made common audible. Selection used to return the single
+            // most specific window and stop; a personality with plain lines of its own
+            // therefore never reached common's, which meant writing two good lines for a
+            // personality could leave a skeleton with fewer lines than writing none.
+            Assert.True(FourBands().SelectBands(
+                Cowardly, ChatterEvent.Idle, InSwamp,
+                out LineSpace space, out LineSpace.Window own, out LineSpace.Window shared));
+
+            Assert.Equal("own swamp", space.All[own.Offset]);
+            Assert.Equal(1, own.Length);
+
+            Assert.Equal("shared swamp", space.All[shared.Offset]);
+            Assert.Equal(1, shared.Length);
+        }
+
+        [Fact]
+        public void APersonalityWhoseOnlyGroupDoesNotMatchFallsToTheSharedBandAlone()
+        {
+            // The own band comes back empty rather than dropping to that personality's
+            // plain lines, because it has none. Worth pinning: the chooser has to cope
+            // with an empty window, and this is the shape that produces one.
+            LinePack pack = new LinePack.Builder()
+                .Add(Cowardly, Key("Idle[biome=Swamp]"), "own swamp")
+                .Add(LinePack.SharedPersonality, Key("Idle"), "shared plain")
+                .Build();
+
+            Assert.True(pack.SelectBands(
+                Cowardly, ChatterEvent.Idle, InMeadows,
+                out LineSpace space, out LineSpace.Window own, out LineSpace.Window shared));
+
+            Assert.True(own.IsEmpty);
+            Assert.Equal("shared plain", space.All[shared.Offset]);
+        }
+
+        [Fact]
+        public void NothingMatchingAnywhereStillSaysSomething()
+        {
+            // Every group in the pack is tagged, and none of the tags are true right now.
+            // Rather than hand back two empty windows and fall silent, the whole
+            // numbering is offered - a swamp line in the meadows is a much cheaper
+            // mistake than a squad that has quietly stopped talking, which is this mod's
+            // standing failure mode and reads exactly like a broken hook.
+            LinePack pack = new LinePack.Builder()
+                .Add(Cowardly, Key("Idle[biome=Swamp]"), "own swamp")
+                .Add(LinePack.SharedPersonality, Key("Idle[time=night]"), "shared night")
+                .Build();
+
+            Assert.True(pack.SelectBands(
+                Cowardly, ChatterEvent.Idle, InMeadows,
+                out LineSpace space, out LineSpace.Window own, out LineSpace.Window shared));
+
+            Assert.Equal(space.Count, own.Length);
+            Assert.True(shared.IsEmpty);
+
+            // And it really does speak, rather than merely reporting a window.
+            Assert.True(new LineChooser().TryChoose(
+                pack, Cowardly, ChatterEvent.Idle, new LineTokens(), new Random(3),
+                out _, out string line, InMeadows));
+
+            Assert.False(string.IsNullOrEmpty(line));
+        }
+
+        [Fact]
         public void TheNumberingHoldsEveryLineTheyCouldReach()
         {
             LinePack pack = FourBands();

@@ -14,8 +14,27 @@
 #         - "Do I have to?"
 #
 # A Skelett is given a 'personality' when you summon it. Personalities have lines
-# with a little more specific character. If a personality doesn't have a line covering
-# a particular event or situation, it falls back to "common", per event.
+# with a little more specific character.
+#
+# A Skelett draws on BOTH its personality's lines and "common", for every event.
+# The personality does most of the talking - about 70% of the time - and common fills
+# in the rest. A personality carrying a lot more lines than common keeps its natural
+# larger share instead, though that takes better than twice common's count. So "common" is not
+# a fallback that only shows up when a personality is missing something; it is the
+# shared voice every Skelett has. Write lines there that suit any character, and keep
+# the character itself in the personality groups.
+#
+# This matters for how you write. It used to be that a personality group REPLACED
+# common's for that event, and the trap was brutal: writing two good cowardly lines
+# for an event where common had five left that Skelett with two lines instead of five.
+# Writing more made the pack worse and nothing said so. That is gone: a small group
+# costs you nothing now, it only concentrates the talking.
+#
+# Do know what that concentration sounds like. Two personality lines against five
+# common ones means those two are each said about a third of the time, so they want to
+# be lines you are happy to hear often. ONE line on its own is the awkward case - it
+# cannot be said twice running, so it lands about 41% of the time with common covering
+# the rest. Two is where it starts behaving as described.
 #
 # Feel free to write more lines per group than feels necessary, to keep dialogue variable,
 # fun, and interesting.
@@ -24,8 +43,8 @@
 #
 #   - adding, removing, or renaming personalities reshuffles which personality
 #     your existing Skeletts have
-#   - "common" is special: it isn't a personality, per se, it is a default. It must be lower case.
-#     This is hard-coded.
+#   - "common" is special: it isn't a personality, per se, it is the shared voice. It
+#     must be lower case. This is hard-coded.
 #
 # There are three concepts that you need to know to write lines: events, tokens, context
 #
@@ -51,8 +70,8 @@
 # The following other tokens are available depending on the event that triggered the dialogue:
 #
 #   {target}: The Skelett's or Player's target; e.g. in combat, "Greydwarf Shaman" etc
-#   {weapon}: A weapon used or wielded by a fellow Skelett or the Player; e.g. "Mistwalker"
-#   {weaponskill}: The weapon skill used; e.g. "Swords", "Unarmed", "Elemental Magic" for example.
+#   {weapon}: A weapon YOU are wielding; e.g. "Mistwalker". Never a Skelett's - see §5.
+#   {weaponskill}: The skill behind it; e.g. "Swords", "Elemental Magic". Yours only, same as above.
 #   {damage}: The name of the damage type; e.g. Blunt, Slash, Pierce, Fire, Frost, Lightning, etc
 #   {status}: A status effect, positive or negative. e.g. "Magic Barrier", or "Burning"
 #   {biome}: The name of the biome the Skelett is in, e.g. "Plains", "Mistlands"
@@ -83,20 +102,20 @@
 #                                                      T  C  A  W  K  D  S  B  I  L
 #   Summoned             you raised it                 .  .  .  .  .  .  .  .  .  .
 #   TargetAcquired       it picked something           T  .  .  .  .  .  .  .  .  .
-#   Hurt                 something hit it              .  .  .  W  K  D  .  .  .  .
+#   Hurt                 something hit it              .  .  .  .  .  D  .  .  .  .
 #   Buffed               it gained a helpful effect    .  .  .  .  .  .  S  .  .  .
 #   Afflicted            it caught fire or poison      .  .  .  .  .  .  S  .  .  .
 #   Weather              rain, water, or the swamp     .  .  .  .  .  .  S  .  .  .
-#   Killed               it killed something           T  .  .  W  K  .  .  .  .  .
-#   Died                 it died                       .  .  .  W  K  .  .  .  .  .
+#   Killed               it killed something           T  .  .  .  .  .  .  .  .  .
+#   Died                 it died                       .  .  .  .  .  .  .  .  .  .
 #   Unsummoned           it timed out or strayed       .  .  .  .  .  .  .  .  .  .
 #   Idle                 nothing is happening          .  .  .  .  .  .  .  .  .  .
-#   PlayerHurt           you took a hit                .  .  .  W  K  D  .  .  .  .
+#   PlayerHurt           you took a hit                .  .  .  .  .  D  .  .  .  .
 #   PlayerLandedABigHit  you hit something hard        T  .  .  W  K  D  .  .  .  .
 #   PlayerGotAKill       you killed something          T  .  .  W  K  .  .  .  .  .
-#   CompanionHurt        another skeleton was hit      .  C  .  W  K  D  .  .  .  .
-#   CompanionKilled      another skeleton got a kill   T  C  .  W  K  .  .  .  .  .
-#   CompanionDied        another skeleton died         .  C  .  .  .  .  .  .  .  .
+#   CompanionHurt        another Skelett was hit       .  C  .  .  .  D  .  .  .  .
+#   CompanionKilled      another Skelett got a kill    T  C  .  .  .  .  .  .  .  .
+#   CompanionDied        another Skelett died          .  C  .  .  .  .  .  .  .  .
 #   CompanionSummoned    another was just raised       .  C  .  .  .  .  .  .  .  .
 #   PlayerParried        you turned a blow in time     T  .  .  .  .  .  .  .  .  .
 #   PlayerStaggered      something knocked you about   T  .  .  .  .  .  .  .  .  .
@@ -155,22 +174,44 @@
 # e.g. Idle[biome=Swamp,time=night] is refused.
 #
 # 4. ORDERING
-# 
-# Obviously, many lines might apply to any given situation. We pick in the following order:
 #
-#   1. Skelett personality lines that apply to this context, in file order (higher up wins)
-#   2. Skelett personality lines
-#   3. Common lines that apply to this context, in file order (higher up wins)
-#   4. Common lines
+# Obviously, many lines might apply to any given situation. Two groups get picked, one
+# from the personality and one from common, and the Skelett draws from both:
+#
+#   from the personality:  lines that apply to this context, in file order (higher up
+#                          wins), and if it has none tagged for where it is standing,
+#                          its plain lines
+#   from common:           the same, one more time
+#
+# It then speaks from the personality's group about 70% of the time - or more, if the
+# personality has more lines than common has - and from common's group the rest.
+#
+# Two things follow that are worth knowing:
+#
+#   - a context group in "common" is now worth writing. It used to be unreachable
+#     whenever the personalities had any plain lines for that event, which is why the
+#     atmosphere in this pack is written four times over. Write a swamp once in common
+#     and every personality gets it, on top of their own.
+#   - if a group has nothing it can say right now - every line wants a {token} we
+#     haven't got - the other group is used instead. You get less variety, never
+#     silence.
 #
 # 5. WORDING TIPS:
 #
-#   - the weapon tokens only work when the wielder is the player or the player's Skeletts.
-#     e.g. your kill, a Skelett's kill, a blow you landed. On an incoming blow they name
-#     the attacker's hands, and a creature with no real weapon reports Swords, so
-#     a skeleton mauled by a greydwarf announces it was done in by Swords. As a result,
-#     the default lines don't have these tokens in Hurt, PlayerHurt, CompanionHurt and Died,
-#     just because it doesn't read that well.
+#   - {weapon} and {weaponskill} only work when YOU swung - so on PlayerGotAKill and
+#     PlayerLandedABigHit, and nowhere else. Note that PlayerHurt is not on that list:
+#     the weapon on a blow coming in is the *attacker's*, and a greydwarf's is no more
+#     honest than a Skelett's. Put either token in a Skelett's own line and it will
+#     effectively never be said - the only exception is another player striking the
+#     blow, which is PvP, and not worth writing for.
+#
+#     This is the game's doing rather than a choice. Valheim describes a player's
+#     equipment properly and does not bother for a creature's: a Skelett's sword is
+#     named "Dragur axe" in the data, and its bow reports its skill as Swords. Both are
+#     leftovers nobody filled in. We would rather say nothing than say either of those
+#     over a Skelett's head, so the token comes back empty and the line is passed over.
+#     There is no way for a pack to get at it - if you want a Skelett to talk about how
+#     it fights, write it into the words.
 #   - {damage} is just the damage type, capitalized; e.g. Pierce. So consider how that should
 #     be used in a sentence. "Ouch, the Pierce!" doesn't sound that good. "Hurt by Pierce damage"
 #     sounds better. "A Blunt hit!" reads fine.
@@ -197,7 +238,7 @@
 #
 # Everybody running ChattyBones sees everybody's Skeletts talk. No need to install
 # server-side, and if you're playing with friends that don't have the mod, that's fine!
-# They just own't see anything.
+# They just won't see anything.
 #
 # You do NOT need the same lines file as your friends. When transmitting what line is
 # spoken, we send a pack of context and indices, but their lines can differ from yours
@@ -274,6 +315,9 @@ lines:
       - "That {target} is mine."
       - "Oi! {target}!"
       - "Here we go."
+      - "{target}. Right."
+      - "Something to do at last."
+      - "Mind the {target}, {player}."
     Hurt:
       - "Ow."
       - "That was a rib!"
@@ -288,7 +332,7 @@ lines:
       - "I do not care for this."
       - "{status}! Somebody do something!"
     Weather:
-      - "{status}. Right through to the bones."
+      - "{status}. Feel it in my bones."
       - "{status}. Marvellous."
       - "This is why I stayed buried."
       - "I feel {status}."
@@ -297,8 +341,8 @@ lines:
       - "Down it goes."
       - "That {target} won't get up."
       - "Next."
-      - "That is what we have the {weaponskill} for."
-      - "My {weapon} does not miss."
+      - "That is what we are for."
+      - "It never stood a chance."
     Died:
       - "Bugger."
       - "Tell my mum."
@@ -306,6 +350,8 @@ lines:
     Unsummoned:
       - "Off I go, then."
       - "See you, {player}."
+      - "That's me done."
+      - "Back to it, I suppose."
     Idle:
       - "Nice weather for it."
       - "Anyone else cold?"
@@ -324,7 +370,7 @@ lines:
       - "Did you see that?"
       - "Lovely hit, {player}."
       - "Nice {damage} hit with that {weapon}!"
-      - "The {weaponskill} did its work."
+      - "A fine use of {weaponskill}."
     PlayerGotAKill:
       - "Got him!"
       - "Nice one, {player}."
@@ -338,7 +384,7 @@ lines:
       - "It's {damage} damage on {companion}, {player}!"
     CompanionKilled:
       - "Leave some for me, {companion}."
-      - "Handy with the {weaponskill}, {companion}."
+      - "Neatly done, {companion}."
       - "{companion} got the {target}."
       - "Show-off."
     CompanionDied:
@@ -427,7 +473,7 @@ lines:
       - "{ally}. You are a long way out."
       - "Another warm one. Hello."
 
-  # The cowardly Skelett: doesn't want to be here, is afraid of everything, wants to spend
+  # The 'cowardly' Skelett doesn't want to be here, is afraid of everything, wants to spend
   # as much time as possible back at base
   cowardly:
     PlayerCooked:
@@ -465,6 +511,10 @@ lines:
     TargetAcquired:
       - "Is that a {target}? I'd rather not."
       - "Uh, I'm r-right behind you, {player}."
+      - "Has anyone else seen the {target}? No? Just me?"
+      - "I'll go last. I'm very good at last."
+      - "W-we could just walk away. Couldn't we?"
+      - "Oh gods, it's looking at me."
     Hurt:
       - "Aaargh!"
       - "I'm hit! I'm hit!"
@@ -476,17 +526,28 @@ lines:
       - "Did I do that?"
       - "It was mostly {player}, honestly."
       - "Now I never want to fight another {target} again!"
-      - "The {weaponskill} did it! Not me! The {weaponskill}!"
+      - "It just sort of happened! Around me!"
       - "Is it over? Can I open my eyes?"
-      - "My {weapon} did the work. I just held on."
+      - "I mostly h-held on to my weapon and h-hoped."
+    Unsummoned:
+      - "Oh thank the gods. Byeeee!"
+      - "Finally! I mean... aw. Do I have to go?"
+      - "Was I any help? I tried to be."
+      - "No worries if you don't call me back soon, {player}."
+    CompanionKilled:
+      - "Better you than me, {companion}!"
+      - "See? {companion} can do it. So I, uh, don't have to."
+      - "Nice one, {companion}. Please keep doing that."
+      - "That's one that won't be coming for me. Thank you, {companion}."
+      - "I helped! Sort of. I was nearby."
     Idle:
       - "Can we go home?"
       - "It's very open out here."
       - "You'll look after us too, won't you {ally}?"
       - "Are you s-staying, {ally}? Only, it's safer in numbers."
-      - "{ally} looks like they know what they're doing. Follow them."
+      - "{ally} looks like they know what they're doing. Let's follow them, {player}."
     Idle[home=yes]:
-      - "H-hey, it's nice and cozy here! Can we stay?"
+      - "H-hey, it's nice and cozy here! Can we stay, {player}?"
       - "Nothing out there can get in, right?"
       - "Let's never leave. I mean it."
       - "I mean, why would we wanna go back out there anyway?"
@@ -515,7 +576,7 @@ lines:
       - "It's dark. It's dark and we are still outside."
       - "Can we light something? Anything at all?"
       - "There are more of them at night. I have counted."
-      - "I get that as a skellet I should like the night, but... I don't!"
+      - "I get that as a Skelett I should like the night, but... I don't!"
     CompanionDied:
       - "We're all going to die out here!"
       - "That could have been me!"
@@ -569,20 +630,35 @@ lines:
       - "That {target} is about to see the LEGEND in action."
       - "Ohoho, a {target}? Let's do this!"
       - "This {target} is nothing compared to my might! {player}, let me show you how it is done."
+      - "Stand back, {player}. Give me room to work."
+      - "Worry not, {player} and {ally}. The legend {name} has GOT this."
+      - "A {target}! Finally, something worth a verse."
+      - "You think I'm stuck here with you, {target}? You're stuck here with ME!!"
     Hurt:
       - "A scratch!"
       - "I meant to do that."
       - "Merely a flesh-wound. Bone-wound?"
       - "It thinks {damage} damage will stop me!"
-      - "Call that {damage} damage? I have felt worse in a draught."
+      - "Call that {damage} damage? I have felt worse as a BABY!"
       - "The ballad will say I shrugged off the {damage} damage."
     Killed:
       - "As foretold!"
       - "Another {target} for the ballad."
       - "Odin? You seeing this? I am worthy!"
-      - "Did you SEE what I did with the {weaponskill}?"
-      - "My {weapon} and I are LEGENDS, {player}!"
-      - "The {weaponskill} sang, and the {target} fell."
+      - "Did you SEE that, {player}?"
+      - "We are LEGENDS, {player}!"
+      - "I sang, and the {target} fell."
+    Unsummoned:
+      - "My work here is legend! And done. Legend and done."
+      - "Weep not, {player}! I shall return!"
+      - "Remember me at your feasts!"
+      - "The ballad continues elsewhere."
+    CompanionKilled:
+      - "Not bad, {companion}. Not ME, but not bad."
+      - "{companion}! You have been learning from the best."
+      - "I shall allow {companion} a small verse."
+      - "A fine effort, {companion}. Nearly worthy."
+      - "Write that one down as an assist. Mine."
     Idle:
       - "Ask me about the ballad."
       - "Pretty sure they still sing about me in Midgard."
@@ -672,6 +748,10 @@ lines:
     TargetAcquired:
       - "Engaging the {target}."
       - "Target sighted."
+      - "{target} sighted. Moving to intercept."
+      - "Contact. One {target}."
+      - "I have it, {player}."
+      - "Closing on the {target}."
     Hurt:
       - "Wound sustained. Continuing."
       - "Still fit to fight."
@@ -681,9 +761,20 @@ lines:
     Killed:
       - "Target down."
       - "{target} neutralized."
-      - "{target} neutralized. The {weaponskill} performed as expected."
-      - "Clean work with the {weaponskill}."
-      - "My {weapon} did its part. Noted."
+      - "{target} neutralized. Performance as expected."
+      - "Clean work. No complications."
+      - "Did my part. Noted."
+    Unsummoned:
+      - "Dismissed. Understood."
+      - "Duty discharged."
+      - "I will be here when you need me, {player}."
+      - "Standing down."
+    CompanionKilled:
+      - "Good work, {companion}."
+      - "{companion} has the {target}. Confirmed."
+      - "Efficient, {companion}."
+      - "{target} down. Credit to {companion}."
+      - "Noted, {companion}."
     PlayerGotAKill:
       - "Excellent demonstration of {weaponskill}, {player}."
       - "{player} eliminated the {target}."
@@ -728,7 +819,8 @@ lines:
       - "Good to have another pair of hands, {ally}."
       - "One more for the roster."
 
-  # The veteran has done this too many times, and is tired.
+  # The veteran has done this too many times, and is just TIRED.
+  # Not scared, not boastful, but exhausted.
   veteran:
     PlayerCooked:
       - "{item}. Seen better. Seen far worse."
@@ -740,6 +832,9 @@ lines:
     Dawn:
       - "Another sunrise to add to the pile."
       - "Good that the sun hasn't stopped coming up, then."
+    Raid:
+      - "Mm. Enemies upon us. Yawn."
+      - "Alright, alright. Another raid. You know the drill, {player}."
     RaidEnded:
       - "That is the fourth one this month."
       - "Nothing new."
@@ -763,6 +858,10 @@ lines:
     TargetAcquired:
       - "Another {target}. Marvellous."
       - "Seen one, seen 'em all."
+      - "Right. The {target}."
+      - "This again."
+      - "It's always a {target}, isn't it."
+      - "Let's get it over with."
     Hurt:
       - "Yep. That'll bruise."
       - "Been worse."
@@ -772,9 +871,20 @@ lines:
     Killed:
       - "That's that, then."
       - "Anticlimactic."
-      - "The {weaponskill} held up. It usually does."
-      - "My {weapon} has seen a hundred of these."
-      - "Another one for the {weaponskill}."
+      - "Held up fine. It usually does."
+      - "I have seen a hundred of these."
+      - "Another one for the pile."
+    Unsummoned:
+      - "About time."
+      - "Right. Off."
+      - "Same again tomorrow, I expect."
+      - "Don't wait up."
+    CompanionKilled:
+      - "Aye, {companion}."
+      - "{companion}'s still got it."
+      - "Took you long enough, {companion}."
+      - "That'll do, {companion}."
+      - "Suppose that saves me the walk."
     Idle:
       - "I've stood in worse fields."
       - "Wake me when it's interesting."
@@ -793,6 +903,11 @@ lines:
       - "I have been somewhere like this. I did not care for it either."
       - "Don't chase what you can't see."
       - "The quiet is the bad part."
+    Idle[biome=AshLands]:
+      - "The fires are hot here, yes, but not as hot as Helheim."
+      - "You know, I think I'm glad I don't have skin. Would be hot feet."
+      - "Mmh. I love the smell of the ashlands in the morning."
+      - "Smells like... victory."
     Idle[time=night]:
       - "Long night."
       - "Nothing good has ever happened to me at this hour."

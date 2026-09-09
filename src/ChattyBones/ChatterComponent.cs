@@ -44,9 +44,6 @@ namespace ChattyBones
 
         private float _untilIdle;
 
-        /// <summary>When we last actually saw the target we are remembering.</summary>
-        private float _lastSawTargetAt = float.NegativeInfinity;
-
         /// <summary>The skeleton this is riding on.</summary>
         internal Character Character { get; private set; }
 
@@ -187,17 +184,16 @@ namespace ChattyBones
         /// <summary>Look at what this skeleton is up to. Called by <see cref="Chatter.Tick"/>.</summary>
         /// <param name="dt">Seconds since the previous sweep.</param>
         /// <remarks>
-        /// Two things are found by looking rather than by being told: a target
-        /// appearing, and a target dying. The second is why the first has to remember
-        /// more than a reference - by the time a creature is dead the game has often
-        /// destroyed it and put a ragdoll in its place, so its name and prefab have to
-        /// have been taken while it was still there.
+        /// One thing is found by looking rather than by being told: a target appearing.
+        /// Kills used to be found here as well and are not any more - they are credited
+        /// from the death itself, in CharacterDeathPatch, because watching a target
+        /// vanish cannot tell the skeleton that killed it from the two standing beside it.
         ///
-        /// A target we were following going *away* is the kill signal, and it does not
-        /// only go away by becoming null. MonsterAI re-picks a target on its own timer,
-        /// so a skeleton in a pack often steps straight from the greydwarf it just
-        /// killed to the next one, and an earlier version that only watched for null
-        /// missed those kills entirely - roughly one in eight, and precisely in the
+        /// A target we were following going *away* still has to be noticed, so the next
+        /// one it picks reads as new. It does not only go away by becoming null:
+        /// MonsterAI re-picks on its own timer, so a skeleton in a pack often steps
+        /// straight from the greydwarf it just killed to the next one, and a version that
+        /// only watched for null announced perhaps one target in eight - precisely in the
         /// crowded fights where the squad has most to say.
         ///
         /// Both halves of that have to be asked separately, which is not obvious and is
@@ -228,8 +224,8 @@ namespace ChattyBones
             //
             // Ahead of the stop above, because Forget has to happen on every sweep we
             // do not own. Skipping it for the one sweep we happened to hear something
-            // leaves a dead creature in _lastTarget, and if ownership comes back on the
-            // very next sweep we boast about a kill we just finished listening to.
+            // leaves a stale creature in _lastTarget, and if ownership comes back on the
+            // very next sweep the skeleton announces it as a fresh target.
             if (!IsOwned || _ai == null)
             {
                 Forget();
@@ -261,8 +257,6 @@ namespace ChattyBones
 
             if (target != null)
             {
-                _lastSawTargetAt = Time.time;
-
                 if (!_hadTarget)
                 {
                     Remember(target);
@@ -386,41 +380,35 @@ namespace ChattyBones
             }
         }
 
-        /// <summary>Work out what became of the target we were following, and say so.</summary>
+        /// <summary>Put the fight we were following down, now that it has ended.</summary>
         /// <remarks>
-        /// A destroyed Character compares equal to null, so "gone" and "dead" arrive as
-        /// the same answer and both mean the fight is over. Health rather than
-        /// IsDead(): Character.IsDead() is a flat false that only Player overrides, so
-        /// asking a greydwarf always says no, and it is the null that has been carrying
-        /// this check.
+        /// Bookkeeping only. This used to decide the kill as well, by asking whether
+        /// the thing we had been targeting was now dead - and that reads as reasonable
+        /// until three skeletons are sent at one greydwarf, at which point all three
+        /// lose the same target in the same sweep and all three claim it. The credit
+        /// went to whichever the sweep reached first.
         ///
-        /// The staleness test is what stops a boast about something killed ten minutes
-        /// ago. Sweeping can stop and restart - the master switch is advertised as safe
-        /// to flip mid-game, and ownership can move away and back - and without this,
-        /// the first sweep after the gap would find a target it last saw in another era
-        /// and gloat about it by name.
+        /// So the question moved to where the answer actually is: the death itself
+        /// knows who landed the blow. See CharacterDeathPatch.Gloat.
+        ///
+        /// The cost is that a creature owned by another client never runs OnDeath on
+        /// our machine, so a kill our skeleton makes over there passes unremarked.
+        /// That is the trade we chose - saying nothing is better than crediting the
+        /// wrong one, and nobody notices a line that was never said.
         /// </remarks>
         private void Settle()
         {
-            float since = Time.time - _lastSawTargetAt;
-
             _hadTarget = false;
-
-            // Ordered so the null check still short-circuits: a destroyed Character
-            // compares equal to null, and asking a destroyed object for its health
-            // throws.
-            bool gone = _lastTarget == null || _lastTarget.GetHealth() <= 0f;
-            bool worth = TargetWatch.WorthRemarking(since, gone);
 
             if (ModConfig.LogChatter.Value)
             {
-                Chatter.Trace(this, ChatterEvent.Killed, "lost its target after " + since.ToString("0.00")
-                    + "s, dead or gone: " + gone + (worth ? " -> gloating" : " -> dropped"));
-            }
+                // Ordered so the null check still short-circuits: a destroyed Character
+                // compares equal to null, and asking a destroyed object for its health
+                // throws.
+                bool gone = _lastTarget == null || _lastTarget.GetHealth() <= 0f;
 
-            if (worth)
-            {
-                Boast();
+                Chatter.Trace(this, ChatterEvent.Killed, "stopped fighting, dead or gone: " + gone
+                    + " -> the kill is credited from the death itself, not from here");
             }
 
             _lastTarget = null;
@@ -434,38 +422,6 @@ namespace ChattyBones
             _lastTarget = null;
             _lastTargetName = null;
             _lastTargetPrefab = 0;
-        }
-
-        /// <summary>Mark the kill - by the one who made it, or by somebody standing nearby.</summary>
-        /// <remarks>
-        /// The killer gets first refusal and usually has to decline, which is the
-        /// whole reason this is not one line. A skeleton that announced its target a
-        /// few seconds ago is still inside its own
-        /// <see cref="ChatterSettings.SpeakerCooldownSeconds"/>, and it is the same
-        /// skeleton now standing over the body - so left to itself, the kill would
-        /// almost never get mentioned by the one that earned it.
-        ///
-        /// The cooldown is per speaker, so handing it to the squad is what gets past
-        /// it, and <see cref="ChatterEvent.CompanionKilled"/> exists so the line can
-        /// be addressed to the killer by name rather than being a bystander narrating
-        /// somebody else's work.
-        /// </remarks>
-        private void Boast()
-        {
-            // No blow to read on a kill, so the weapon comes from its own hands.
-            LineDetails details = Hits.WieldedBy(Character);
-
-            if (Chatter.TrySpeak(this, ChatterEvent.Killed, _lastTargetPrefab, _lastTargetName, companion: null, details: details))
-            {
-                return;
-            }
-
-            _ = Chatter.SpeakAny(
-                ChatterEvent.CompanionKilled,
-                _lastTargetPrefab,
-                _lastTargetName,
-                companion: Character,
-                details: details);
         }
 
         /// <summary>Take everything we will want about a target while it still exists.</summary>

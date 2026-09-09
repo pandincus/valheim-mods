@@ -131,6 +131,11 @@ namespace ChattyBones.Patches
             // point a killing blow shows up only as the health being gone.
             bool fatal = victim.GetHealth() <= 0f;
 
+            // Before anything else decides whether this blow is worth a line, because
+            // the death that wants it may be several seconds and a burning status effect
+            // away - see Blame.
+            Blame.Note(victim, hit);
+
             if (victim.IsPlayer())
             {
                 if (victim == Player.m_localPlayer && lost / max >= ModConfig.HurtFraction.Value)
@@ -140,7 +145,7 @@ namespace ChattyBones.Patches
                         subject: 0,
                         targetName: null,
                         companion: null,
-                        details: Hits.Of(hit, seen.Damage));
+                        details: Hits.DamageOf(seen.Damage));
                 }
 
                 return;
@@ -149,7 +154,7 @@ namespace ChattyBones.Patches
             ChatterComponent ours = victim.GetComponent<ChatterComponent>();
             if (ours != null)
             {
-                TheySufferedIt(victim, ours, Hits.Of(hit, seen.Damage), lost / max, fatal);
+                TheySufferedIt(victim, ours, Hits.DamageOf(seen.Damage), lost / max, fatal);
                 return;
             }
 
@@ -236,10 +241,12 @@ namespace ChattyBones.Patches
     /// OnDeath is reached only from CheckDeath, which sits inside an owner check, so
     /// this fires on whoever owns the victim. Your skeletons are yours, so their
     /// deaths are always ours to narrate. The things you kill often are not, which is
-    /// why a skeleton's own kills are polled in <see cref="ChatterComponent.Sweep"/>
-    /// rather than hooked, and why PlayerGotAKill can miss a kill on somebody else's
-    /// greydwarf. Note that a *player* dying never arrives here at all - Player
-    /// overrides OnDeath and does not call base.
+    /// why a kill on somebody else's greydwarf goes unremarked - by us and, since their
+    /// client does not think our skeleton is theirs, by anybody. That is the accepted
+    /// price of crediting the right skeleton rather than guessing.
+    ///
+    /// Note that a *player* dying never arrives here at all - Player overrides OnDeath
+    /// and does not call base.
     /// </remarks>
     [HarmonyPatch(typeof(Character), "OnDeath")]
     internal static class CharacterDeathPatch
@@ -272,6 +279,11 @@ namespace ChattyBones.Patches
                 return;
             }
 
+            // Ahead of every branch below, so a death always forgets what was being
+            // kept for it - our own skeletons leave through Mourn and would otherwise
+            // never clear theirs.
+            Character remembered = Blame.Take(dead);
+
             ChatterComponent ours = dead.GetComponent<ChatterComponent>();
             if (ours != null)
             {
@@ -279,18 +291,87 @@ namespace ChattyBones.Patches
                 return;
             }
 
-            HitData last = dead.m_lastHit;
-            if (last == null || Player.m_localPlayer == null || last.GetAttacker() != Player.m_localPlayer)
+            Character killer = dead.m_lastHit?.GetAttacker();
+
+            // Unity's ==, and it has to be written out rather than folded into a ??,
+            // which is a plain reference test and would take a destroyed attacker as
+            // the killer. IDE0270 folds it given half a chance - see .editorconfig.
+            // m_lastHit is right nearly always; the fallback is for the finishing blow
+            // that names nobody, which is most fire and poison kills - see Blame.
+            if (killer == null)
+            {
+                killer = remembered;
+            }
+
+            if (killer == null)
+            {
+                return;
+            }
+
+            // ReferenceEquals, not ==: the question is which object this is, and
+            // Unity's overload would call a destroyed player equal to a null one.
+            if (Player.m_localPlayer != null && ReferenceEquals(killer, Player.m_localPlayer))
+            {
+                _ = Chatter.SpeakAny(
+                    ChatterEvent.PlayerGotAKill,
+                    Summons.PrefabOf(dead),
+                    Summons.CreatureName(dead),
+                    companion: null,
+                    details: Hits.WieldedBy(Player.m_localPlayer));
+                return;
+            }
+
+            // IsOwned as well as non-null: another player's skeleton also carries a
+            // component here, so that it can listen. Its own client will speak for it
+            // and mirror the line to us - if we spoke too, we would say it twice.
+            ChatterComponent speaker = killer.GetComponent<ChatterComponent>();
+            if (speaker != null && speaker.IsOwned)
+            {
+                Gloat(dead, speaker);
+            }
+        }
+
+        /// <summary>Somebody's kill, credited to the one that actually landed the blow.</summary>
+        /// <param name="dead">What was killed.</param>
+        /// <param name="killer">The skeleton that killed it.</param>
+        /// <remarks>
+        /// <c>m_lastHit</c> is vanilla's own answer to who gets the credit - OnDeath
+        /// asks it the same question a few lines further down, to decide whose kill
+        /// count goes up - so we ask it rather than guessing.
+        ///
+        /// The guess is what this replaced, and it was wrong in a way that read as
+        /// working: a skeleton used to gloat whenever the thing *it* was targeting
+        /// disappeared, so sending three at one greydwarf had all three claim it and
+        /// the budget handed the credit to whichever the sweep reached first. Worse,
+        /// CompanionKilled then congratulated that one by name, so a bystander got
+        /// thanked for somebody else's work.
+        ///
+        /// The killer gets first refusal and usually has to decline, which is why this
+        /// is not one line: it announced this same target a few seconds ago and is
+        /// still inside its own <see cref="ChatterSettings.SpeakerCooldownSeconds"/>.
+        /// The cooldown is per speaker, so handing it to the squad is what gets past
+        /// it, and <see cref="ChatterEvent.CompanionKilled"/> lets the line be
+        /// addressed to the killer by name rather than being a bystander narrating.
+        /// </remarks>
+        private static void Gloat(Character dead, ChatterComponent killer)
+        {
+            // No weapon goes with either line. The game only describes one honestly for
+            // a player - see Hits.Describable - and the one holding this kill is a
+            // skeleton, so asking would return nothing every time. EventTokens promises
+            // neither token for these two events, and this is the other half of that.
+            int subject = Summons.PrefabOf(dead);
+            string name = Summons.CreatureName(dead);
+
+            if (Chatter.TrySpeak(killer, ChatterEvent.Killed, subject, name, companion: null))
             {
                 return;
             }
 
             _ = Chatter.SpeakAny(
-                ChatterEvent.PlayerGotAKill,
-                Summons.PrefabOf(dead),
-                Summons.CreatureName(dead),
-                companion: null,
-                details: Hits.WieldedBy(Player.m_localPlayer));
+                ChatterEvent.CompanionKilled,
+                subject,
+                name,
+                companion: killer.Character);
         }
 
         /// <summary>Last words, and somebody noticing them.</summary>
@@ -308,15 +389,17 @@ namespace ChattyBones.Patches
         /// </remarks>
         private static void Mourn(Character fallen, ChatterComponent speaker)
         {
-            // The killer's hands, not fallen.m_lastHit: by now RPC_Damage has stripped
-            // the fire, poison and spirit off that hit - see the Prefix remarks above.
+            // No details, and that is a change of mind worth recording. This used to hand
+            // over the killer's weapon, and once Hits.Describable landed that only ever
+            // arrived when another *player* struck the blow - so Died supplied a token it
+            // no longer promised, in the one case nobody would think to test. It promises
+            // nothing now, this supplies nothing, and cb_tokens can see they agree.
             if (!Chatter.TrySpeak(
                 speaker,
                 ChatterEvent.Died,
                 subject: 0,
                 targetName: null,
-                companion: null,
-                details: Hits.WieldedBy(fallen.m_lastHit?.GetAttacker())))
+                companion: null))
             {
                 return;
             }

@@ -26,7 +26,12 @@ namespace ChattyBones.Tests
             EventTokens.Forget();
         }
 
-        /// <summary>A hit that filled in everything a live blow promises.</summary>
+        /// <summary>A hit with every detail on it, promised or not.</summary>
+        /// <remarks>
+        /// More than a live blow promises, deliberately. Since the weapon tokens became
+        /// the player's alone an incoming hit promises only {damage}, so this now also
+        /// exercises the supplies-what-it-did-not-promise half of the report.
+        /// </remarks>
         private static LineDetails FullHit()
         {
             return new LineDetails(weapon: "Mistwalker", weaponSkill: "sword", damage: "slash");
@@ -51,11 +56,26 @@ namespace ChattyBones.Tests
         [Fact]
         public void AnEventNobodyHasFiredShowsEverythingUnseen()
         {
-            string hurt = LineFor(ChatterEvent.Hurt);
+            // PlayerLandedABigHit rather than Hurt, which is what this used to use.
+            // Hurt promises only {damage} now that the weapon tokens are the player's
+            // alone, and one token cannot show that the two lists agree.
+            string big = LineFor(ChatterEvent.PlayerLandedABigHit);
 
-            Assert.NotNull(hurt);
-            Assert.Contains("promises {weapon}, {weaponskill}, {damage}", hurt, StringComparison.Ordinal);
-            Assert.Contains("never seen {weapon}, {weaponskill}, {damage}", hurt, StringComparison.Ordinal);
+            Assert.NotNull(big);
+
+            int split = big.IndexOf("never seen", StringComparison.Ordinal);
+            Assert.True(split > 0, "the report should name what it has never seen");
+
+            // Each token looked for on its own rather than as one run of text, so the
+            // report stays free to order them however it likes.
+            string promises = big[..split];
+            string unseen = big[split..];
+
+            foreach (string token in new[] { "{target}", "{weapon}", "{weaponskill}", "{damage}" })
+            {
+                Assert.Contains(token, promises, StringComparison.Ordinal);
+                Assert.Contains(token, unseen, StringComparison.Ordinal);
+            }
         }
 
         [Fact]
@@ -76,13 +96,19 @@ namespace ChattyBones.Tests
             // dominant damage type. The report says {damage} has not been seen and
             // leaves the judgement to whoever is reading, because nothing in the data
             // separates "the hook stopped passing it" from "no hit has had one yet".
+            // PlayerLandedABigHit, because it is now the only kind of event that
+            // promises a weapon at all. Asked of Hurt this would pass without
+            // proving anything - {weapon} is not on its list, so of course the
+            // report does not mention it.
             EventTokens.Note(
-                ChatterEvent.Hurt, null, null, null, new LineDetails(weapon: "Mistwalker", weaponSkill: "sword"));
+                ChatterEvent.PlayerLandedABigHit, "Greydwarf", null, null,
+                new LineDetails(weapon: "Mistwalker", weaponSkill: "sword"));
 
-            string hurt = LineFor(ChatterEvent.Hurt);
+            string big = LineFor(ChatterEvent.PlayerLandedABigHit);
 
-            Assert.Contains("never seen {damage}", hurt, StringComparison.Ordinal);
-            Assert.DoesNotContain("never seen {weapon}", hurt, StringComparison.Ordinal);
+            Assert.Contains("never seen {damage}", big, StringComparison.Ordinal);
+            Assert.DoesNotContain("{weapon}", big[
+                big.IndexOf("never seen", StringComparison.Ordinal)..], StringComparison.Ordinal);
         }
 
         [Fact]
@@ -163,13 +189,15 @@ namespace ChattyBones.Tests
         [Fact]
         public void TheTableStillAgreesWithTheGroupsItIsBuiltFrom()
         {
-            Assert.Equal(
-                TokenSet.Weapon | TokenSet.WeaponSkill | TokenSet.Damage,
-                EventTokens.PromisedFor(ChatterEvent.Hurt));
+            Assert.Equal(TokenSet.Damage, EventTokens.PromisedFor(ChatterEvent.Hurt));
 
             Assert.Equal(
-                TokenSet.Target | TokenSet.Companion | TokenSet.Weapon | TokenSet.WeaponSkill,
+                TokenSet.Target | TokenSet.Companion,
                 EventTokens.PromisedFor(ChatterEvent.CompanionKilled));
+
+            Assert.Equal(
+                TokenSet.Target | TokenSet.Weapon | TokenSet.WeaponSkill,
+                EventTokens.PromisedFor(ChatterEvent.PlayerGotAKill));
 
             Assert.Equal(TokenSet.Ally, EventTokens.PromisedFor(ChatterEvent.AllyArrived));
             Assert.Equal(TokenSet.Status, EventTokens.PromisedFor(ChatterEvent.Afflicted));
@@ -249,17 +277,31 @@ namespace ChattyBones.Tests
         }
 
         [Fact]
-        public void AKillPromisesTheWeaponButNotTheDamage()
+        public void NoKillPromisesTheDamage()
         {
             // Not a restatement of the table for its own sake. m_lastHit is sitting
             // on the body and looks like the easy source, and RPC_Damage has already
             // emptied the fire, poison and spirit off it by then - so a kill that
             // claimed {damage} would be quietly reporting an incomplete hit.
-            TokenSet killed = EventTokens.PromisedFor(ChatterEvent.Killed);
+            Assert.True((EventTokens.PromisedFor(ChatterEvent.Killed) & TokenSet.Damage) == 0);
+            Assert.True((EventTokens.PromisedFor(ChatterEvent.PlayerGotAKill) & TokenSet.Damage) == 0);
+        }
 
-            Assert.True((killed & TokenSet.Weapon) != 0);
-            Assert.True((killed & TokenSet.WeaponSkill) != 0);
-            Assert.True((killed & TokenSet.Damage) == 0);
+        [Fact]
+        public void OnlyThePlayersOwnBlowsPromiseAWeapon()
+        {
+            // Valheim only describes a weapon honestly when a player is holding it: a
+            // Skelett's sword is named "Dragur axe" in the data, and its bow reports
+            // its skill as Swords. Both were seen in play. Hits refuses them for
+            // anybody else, so no other event may promise them.
+            const TokenSet weapon = TokenSet.Weapon | TokenSet.WeaponSkill;
+
+            foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
+            {
+                bool mine = kind is ChatterEvent.PlayerLandedABigHit or ChatterEvent.PlayerGotAKill;
+
+                Assert.Equal(mine, (EventTokens.PromisedFor(kind) & weapon) != 0);
+            }
         }
     }
 }

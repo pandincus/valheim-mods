@@ -232,8 +232,11 @@ namespace ChattyBones
             string personality, ChatterEvent kind, IReadOnlyList<string> contexts)
         {
             if (_pack == null
-                || !_pack.TryGetSpace(personality, kind, out LineSpace space)
-                || !space.TrySelect(contexts, out int offset, out int length))
+                || !_pack.SelectBands(
+                    personality, kind, contexts,
+                    out LineSpace space,
+                    out LineSpace.Window own,
+                    out LineSpace.Window shared))
             {
                 return null;
             }
@@ -243,29 +246,60 @@ namespace ChattyBones
             // passes common's groups as both bands, so they land in the first one. So the
             // flag alone answers "which band", not "whose lines", and HasOwnLines is what
             // answers the question a person is actually asking. Without it cb_who called
-            // common's lines "its own" for nineteen of boastful's thirty-one events, and
+            // common's lines "its own" for seventeen of boastful's thirty-two events, and
             // for every event of a skeleton with no personality yet.
             bool ownSpace = _pack.HasOwnLines(personality, kind);
 
-            // Offset and length together, not offset alone. TrySelect has a fallback that
-            // hands back the whole numbering starting at 0, and group[0] also starts at 0,
-            // so matching on offset would report the first group and quietly swallow the
-            // one case worth seeing.
+            // Both, because both get spoken now. Reporting only the winning group would
+            // be the old exclusive rule described in a tool whose job is to explain why a
+            // skeleton says what it says.
+            string mine = Describe(space, own, ownSpace);
+            string theirs = Describe(space, shared, personal: false);
+
+            if (mine == null)
+            {
+                return theirs;
+            }
+
+            return theirs == null ? mine : mine + "  +  " + theirs;
+        }
+
+        /// <summary>Name one window by the group that produced it.</summary>
+        /// <returns>Something like "biome=Swamp, 3 lines, its own", or null for an empty window.</returns>
+        /// <param name="space">The numbering the window counts against.</param>
+        /// <param name="window">The window to name.</param>
+        /// <param name="personal">Whether these are the skeleton's own personality's lines.</param>
+        /// <remarks>
+        /// Offset and length together, not offset alone. Two groups can start in the same
+        /// place - group[0] always starts at 0 - so matching on offset would report the
+        /// wrong one and quietly swallow the case worth seeing.
+        /// </remarks>
+        private static string Describe(LineSpace space, LineSpace.Window window, bool personal)
+        {
+            if (window.IsEmpty)
+            {
+                return null;
+            }
+
             for (int i = 0; i < space.Groups.Count; i++)
             {
                 LineSpace.Group group = space.Groups[i];
 
-                if (group.Offset != offset || group.Length != length)
+                if (group.Offset != window.Offset || group.Length != window.Length)
                 {
                     continue;
                 }
 
                 return (group.Context ?? "plain")
                     + ", " + group.Length + (group.Length == 1 ? " line" : " lines")
-                    + ", " + (ownSpace && group.Personal ? "its own" : "shared");
+                    + ", " + (personal && group.Personal ? "its own" : "shared");
             }
 
-            return length + " lines, the whole numbering - which means nothing matched";
+            // Reachable, and worth saying properly: SelectBands hands back the whole
+            // numbering when nothing either band is tagged for is true right now, rather
+            // than letting the skeleton fall silent. That window spans several groups, so
+            // it matches none of them.
+            return window.Length + " lines, the whole numbering - nothing it is tagged for matches";
         }
 
         /// <summary>Pick up a config change without a restart.</summary>
@@ -287,9 +321,9 @@ namespace ChattyBones
         /// </param>
         /// <param name="targetName">
         /// Already localized, and resolved by the caller rather than in here. Killed
-        /// is why: by the time a skeleton gets to gloat, the thing it killed has often
-        /// been destroyed and replaced with a ragdoll, so the name has to be taken
-        /// while there is still something to take it from.
+        /// is why: a creature is destroyed and replaced with a ragdoll as it dies, so
+        /// the name has to be taken while somebody still has something to take it
+        /// from. The death hook does, and nothing downstream of it does.
         /// </param>
         /// <param name="companion">Another of your skeletons, for lines about each other.</param>
         /// <param name="companionName">

@@ -126,23 +126,26 @@ namespace ChattyBones.Logic
                 set |= TokenSet.Companion;
             }
 
-            // A blow caught as it lands, so it can be described in full.
+            // A blow caught as it lands, so the numbers are still on it. A kill is not
+            // in this list and must not be: m_lastHit is sitting right there on the
+            // body and is a trap - RPC_Damage has already lifted the fire, poison and
+            // spirit off it by then, so a kill claiming {damage} would be quietly
+            // reporting an incomplete hit.
             if (kind is ChatterEvent.Hurt
                 or ChatterEvent.PlayerHurt
                 or ChatterEvent.CompanionHurt
                 or ChatterEvent.PlayerLandedABigHit)
             {
-                set |= TokenSet.Weapon | TokenSet.WeaponSkill | TokenSet.Damage;
+                set |= TokenSet.Damage;
             }
 
-            // A kill or a death knows only what the killer was holding. m_lastHit is
-            // sitting right there on the body and is a trap - RPC_Damage has already
-            // lifted the fire, poison and spirit off it by then, so its damage is
-            // incomplete in exactly the way the prefix read exists to avoid.
-            if (kind is ChatterEvent.Killed
-                or ChatterEvent.CompanionKilled
-                or ChatterEvent.Died
-                or ChatterEvent.PlayerGotAKill)
+            // The weapon, and the skill behind it, only where the player is the one
+            // swinging. Valheim describes player equipment properly and leaves a
+            // creature's fields as they came: a Skelett's sword is named "Dragur axe"
+            // and its bow reports its skill as Swords. Hits refuses both for anybody
+            // but a player, so promising them anywhere else would be promising what
+            // never arrives. See Hits.Describable.
+            if (kind is ChatterEvent.PlayerLandedABigHit or ChatterEvent.PlayerGotAKill)
             {
                 set |= TokenSet.Weapon | TokenSet.WeaponSkill;
             }

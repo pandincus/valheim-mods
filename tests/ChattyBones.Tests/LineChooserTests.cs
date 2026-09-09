@@ -35,6 +35,40 @@ namespace ChattyBones.Tests
                 .Build();
         }
 
+        /// <summary>A pack where the personality and the shared lines both have something.</summary>
+        /// <returns>The pack.</returns>
+        /// <param name="own">The cowardly lines.</param>
+        /// <param name="shared">The common lines.</param>
+        private static LinePack Split(string[] own, string[] shared)
+        {
+            return new LinePack.Builder()
+                .Add(Cowardly, ChatterEvent.Idle, own)
+                .Add(LinePack.SharedPersonality, ChatterEvent.Idle, shared)
+                .Build();
+        }
+
+        /// <summary>Say a lot, and report what came out.</summary>
+        /// <returns>Every line said, in order.</returns>
+        /// <param name="pack">The pack to draw from.</param>
+        /// <param name="times">How many utterances to take.</param>
+        /// <param name="seed">Fixed, so a failure is the same failure tomorrow.</param>
+        private static List<string> Speak(LinePack pack, int times, int seed)
+        {
+            LineChooser chooser = new();
+            Random random = new(seed);
+            List<string> said = [];
+
+            for (int i = 0; i < times; i++)
+            {
+                if (chooser.TryChoose(pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out _, out string line))
+                {
+                    said.Add(line);
+                }
+            }
+
+            return said;
+        }
+
         [Fact]
         public void APackWithNothingForThisEventSaysNothing()
         {
@@ -252,6 +286,107 @@ namespace ChattyBones.Tests
 
                 // The receiving client: pick by lineRef, render, and nothing else.
                 Assert.True(pack.TryPick(Cowardly, ChatterEvent.TargetAcquired, lineRef, out string template));
+                Assert.True(Tokens().TryRender(template, out string theirs));
+
+                Assert.Equal(ours, theirs);
+            }
+        }
+
+        [Fact]
+        public void APersonalityWithItsOwnLinesStillReachesTheSharedOnes()
+        {
+            // The behaviour this whole change exists for. Before it, two cowardly lines
+            // *replaced* common's five rather than joining them, so writing two good
+            // lines for an event left that skeleton with two - and twenty-six groups in
+            // the shipped pack had quietly done exactly that.
+            LinePack pack = Split(
+                ["own one", "own two"],
+                ["shared one", "shared two", "shared three", "shared four", "shared five"]);
+
+            Assert.Equal(7, new HashSet<string>(Speak(pack, 2000, 20260908)).Count);
+        }
+
+        [Fact]
+        public void ASmallPersonalityGroupStillDoesMostOfTheTalking()
+        {
+            // Merging must not wash the character out. Two own lines against five shared
+            // ones is the case that would go worst if the bands were simply pooled: the
+            // natural split hands 71% of the talking to common. The share puts it back.
+            List<string> said = Speak(
+                pack: Split(
+                    ["own one", "own two"],
+                    ["shared one", "shared two", "shared three", "shared four", "shared five"]),
+                times: 4000,
+                seed: 4711);
+
+            double mine = said.FindAll(line => line.StartsWith("own", StringComparison.Ordinal)).Count
+                / (double)said.Count;
+
+            Assert.InRange(mine, 0.66, 0.74);
+        }
+
+        [Fact]
+        public void AWellStockedPersonalityIsNotDraggedDownToTheShare()
+        {
+            // The other direction of the same trap, and why the rule takes a max rather
+            // than the share flat. Eight own lines against two shared ones is naturally
+            // 80% - forcing it to 70% would mean writing more lines made a personality
+            // come through *less*, which is the thing we just finished fixing.
+            //
+            // On its own this does not prove what its name says: simply pooling the two
+            // bands also gives 0.8 here. It is the pair that pins the rule down -
+            // pooling scores 0.29 on the test above, and a flat 0.7 fails this one.
+            List<string> said = Speak(
+                pack: Split(
+                    ["own 1", "own 2", "own 3", "own 4", "own 5", "own 6", "own 7", "own 8"],
+                    ["shared one", "shared two"]),
+                times: 4000,
+                seed: 1301);
+
+            double mine = said.FindAll(line => line.StartsWith("own", StringComparison.Ordinal)).Count
+                / (double)said.Count;
+
+            Assert.InRange(mine, 0.76, 0.84);
+        }
+
+        [Fact]
+        public void LosingTheRollIsNotLosingTheLine()
+        {
+            // The band that goes second is still walked. Every own line here wants an
+            // {ally} we have not got, so a roll that picks the personality must fall
+            // through to the shared lines rather than going quiet - a token we cannot
+            // fill should cost variety, never silence.
+            List<string> said = Speak(
+                pack: Split(
+                    ["Stay close, {ally}.", "After you, {ally}."],
+                    ["shared one", "shared two"]),
+                times: 200,
+                seed: 8);
+
+            Assert.Equal(200, said.Count);
+            Assert.All(said, line => Assert.StartsWith("shared", line, StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public void TheBroadcastLineRefStillReproducesTheLineAcrossBothBands()
+        {
+            // The contract that could actually have been broken by this. A listener folds
+            // a bare number against the whole numbering and never learns which band we
+            // drew from - so now that we draw from both, the ref has to keep landing on
+            // the same words. It does because the numbering never changed: both bands
+            // were always numbered in, they were merely unreachable.
+            LinePack pack = Split(
+                ["A {target}!", "Not another {target}."],
+                ["{name} sees a {target}.", "Ach, {companion}, a {target}!", "Something moved."]);
+            LineChooser chooser = new();
+            Random random = new(2024);
+
+            for (int i = 0; i < 500; i++)
+            {
+                Assert.True(chooser.TryChoose(
+                    pack, Cowardly, ChatterEvent.Idle, Tokens(), random, out int lineRef, out string ours));
+
+                Assert.True(pack.TryPick(Cowardly, ChatterEvent.Idle, lineRef, out string template));
                 Assert.True(Tokens().TryRender(template, out string theirs));
 
                 Assert.Equal(ours, theirs);

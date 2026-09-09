@@ -64,9 +64,16 @@ dotnet_diagnostic.IDE0058.severity = none
 # second one happily calls into a destroyed object. IDE0029 and IDE0030 are the
 # same trap wearing ?? instead of ?. dotnet format applies all three silently,
 # which is exactly how they would get in.
+#
+# IDE0270 belongs with them and was missed the first time round, which cost us:
+# "Character killer = hit?.GetAttacker(); if (killer == null) { killer = fallback; }"
+# came back from dotnet format as "... ?? fallback", turning a Unity == that catches
+# a destroyed object into a plain reference test - under a comment saying it was
+# Unity's ==. A review caught it. The rule reads as pure tidying and is not.
 dotnet_diagnostic.IDE0031.severity = none
 dotnet_diagnostic.IDE0029.severity = none
 dotnet_diagnostic.IDE0030.severity = none
+dotnet_diagnostic.IDE0270.severity = none
 
 # Off because these two cannot be right for both projects at once. The test
 # project compiles the mod's Logic/ sources against net10, where s[^1] and
@@ -88,3 +95,4 @@ dotnet_diagnostic.IDE0057.severity = none
 dotnet_diagnostic.IDE0031.severity = warning
 dotnet_diagnostic.IDE0029.severity = warning
 dotnet_diagnostic.IDE0030.severity = warning
+dotnet_diagnostic.IDE0270.severity = warning

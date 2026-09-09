@@ -249,10 +249,12 @@ namespace ChattyBones.Tests
         [InlineData("veteran")]
         public void NoPersonalityOverridesTheSharedLinesWithASingleOne(string personality)
         {
-            // A personality group *shadows* the shared one rather than adding to it -
-            // selection picks one window and stays in it - so a group with one line in
-            // it means that personality says that line and nothing else, for that
-            // event, forever. The shared lines beside it become unreachable.
+            // A one-line group no longer shadows the shared lines - a skeleton draws
+            // from both bands now - so this is kept for a different reason than it was
+            // written for. At one line the no-repeat rule outranks the personality
+            // share, so that line lands about 41% of the time instead of 70% and the
+            // character comes through weakest exactly where an author was trying
+            // hardest. Two lines is the point where the share behaves as advertised.
             //
             // Easy to write and impossible to see on the page, which is why it is a
             // rule: six of these went in at once, and the review caught them rather
@@ -283,8 +285,10 @@ namespace ChattyBones.Tests
                     string where = group.Context == null ? "" : "[" + group.Context + "]";
 
                     Assert.Fail(
-                        personality + "/" + kind + where + " has one line of its own, so it will say \""
-                        + space.All[group.Offset] + "\" every time and never reach anything beside it.");
+                        personality + "/" + kind + where + " has one line of its own, so \""
+                        + space.All[group.Offset] + "\" lands about 41% of the time - the no-repeat"
+                        + " rule stops it being said twice running, so it has to keep handing back"
+                        + " to common. Write it a second line.");
                 }
             }
         }
@@ -357,15 +361,27 @@ namespace ChattyBones.Tests
         {
             int previous = -1;
             string previousContext = null;
+            bool personal = true;
 
             foreach (LineSpace.Group group in space.Groups)
             {
-                // Only the personality's own band. File order decides within a band -
-                // TrySelect exhausts the personal groups before it touches the shared
-                // ones - so a shared group below a personal one is not a shadowing.
-                if (!group.Personal || group.Context == null)
+                // Both bands, and the shared one only recently. It used to be skipped
+                // because selection exhausted the personal groups before touching the
+                // shared ones, so a shared group could never shadow anything. Now that a
+                // skeleton draws from both, file order settles ties inside common's band
+                // on about a third of every utterance, exactly as it does inside its own.
+                if (group.Context == null)
                 {
                     continue;
+                }
+
+                // Each band is ordered independently, so crossing from one to the other
+                // is not a step backwards.
+                if (group.Personal != personal)
+                {
+                    personal = group.Personal;
+                    previous = -1;
+                    previousContext = null;
                 }
 
                 int rank = RankOf(group.Context);
@@ -392,55 +408,6 @@ namespace ChattyBones.Tests
         {
             int equals = context.IndexOf('=');
             return equals < 0 ? context : context[..equals];
-        }
-
-        [Fact]
-        public void NoSharedContextGroupIsWrittenWhereNobodyCanReachIt()
-        {
-            // Personality beats context, so a personality with plain lines of its own
-            // for an event never falls through to a shared group tagged for where it is
-            // standing. If every personality has plain lines for that event, a shared
-            // context group is unreachable - it reads perfectly and nothing can ever
-            // say it.
-            //
-            // Eight lines shipped that way before a review caught it, which is why the
-            // rule is here rather than in somebody's head. The atmosphere belongs in
-            // the personalities; common is the boring baseline.
-            LinePack pack = DefaultPack.Build();
-
-            if (!pack.TryGetSpace(LinePack.SharedPersonality, ChatterEvent.Idle, out _))
-            {
-                return;
-            }
-
-            foreach (ChatterEvent kind in Enum.GetValues(typeof(ChatterEvent)))
-            {
-                if (!pack.TryGetSpace(LinePack.SharedPersonality, kind, out LineSpace shared))
-                {
-                    continue;
-                }
-
-                bool anyoneFallsThrough = false;
-
-                for (int i = 0; !anyoneFallsThrough && i < pack.Personalities.Count; i++)
-                {
-                    anyoneFallsThrough = !pack.HasOwnLines(pack.Personalities[i], kind);
-                }
-
-                if (anyoneFallsThrough)
-                {
-                    continue;
-                }
-
-                foreach (LineSpace.Group group in shared.Groups)
-                {
-                    Assert.True(
-                        group.Context == null,
-                        "common/" + kind + "[" + group.Context + "] can never be reached: every "
-                        + "personality has its own plain " + kind + " lines, and those win. "
-                        + "Put these lines in the personalities instead.");
-                }
-            }
         }
 
         [Fact]

@@ -55,6 +55,133 @@ namespace ChattyBones
                 isNetwork: false,
                 onlyServer: false,
                 isSecret: true);
+
+            _ = new Terminal.ConsoleCommand(
+                "cb_gear",
+                "what each summoned skeleton is holding and carrying, and where {weapon} is reading from",
+                Gear,
+                isCheat: false,
+                isNetwork: false,
+                onlyServer: false,
+                isSecret: true);
+        }
+
+        /// <summary>Show what the squad is actually armed with.</summary>
+        /// <param name="args">Ignored.</param>
+        /// <remarks>
+        /// Written to settle one question: every skeleton was calling its weapon a
+        /// Dragur axe while visibly holding a sword, and the player's own weapon came
+        /// out right, so the fault had to be in what we ask rather than in the token.
+        ///
+        /// Humanoid.GiveDefaultItems draws one entry each from m_randomWeapon,
+        /// m_randomShield and m_randomArmor, seeded from the ZDOID - so the gear is
+        /// varied between skeletons, fixed for one skeleton's life, and the same on
+        /// every client.
+        ///
+        /// What it showed, and it is worth writing down because two plausible theories
+        /// died here: the hand is *not* empty and m_unarmedWeapon is *not* where the
+        /// name comes from. GiveDefaultItem does decline to equip a weapon, but
+        /// MonsterAI.Start calls EquipBestWeapon straight afterwards and re-runs it on a
+        /// timer in combat, so GetCurrentWeapon returns the real drawn weapon - a bow
+        /// for one skeleton, an axe-named-sword for the next. The fault is in the item
+        /// itself: its name is the raw string "Dragur axe" rather than a $key, on a
+        /// prefab whose model is a sword, and its m_skillType was never set so it reads
+        /// as Swords even on a bow.
+        ///
+        /// Both the key and the words are printed, since the key says which prefab and
+        /// the words are what a player would read. If Iron Gate ever tidies these up,
+        /// this is the command that would show it and Hits.Describable could go.
+        ///
+        /// Everything goes to the BepInEx log as well as the console. The console is
+        /// where you read it, and the log is what you can paste to somebody who is not
+        /// sitting at the machine - which is the whole reason this exists.
+        /// </remarks>
+        private static void Gear(Terminal.ConsoleEventArgs args)
+        {
+            if (Player.m_localPlayer == null)
+            {
+                Both(args, "No player yet.");
+                return;
+            }
+
+            Vector3 me = Player.m_localPlayer.transform.position;
+            int found = 0;
+
+            List<Character> all = Character.GetAllCharacters();
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (!Summons.IsSummoned(all[i]) || all[i] is not Humanoid humanoid)
+                {
+                    continue;
+                }
+
+                found++;
+
+                Both(args,
+                    (Summons.NameOf(all[i]) ?? "(unnamed)")
+                    + " - " + Mathf.RoundToInt(Vector3.Distance(me, all[i].transform.position)) + "m"
+                    + " - " + PersonalityOf(all[i]));
+
+                Both(args, "    right hand: " + Describe(humanoid.m_rightItem));
+                Both(args, "    left hand:  " + Describe(humanoid.m_leftItem));
+                Both(args, "    unarmed:    " + Describe(
+                    humanoid.m_unarmedWeapon == null ? null : humanoid.m_unarmedWeapon.m_itemData));
+
+                Both(args,
+                    "    -> in hand: " + Describe(humanoid.GetCurrentWeapon())
+                    + "  <- what {weapon} and {weaponskill} read today");
+
+                List<ItemDrop.ItemData> carried = humanoid.GetInventory()?.GetAllItems();
+
+                if (carried == null || carried.Count == 0)
+                {
+                    Both(args, "    carrying:   nothing");
+                    continue;
+                }
+
+                for (int j = 0; j < carried.Count; j++)
+                {
+                    Both(args, "    carrying:   " + Describe(carried[j]));
+                }
+            }
+
+            Both(args, found + " summoned skeleton(s) loaded.");
+        }
+
+        /// <summary>Put one line on the console and in the log.</summary>
+        /// <param name="args">The console to write to.</param>
+        /// <param name="line">What to say.</param>
+        private static void Both(Terminal.ConsoleEventArgs args, string line)
+        {
+            args.Context.AddString(line);
+            ChattyBonesPlugin.Log.LogInfo("[gear] " + line);
+        }
+
+        /// <summary>Spell out one item, by both of the names it has.</summary>
+        /// <returns>Something like <c>Dragur axe ($item_draugr_axe) [OneHandedWeapon, Swords, weapon]</c>.</returns>
+        /// <param name="item">The item, or null for an empty slot.</param>
+        /// <remarks>
+        /// The skill is printed raw rather than run through Hits, because the whole
+        /// point is to see what the game says before we have had an opinion about it -
+        /// Swords here means the field was left at its initializer just as often as it
+        /// means somebody swung a sword.
+        /// </remarks>
+        private static string Describe(ItemDrop.ItemData item)
+        {
+            if (item?.m_shared == null)
+            {
+                return "(empty)";
+            }
+
+            string key = item.m_shared.m_name;
+            string words = string.IsNullOrEmpty(key) || Localization.instance == null
+                ? key
+                : Localization.instance.Localize(key);
+
+            return words + " (" + key + ") ["
+                + item.m_shared.m_itemType + ", "
+                + item.m_shared.m_skillType
+                + (item.IsWeapon() ? ", weapon]" : ", not a weapon]");
         }
 
         /// <summary>Read a skeleton's broadcast and draw it the way a listener would.</summary>
@@ -233,7 +360,7 @@ namespace ChattyBones
 
             // An event can be named to ask about that one instead. Idle is the default
             // because it is where context groups actually get written, and printing all
-            // thirty-one per skeleton would bury the answer.
+            // thirty-two per skeleton would bury the answer.
             ChatterEvent asking = ChatterEvent.Idle;
 
             string wanted = args.ArgsAll == null ? string.Empty : args.ArgsAll.Trim();
