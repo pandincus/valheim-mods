@@ -115,13 +115,22 @@ it, and CI couldn't do that either.
    `Plugin.cs`, and `manifest.json`. `tools/package.ps1` refuses to run if the
    first and last disagree.
 2. Add a `CHANGELOG.md` entry.
-3. `powershell -File tools/package.ps1` — runs the tests, builds, and writes
-   `dist/<Mod>-<version>.zip` in the flat layout Thunderstore expects.
-4. `gh release create v0.1.1 dist/FishQualityBonus-0.1.1.zip --notes "..."`
+3. `powershell -File tools/package.ps1 -Mod <Mod>` — runs the tests, builds, and
+   writes `dist/<Mod>-<version>.zip` in the flat layout Thunderstore expects.
+   The `-Mod` argument is not optional in spirit: it defaults to
+   FishQualityBonus, so leaving it off quietly packages the wrong mod.
+4. `gh release create <mod>-vX.Y.Z dist/<Mod>-X.Y.Z.zip --notes "..."`
+
+   Tags are prefixed with the mod because git tags are repo-wide and two mods
+   will eventually both want a `v0.3.0`. (FishQualityBonus 0.2.0 shipped as plain
+   `v0.2.0`, before there was a second mod to collide with.)
 
 Publishing the release fires `.github/workflows/publish-thunderstore.yml`,
-which uploads that exact zip to Thunderstore. Package metadata comes from
-`manifest.json`, so it never has to be repeated in the workflow.
+which uploads that exact zip to Thunderstore. It works out which mod that is from
+the *zip's* filename rather than from the tag, then reads
+`src/<Mod>/manifest.json` for the metadata and refuses to upload if the two
+disagree about the version — so nothing about either mod is written down in the
+workflow.
 
 Needs a `THUNDERSTORE_TOKEN` repo secret — a Thunderstore service account token
 for the team. **Thunderstore versions are immutable**, so a bad upload can't be

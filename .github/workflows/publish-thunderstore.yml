@@ -6,12 +6,24 @@
 # no public feed for them - so a runner cannot compile this project.
 #
 # The flow is therefore:
-#   1. tools/package.ps1          (local: tests, builds, zips)
-#   2. gh release create vX.Y.Z dist/<Mod>-X.Y.Z.zip
+#   1. tools/package.ps1 -Mod <Mod>   (local: tests, builds, zips)
+#   2. gh release create <mod>-vX.Y.Z dist/<Mod>-X.Y.Z.zip
 #   3. this workflow uploads that exact zip to Thunderstore
 #
 # Building locally is no bad thing here: you want to have played the change
 # before releasing it, and CI could never do that either.
+#
+# WHICH MOD IS BEING PUBLISHED comes from the name of the zip attached to the
+# release, not from the tag. This repo holds more than one mod, and everything
+# else here already treats manifest.json as the single source of truth - so the
+# workflow works out "ChattyBones" and "0.1.0" from ChattyBones-0.1.0.zip, then
+# reads src/ChattyBones/manifest.json and checks the two agree. Nothing about
+# either mod is written down in this file.
+#
+# The tag is therefore not parsed at all, and is free to be whatever reads best.
+# Prefix it with the mod anyway - chattybones-v0.1.0, fishqualitybonus-v0.3.0 -
+# because git tags are repo-wide and two mods will eventually both want a v0.3.0.
+# (fishqualitybonus 0.2.0 shipped as plain v0.2.0, before there was a second mod.)
 #
 # Setup, once: create a Thunderstore service account for the pandincus team
 # (Settings -> Service Accounts), then add its token to this repo as the secret
@@ -26,7 +38,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to publish (e.g. v0.1.1)
+        description: Existing release tag to publish (e.g. chattybones-v0.1.0)
         required: true
 
 jobs:
@@ -39,12 +51,51 @@ jobs:
         id: rel
         run: echo "tag=${{ github.event.release.tag_name || inputs.tag }}" >> "$GITHUB_OUTPUT"
 
+      - name: Download the zip attached to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ steps.rel.outputs.tag }}" --pattern '*.zip' --dir dist
+
+      # The zip's own name is what says which mod this is. package.ps1 builds it
+      # as <Mod>-<version>.zip and nothing else in the release is a zip.
+      - name: Work out which mod that zip is
+        id: mod
+        run: |
+          set -euo pipefail
+
+          count=$(find dist -maxdepth 1 -name '*.zip' | wc -l)
+          if [ "$count" -ne 1 ]; then
+            echo "::error::Expected exactly one zip on the release, found $count:"
+            ls -la dist
+            exit 1
+          fi
+
+          zip=$(find dist -maxdepth 1 -name '*.zip')
+          base=$(basename "$zip" .zip)
+
+          # <Mod>-<version>. No mod name here contains a hyphen; if one ever does,
+          # the manifest check below is what will catch it rather than this.
+          name="${base%-*}"
+          version="${base##*-}"
+
+          manifest="src/$name/manifest.json"
+          if [ ! -f "$manifest" ]; then
+            echo "::error::$zip does not name a mod in this repo - no $manifest"
+            exit 1
+          fi
+
+          echo "Publishing $name $version from $zip"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "zip=$zip" >> "$GITHUB_OUTPUT"
+          echo "manifest=$manifest" >> "$GITHUB_OUTPUT"
+
       # manifest.json stays the single source of truth for the package metadata,
       # so nothing has to be repeated in this file.
       - name: Read package metadata
         id: meta
         run: |
-          manifest=src/FishQualityBonus/manifest.json
+          manifest="${{ steps.mod.outputs.manifest }}"
           echo "version=$(jq -r .version_number "$manifest")" >> "$GITHUB_OUTPUT"
           echo "website=$(jq -r .website_url "$manifest")" >> "$GITHUB_OUTPUT"
           {
@@ -56,33 +107,27 @@ jobs:
             echo "MANIFEST_EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Download the zip attached to the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release download "${{ steps.rel.outputs.tag }}" --pattern '*.zip' --dir dist
-
       # Thunderstore versions are immutable, so publishing a zip whose version
       # disagrees with the manifest would be permanent. Check before uploading.
       - name: Check the zip matches the manifest version
         run: |
-          expected="dist/FishQualityBonus-${{ steps.meta.outputs.version }}.zip"
-          if [ ! -f "$expected" ]; then
-            echo "::error::Expected $expected but the release has:"
-            ls -la dist
+          if [ "${{ steps.mod.outputs.version }}" != "${{ steps.meta.outputs.version }}" ]; then
+            echo "::error::${{ steps.mod.outputs.zip }} is version ${{ steps.mod.outputs.version }}," \
+                 "but ${{ steps.mod.outputs.manifest }} says ${{ steps.meta.outputs.version }}."
             exit 1
           fi
-          echo "Publishing $expected"
+          echo "Publishing ${{ steps.mod.outputs.zip }}"
 
       - uses: GreenTF/upload-thunderstore-package@v4.3
         with:
           namespace: pandincus
-          name: FishQualityBonus
+          name: ${{ steps.mod.outputs.name }}
           community: valheim
           version: ${{ steps.meta.outputs.version }}
           description: ${{ steps.meta.outputs.description }}
           website: ${{ steps.meta.outputs.website }}
           deps: ${{ steps.meta.outputs.deps }}
-          file: dist/FishQualityBonus-${{ steps.meta.outputs.version }}.zip
+          file: ${{ steps.mod.outputs.zip }}
           token: ${{ secrets.THUNDERSTORE_TOKEN }}
           # Required, and the value is ignored. The action's entrypoint has its
           # branches the wrong way round:
