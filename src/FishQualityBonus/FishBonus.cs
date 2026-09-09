@@ -170,7 +170,11 @@ namespace FishQualityBonus
         /// qualities and everything else exactly the way vanilla does. False whenever
         /// we are not sure, so vanilla's refusal stands.
         /// </returns>
-        /// <param name="inventory">The player's inventory, we treat it here as read only.</param>
+        /// <param name="player">
+        /// The player doing the crafting. We read their inventory and their current crafting
+        /// station off it, and write to neither. Vanilla's own check is an instance method on
+        /// Player and reads both the same way.
+        /// </param>
         /// <param name="recipe">The recipe whose Craft button vanilla has just greyed out.</param>
         /// <param name="qualityLevel">The quality of the item being crafted, not of the fish.</param>
         /// <param name="multiplier">1 normally, or the multi-craft amount when shift is held.</param>
@@ -200,10 +204,10 @@ namespace FishQualityBonus
         /// too. Keeping the change to fish is the whole point, and any modded ingredient
         /// with real quality tiers keeps whatever behavior its own author expects.
         /// </remarks>
-        internal static bool CanCraftMixed(Inventory inventory, Recipe recipe,
+        internal static bool CanCraftMixed(Player player, Recipe recipe,
                                            int qualityLevel, int multiplier)
         {
-            if (inventory == null || recipe?.m_resources == null) return false;
+            if (player == null || recipe?.m_resources == null) return false;
 
             // Allow mixing is turned off, so skip
             if (!ModConfig.AllowMixedQualities.Value) return false;
@@ -219,9 +223,24 @@ namespace FishQualityBonus
             // a craft it would then decline to price.
             if (IneligibleReason(recipe) != null) return false;
 
+            // Both of these are Unity calls, so they wait behind the cheap checks above
+            // rather than running for every recipe in the panel.
+            Inventory inventory = player.GetInventory();
+            CraftingStation station = player.GetCurrentCraftingStation();
+
             foreach (Piece.Requirement req in recipe.m_resources)
             {
                 if (!req.m_resItem) continue;
+
+                // Valheim 1.0 added this to vanilla's loop: an upgrader station spends only
+                // upgrade-only ingredients, and an ordinary one spends only ordinary
+                // ingredients. Vanilla writes it as two clauses - one for having a station and
+                // one for having none - but with no station the answer is "not an upgrader",
+                // so the single comparison below covers both. Every fish recipe leaves both
+                // flags false, so this skips nothing today; it is here to keep our loop and
+                // vanilla's agreeing if that ever changes.
+                bool upgraderStation = station != null && station.m_upgrader;
+                if (upgraderStation != req.m_upgraderResource) continue;
 
                 int needed = req.GetAmount(qualityLevel) * multiplier;
                 if (needed <= 0) continue;

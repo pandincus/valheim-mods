@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.1 — 2026-09-09
+
+**Checked against Valheim 1.0.**
+
+- Nothing was broken for 1.0, but Valheim 1.0 added a 'long press' input on the
+  Craft button which triggers multicrafting on touch devices. Had to update the
+  mod to be aware of this, so that the label would show properly (e.g. x3 Fish 'n'
+  Bread vs. 15). Nothing mechanical was wrong, but the label would have been
+  confusing. Note that I did not test this myself; I don't have a touch device
+  to test it with.
+- Updated some of the mod's internals to match small changes Iron Gate made to
+  their own crafting code in 1.0.
+- The BepInEx pack dependency now updated to 5.4.2350.
+
 ## 0.2.0 — 2026-08-23
 
 **You can now craft with fish of different qualities!**

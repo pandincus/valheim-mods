@@ -187,7 +187,7 @@ namespace FishQualityBonus
             if (!ModConfig.Enabled.Value) return;
             if (discover) return;
 
-            if (FishBonus.CanCraftMixed(__instance.GetInventory(), piece, qualityLevel, amount))
+            if (FishBonus.CanCraftMixed(__instance, piece, qualityLevel, amount))
             {
                 __result = true;
             }
@@ -263,12 +263,20 @@ namespace FishQualityBonus
         /// Only Iron Gate renaming the action could, and an unknown name just returns false, so it would
         /// fail quietly.
         ///
+        /// Valheim 1.0 added a third route in, m_touchMultiCrafting, which a long press on the
+        /// Craft button sets through the new TouchLongPress input. Vanilla ORs it in here and
+        /// again in OnCraftPressed, so leaving it out understates a long-pressed craft: a
+        /// Fish 'n' Bread paying 3 would read "x3" while the craft really hands over 15.
+        /// Reading the field is safe, since UpdateRecipe only reads it as well - OnCraftPressed
+        /// is what clears it.
+        ///
         /// The impact of this failing is only in the label writing; we don't use this to compute anything
         /// critical about the recipe itself.
         /// </remarks>
         private static int CurrentCraftMultiplier(InventoryGui gui)
         {
-            bool multiCrafting = ZInput.GetButton("AltPlace") || ZInput.GetButton("JoyLStick");
+            bool multiCrafting = ZInput.GetButton("AltPlace") || ZInput.GetButton("JoyLStick") ||
+                                 gui.m_touchMultiCrafting;
             return multiCrafting ? gui.m_multiCraftAmount : 1;
         }
     }
