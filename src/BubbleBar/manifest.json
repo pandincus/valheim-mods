@@ -1,0 +1,9 @@
+{
+  "name": "BubbleBar",
+  "version_number": "0.1.0",
+  "website_url": "https://github.com/pandincus/valheim-mods/tree/main/src/BubbleBar",
+  "description": "See remaining magic barrier capacity and refill on recast!",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2350"
+  ]
+}

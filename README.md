@@ -8,7 +8,8 @@ One repository, one folder per mod, shared tooling at the root.
 | Mod | What it does |
 |---|---|
 | [FishQualityBonus](src/FishQualityBonus/) | Recipes that consume a whole fish — Fish 'n' Bread and the fish mead bases — pay out more when you spend a bigger fish. |
-| [ChattyBones](src/ChattyBones/) | Dead Raiser skeletons talk: they call out targets, yelp when hit, grumble when idle, and answer each other by name. Every line is in a file you can edit while the game runs. Not released yet. |
+| [ChattyBones](src/ChattyBones/) | Dead Raiser skeletons talk: they call out targets, yelp when hit, grumble when idle, and answer each other by name. Every line is in a file you can edit while the game runs. |
+| [BubbleBar](src/BubbleBar/) | See how much of the Staff of Protection's magic barrier is left — on yourself and on anyone else carrying one — and get a barrier that refills when you recast it instead of only resetting its timer. |
 
 ## Layout
 
