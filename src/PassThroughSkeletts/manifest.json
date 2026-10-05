@@ -1,0 +1,9 @@
+{
+  "name": "PassThroughSkeletts",
+  "version_number": "0.1.0",
+  "website_url": "https://github.com/pandincus/valheim-mods/tree/main/src/PassThroughSkeletts",
+  "description": "Tired of getting pushed around by your skeleton buddies? Now, noclip / pass through your summoned Dead Raiser Skeletts instead of getting trapped!",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2350"
+  ]
+}
